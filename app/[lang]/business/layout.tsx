@@ -1,14 +1,27 @@
 // app/[lang]/business/layout.tsx
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
+import { isLocale, type Locale } from "@/i18n/config";
 
-type Lang = "en" | "nl" | "pap" | "es";
+type ParamsPromise = Promise<{ lang: string }>;
 
-export default async function BusinessLayout(
-  { children, params }: { children: ReactNode; params: Promise<{ lang: Lang }> }
-) {
-  const { lang } = await params; // ⬅️ verplicht in Next 15/16
-  if (!["en","nl","pap","es"].includes(lang)) notFound();
+export default async function BusinessLayout({
+  children,
+  params,
+}: {
+  children: ReactNode;
+  params: ParamsPromise;
+}) {
+  // Promise params uitpakken
+  const { lang: rawLang } = await params;
 
-  return <>{children}</>;
+  // Als lang ongeldig is → 404
+  if (!isLocale(rawLang)) {
+    notFound();
+  }
+
+  // Eventueel nog als Locale casten als je het later nodig hebt
+  const lang: Locale = isLocale(rawLang) ? rawLang : "en";
+
+  return <>{children}</>;
 }
