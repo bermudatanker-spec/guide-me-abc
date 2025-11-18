@@ -1,19 +1,16 @@
-// app/api/listings/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
-type Params = {
-  id: string;
+// params-type
+type RouteContext = {
+  params: { id: string }; // ✅ GEEN Promise
 };
 
 /* ===========================
    GET – één listing ophalen
    =========================== */
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Params }
-) {
-  const { id } = params;
+export async function GET(_req: Request, ctx: RouteContext) {
+  const { id } = ctx.params; // direct beschikbaar
 
   const s = await supabaseServer();
 
@@ -40,11 +37,8 @@ export async function GET(
 /* ===========================
    PATCH – listing updaten
    =========================== */
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Params }
-) {
-  const { id } = params;
+export async function PATCH(req: Request, ctx: RouteContext) {
+  const { id } = ctx.params;
 
   const s = await supabaseServer();
 
@@ -78,11 +72,8 @@ export async function PATCH(
 /* ===========================
    DELETE – listing verwijderen
    =========================== */
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Params }
-) {
-  const { id } = params;
+export async function DELETE(_req: Request, ctx: RouteContext) {
+  const { id } = ctx.params;
 
   const s = await supabaseServer();
 
@@ -91,7 +82,7 @@ export async function DELETE(
     return NextResponse.json({ error: authError.message }, { status: 400 });
   }
 
-  const { user } = authData ?? {};
+  const user = authData?.user;
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
