@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
-// params-type
+// ✅ context type (GEEN Promise)
 type RouteContext = {
-  params: { id: string }; // ✅ GEEN Promise
+  params: { id: string };
 };
 
 /* ===========================
    GET – één listing ophalen
    =========================== */
 export async function GET(_req: Request, ctx: RouteContext) {
-  const { id } = ctx.params; // direct beschikbaar
+  const { id } = ctx.params;
 
   const s = await supabaseServer();
 
