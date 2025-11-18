@@ -2,19 +2,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
-// Params van de route: /api/listings/[id]
-type IdParams = { id: string };
-
-// Next.js geeft je context als { params: { id: string } }
-type RouteContext = {
-  params: IdParams;
-};
-
 /* ===========================
    GET – één listing ophalen
    =========================== */
-export async function GET(_req: NextRequest, { params }: RouteContext) {
-  const { id } = params;
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params; // 👈 Promise eerst uitpakken
 
   const s = await supabaseServer();
 
@@ -41,8 +36,11 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 /* ===========================
    PATCH – listing updaten
    =========================== */
-export async function PATCH(req: NextRequest, { params }: RouteContext) {
-  const { id } = params;
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
 
   const s = await supabaseServer();
 
@@ -76,8 +74,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 /* ===========================
    DELETE – listing verwijderen
    =========================== */
-export async function DELETE(_req: NextRequest, { params }: RouteContext) {
-  const { id } = params;
+export async function DELETE(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
 
   const s = await supabaseServer();
 
