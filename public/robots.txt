@@ -1,0 +1,29 @@
+# robots.txt for Guide Me ABC
+# This file tells search engines what they can access.
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+# Default rule for all other crawlers
+User-agent: *
+Allow: /
+
+# Disallow server or private routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /auth/
+Disallow: /dashboard/
+Disallow: /business/auth/
+Disallow: /private/
+
+# Sitemap (Next.js automatically generates this if you add sitemap.ts)
+Sitemap: https://www.guide-me-abc.com/sitemap.xml

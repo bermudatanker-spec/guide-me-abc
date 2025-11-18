@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="28" viewBox="0 0 180 28">
+  <defs>
+    <linearGradient id="gmabc" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00BFD3"></stop>
+      <stop offset="100%" stop-color="#7DE3ED"></stop>
+    </linearGradient>
+  </defs>
+  <g font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="20" fill="url(#gmabc)">
+    <text x="0" y="20">Guide Me ABC</text>
+  </g>
+</svg>
