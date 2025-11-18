@@ -1,16 +1,23 @@
-import { NextResponse } from "next/server";
+// app/api/listings/[id]/route.ts
+
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
-// ✅ context type (GEEN Promise)
-type RouteContext = {
-  params: { id: string };
+// ✅ context.params is GEEN Promise hier, gewoon { id: string }
+type RouteParams = {
+  params: {
+    id: string;
+  };
 };
 
 /* ===========================
    GET – één listing ophalen
    =========================== */
-export async function GET(_req: Request, ctx: RouteContext) {
-  const { id } = ctx.params;
+export async function GET(
+  _req: NextRequest,
+  { params }: RouteParams
+) {
+  const { id } = params;
 
   const s = await supabaseServer();
 
@@ -37,8 +44,11 @@ export async function GET(_req: Request, ctx: RouteContext) {
 /* ===========================
    PATCH – listing updaten
    =========================== */
-export async function PATCH(req: Request, ctx: RouteContext) {
-  const { id } = ctx.params;
+export async function PATCH(
+  req: NextRequest,
+  { params }: RouteParams
+) {
+  const { id } = params;
 
   const s = await supabaseServer();
 
@@ -72,8 +82,11 @@ export async function PATCH(req: Request, ctx: RouteContext) {
 /* ===========================
    DELETE – listing verwijderen
    =========================== */
-export async function DELETE(_req: Request, ctx: RouteContext) {
-  const { id } = ctx.params;
+export async function DELETE(
+  _req: NextRequest,
+  { params }: RouteParams
+) {
+  const { id } = params;
 
   const s = await supabaseServer();
 
