@@ -1,15 +1,19 @@
 // app/api/listings/[id]/route.ts
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
+
+type Params = {
+  id: string;
+};
 
 /* ===========================
    GET – één listing ophalen
    =========================== */
 export async function GET(
   _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Params }
 ) {
-  const { id } = await context.params; // 👈 Promise eerst uitpakken
+  const { id } = params;
 
   const s = await supabaseServer();
 
@@ -38,9 +42,9 @@ export async function GET(
    =========================== */
 export async function PATCH(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Params }
 ) {
-  const { id } = await context.params;
+  const { id } = params;
 
   const s = await supabaseServer();
 
@@ -76,9 +80,9 @@ export async function PATCH(
    =========================== */
 export async function DELETE(
   _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Params }
 ) {
-  const { id } = await context.params;
+  const { id } = params;
 
   const s = await supabaseServer();
 
@@ -87,7 +91,7 @@ export async function DELETE(
     return NextResponse.json({ error: authError.message }, { status: 400 });
   }
 
-  const user = authData?.user;
+  const { user } = authData ?? {};
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
