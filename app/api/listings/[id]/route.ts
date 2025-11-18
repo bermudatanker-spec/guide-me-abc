@@ -4,16 +4,16 @@ import { supabaseServer } from "@/lib/supabase/server";
 // params-type
 type IdParams = { id: string };
 
-// In Next 15/16 is context.params een Promise<...>
+// ✅ GEEN Promise hier; route handlers krijgen een gewoon object
 type RouteContext = {
-  params: Promise<IdParams>;
+  params: IdParams;
 };
 
 /* ===========================
    GET – één listing ophalen
    =========================== */
 export async function GET(_req: Request, ctx: RouteContext) {
-  const { id } = await ctx.params; // 👈 Promise eerst uitpakken
+  const { id } = ctx.params;
 
   const s = await supabaseServer();
 
@@ -41,7 +41,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
    PATCH – listing updaten
    =========================== */
 export async function PATCH(req: Request, ctx: RouteContext) {
-  const { id } = await ctx.params;
+  const { id } = ctx.params;
 
   const s = await supabaseServer();
 
@@ -76,7 +76,7 @@ export async function PATCH(req: Request, ctx: RouteContext) {
    DELETE – listing verwijderen
    =========================== */
 export async function DELETE(_req: Request, ctx: RouteContext) {
-  const { id } = await ctx.params;
+  const { id } = ctx.params;
 
   const s = await supabaseServer();
 
