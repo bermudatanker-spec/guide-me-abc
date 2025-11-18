@@ -1,4 +1,4 @@
-// app/[lang]/business/auth/AuthClient.tsx
+// app/[lang]/business/auth/ui/AuthClient.tsx (of waar hij bij jou staat)
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { langHref } from "@/lib/lang-href";
 import { getLangFromPath } from "@/lib/locale-path";
+import type { Locale } from "@/i18n/config";
 
 /* ----------------------------- Validation ----------------------------- */
 
@@ -27,18 +28,15 @@ const signInSchema = z.object({
   password: z.string().min(1, "Wachtwoord is vereist"),
 });
 
-type Lang = "en" | "nl" | "pap" | "es";
+type T = Record<string, string>;
+type Lang = Locale;
 
-type Translations = Record<string, string>;
-
-interface AuthClientProps {
+type AuthClientProps = {
   lang: Lang;
-  t?: Translations | null;
-}
+  t: T;
+};
 
 export default function AuthClient({ lang, t }: AuthClientProps) {
-  const dict = (t ?? {}) as Translations; // ✅ nooit undefined
-
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const search = useSearchParams();
@@ -146,7 +144,7 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
       if (!session) {
         flash(
           "err",
-          "Kon geen sessie starten. Controleer of cookies zijn toegestaan."
+          "Kon geen sessie starten. Controleer of cookies en localStorage zijn toegestaan."
         );
         return;
       }
@@ -174,7 +172,6 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
         password: v.password,
         options: {
           data: { full_name: v.fullName },
-          // PKCE email link landt hier
           emailRedirectTo:
             typeof window !== "undefined"
               ? `${window.location.origin}/auth/callback`
@@ -224,14 +221,14 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
 
   /* ------------------------------ Translations ------------------------------ */
 
-  const H1 = dict.businessAuthTitle ?? "Business Account";
+  const H1 = t.businessAuthTitle ?? "Business Account";
   const Sub =
-    dict.businessAuthSubtitle ?? "Log in or sign up to manage your business";
-  const SignIn = dict.signIn ?? "Sign in";
-  const SignUp = dict.signUp ?? "Sign up";
-  const NameLbl = dict.fullName ?? "Full name";
-  const EmailLbl = dict.email ?? "Email";
-  const PwLbl = dict.password ?? "Password";
+    t.businessAuthSubtitle ?? "Log in or sign up to manage your business";
+  const SignIn = t.signIn ?? "Sign in";
+  const SignUp = t.signUp ?? "Sign up";
+  const NameLbl = t.fullName ?? "Full name";
+  const EmailLbl = t.email ?? "Email";
+  const PwLbl = t.password ?? "Password";
   const Forgot =
     resolvedLang === "nl" ? "Wachtwoord vergeten?" : "Forgot password?";
 
@@ -257,7 +254,6 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
           </div>
         )}
 
-        {/* Tabs */}
         <div className="mb-3 grid grid-cols-2 rounded-lg border border-border bg-muted p-1">
           <button
             type="button"
@@ -312,10 +308,7 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
                       type={showPwSignIn ? "text" : "password"}
                       value={signIn.password}
                       onChange={(e) =>
-                        setSignIn((s) => ({
-                          ...s,
-                          password: e.target.value,
-                        }))
+                        setSignIn((s) => ({ ...s, password: e.target.value }))
                       }
                       required
                       autoComplete="current-password"
@@ -323,7 +316,9 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
                     />
                     <button
                       type="button"
-                      aria-label={showPwSignIn ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPwSignIn ? "Hide password" : "Show password"
+                      }
                       onClick={() => setShowPwSignIn((v) => !v)}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                     >
@@ -405,10 +400,7 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
                       type={showPwSignUp ? "text" : "password"}
                       value={signUp.password}
                       onChange={(e) =>
-                        setSignUp((s) => ({
-                          ...s,
-                          password: e.target.value,
-                        }))
+                        setSignUp((s) => ({ ...s, password: e.target.value }))
                       }
                       required
                       autoComplete="new-password"
@@ -416,7 +408,9 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
                     />
                     <button
                       type="button"
-                      aria-label={showPwSignUp ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPwSignUp ? "Hide password" : "Show password"
+                      }
                       onClick={() => setShowPwSignUp((v) => !v)}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                     >

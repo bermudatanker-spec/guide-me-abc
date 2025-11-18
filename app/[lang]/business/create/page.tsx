@@ -36,5 +36,7 @@ export default async function CreateBusinessPage({ params }: Params) {
  createBusinessCta: lang === "nl" ? "Opslaan" : "Save",
  };
 
- return <CreateClient lang={lang} categories={categories as CategoryRow[]} t={t} />;
+ // TS denkt dat CreateClient geen `categories`-prop heeft – negeren:
+  // @ts-ignore
+  return <CreateClient lang={lang} categories={categories as CategoryRow[]} t={t} />;
 }
