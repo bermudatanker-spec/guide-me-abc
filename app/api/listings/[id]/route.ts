@@ -3,19 +3,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
-// ✅ context.params is GEEN Promise hier, gewoon { id: string }
-type RouteParams = {
-  params: {
-    id: string;
-  };
-};
-
 /* ===========================
    GET – één listing ophalen
    =========================== */
 export async function GET(
   _req: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string } }
 ) {
   const { id } = params;
 
@@ -46,7 +39,7 @@ export async function GET(
    =========================== */
 export async function PATCH(
   req: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string } }
 ) {
   const { id } = params;
 
@@ -84,7 +77,7 @@ export async function PATCH(
    =========================== */
 export async function DELETE(
   _req: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string } }
 ) {
   const { id } = params;
 
