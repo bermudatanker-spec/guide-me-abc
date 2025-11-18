@@ -1,16 +1,27 @@
 // app/api/listings/[id]/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
+
+/**
+ * Kleine helper: Vercel/Next kan `context.params`
+ * als object OF als Promise teruggeven.
+ * Dit vangt beide gevallen af.
+ */
+async function getIdFromContext(context: any): Promise<string> {
+  const raw = context?.params;
+  const params =
+    raw && typeof raw.then === "function" ? await raw : raw;
+
+  return params?.id as string;
+}
 
 /* ===========================
    GET – één listing ophalen
    =========================== */
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function GET(_req: NextRequest, context: any) {
+  const id = await getIdFromContext(context);
 
   const s = await supabaseServer();
 
@@ -37,11 +48,8 @@ export async function GET(
 /* ===========================
    PATCH – listing updaten
    =========================== */
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function PATCH(req: NextRequest, context: any) {
+  const id = await getIdFromContext(context);
 
   const s = await supabaseServer();
 
@@ -75,11 +83,8 @@ export async function PATCH(
 /* ===========================
    DELETE – listing verwijderen
    =========================== */
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function DELETE(_req: NextRequest, context: any) {
+  const id = await getIdFromContext(context);
 
   const s = await supabaseServer();
 
