@@ -1,42 +1,46 @@
+// app/[lang]/business/create/page.tsx
 import { supabaseServer } from "@/lib/supabase/server";
-
-type Params = { params: { lang: "en" | "nl" | "pap" | "es" } };
-type CategoryRow = { id: number; name: string; slug: string };
-
+import { isLocale, type Locale } from "@/i18n/config";
+import { DICTS } from "@/i18n/dictionaries";
 import CreateClient from "./ui/CreateClient";
 
-export default async function CreateBusinessPage({ params }: Params) {
- const lang = params.lang ?? "en";
- const s = await supabaseServer();
+type Params = {
+  lang: string;
+};
 
- // Categorieën server-side ophalen en doorgeven
- const { data: categories = [] } = await s
- .from("categories")
- .select("id,name,slug")
- .order("name", { ascending: true });
+type PageProps = {
+  params: Promise<Params>; // Next 15/16 param-Promise
+};
 
- // (Eenvoudige) labels – vervang later evt. door je DICTS
- const t = {
- businessCreateTitle: lang === "nl" ? "Nieuw Bedrijf" : "New Business",
- businessCreateSubtitle:
- lang === "nl" ? "Vul de gegevens hieronder in." : "Fill in the details below.",
- backToDashboard: lang === "nl" ? "Terug naar Dashboard" : "Back to Dashboard",
- businessName: lang === "nl" ? "Bedrijfsnaam" : "Business name",
- island: lang === "nl" ? "Eiland" : "Island",
- category: lang === "nl" ? "Categorie" : "Category",
- selectIsland: lang === "nl" ? "Selecteer eiland" : "Select island",
- selectCategory: lang === "nl" ? "Selecteer categorie" : "Select category",
- description: lang === "nl" ? "Beschrijving" : "Description",
- descriptionPlaceholder:
- lang === "nl" ? "Vertel iets over je bedrijf…" : "Tell us about your business…",
- address: lang === "nl" ? "Adres" : "Address",
- phone: lang === "nl" ? "Telefoon" : "Phone",
- email: "E-mail",
- website: "Website",
- createBusinessCta: lang === "nl" ? "Opslaan" : "Save",
- };
+type CategoryRow = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
- // TS denkt dat CreateClient geen `categories`-prop heeft – negeren:
-  // @ts-ignore
-  return <CreateClient lang={lang} categories={categories as CategoryRow[]} t={t} />;
+export default async function CreateBusinessPage(props: PageProps) {
+  const { lang: rawLang } = await props.params;
+  const lang: Locale = isLocale(rawLang) ? rawLang : "en";
+
+  const s = await supabaseServer();
+
+  const { data: categories, error } = await s
+    .from("categories")
+    .select("id, name, slug")
+    .order("name", { ascending: true });
+
+  if (error) {
+    // Je kunt hier een error-pagina of fallback tonen
+    console.error("[create] categories error:", error);
+  }
+
+  const t = DICTS[lang] ?? DICTS.en;
+
+  return (
+    <CreateClient
+      lang={lang}
+      categories={(categories ?? []) as CategoryRow[]}
+      t={t}
+    />
+  );
 }

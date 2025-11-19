@@ -73,6 +73,7 @@ export const DICTS: Record<Locale, Dict> = {
     backToDashboard: "Back to Dashboard",
     viewDetails: "View details",
     noMiniSite: "No mini-site",
+    none: "— None —",
 
     // Dashboard
     dashboardTitle: "Dashboard",
@@ -100,9 +101,20 @@ export const DICTS: Record<Locale, Dict> = {
     phone: "Phone",
     website: "Website",
     createBusinessCta: "Create Business",
+
+    // Create validation / status
+    missingRequired: "Missing required fields",
+    fillRequired: "Please provide at least a business name and island.",
+    created: "Business created",
+    error: "Error",
+    saveError: "Could not save business",
+
+    // Biz detail
+    contact: "Contact",
   },
 
   nl: {
+    // Navigation / common
     forBusiness: "Voor Ondernemers",
     aruba: "Aruba",
     bonaire: "Bonaire",
@@ -116,11 +128,13 @@ export const DICTS: Record<Locale, Dict> = {
     getStarted: "Aan de slag",
     connect: "Contact",
 
+    // Hero
     exploreIslands: "Ontdek de ABC-eilanden",
     faqSubtitle:
       "Je complete gids voor Aruba, Bonaire & Curaçao — stranden, restaurants, tours en betrouwbare lokale bedrijven.",
     exploreIslandsCta: "Eilanden verkennen",
 
+    // For Business page
     fbHeroTitle: "Laat je bedrijf groeien op de ABC-eilanden",
     fbHeroSubtitle:
       "Maak je professionele mini-site, bereik klanten en groei met ons alles-in-één platform.",
@@ -132,11 +146,13 @@ export const DICTS: Record<Locale, Dict> = {
     fbFinalCtaSubtitle:
       "Sluit je aan bij honderden bedrijven die al meer klanten bereiken op de ABC-eilanden.",
 
+    // Menu
     menu_for_business: "Voor Ondernemers",
     menu_sign_in_business: "Inloggen",
     menu_register_business: "Nieuw bedrijf registreren",
     menu_dashboard: "Dashboard",
 
+    // Auth
     businessAuthTitle: "Zakelijk account",
     businessAuthSubtitle: "Log in of registreer om je bedrijf te beheren",
     signIn: "Inloggen",
@@ -148,9 +164,11 @@ export const DICTS: Record<Locale, Dict> = {
 
     // Forgot / Reset
     forgot_title: "Wachtwoord vergeten",
-    forgot_sub: "Vul je e-mail in. Je ontvangt een link om je wachtwoord te resetten.",
+    forgot_sub:
+      "Vul je e-mail in. Je ontvangt een link om je wachtwoord te resetten.",
     send_reset_link: "Verstuur reset-link",
-    sent_check_email: "We hebben je een e-mail gestuurd met verdere instructies.",
+    sent_check_email:
+      "We hebben je een e-mail gestuurd met verdere instructies.",
     reset_title: "Nieuw wachtwoord",
     new_pw: "Nieuw wachtwoord",
     confirm_pw: "Bevestig wachtwoord",
@@ -160,13 +178,16 @@ export const DICTS: Record<Locale, Dict> = {
     show_pw: "Toon wachtwoord",
     hide_pw: "Verberg wachtwoord",
 
+    // Generic UI
     sending: "Versturen…",
     saving: "Opslaan…",
     back: "Terug",
     backToDashboard: "Terug naar dashboard",
     viewDetails: "Bekijk details",
     noMiniSite: "Geen mini-site",
+    none: "— Geen —",
 
+    // Dashboard
     dashboardTitle: "Dashboard",
     dashboardSubtitle: "Beheer je bedrijfsregistraties",
     myBusinesses: "Mijn bedrijven",
@@ -178,6 +199,7 @@ export const DICTS: Record<Locale, Dict> = {
     edit: "Bewerken",
     view: "Mini-site",
 
+    // Create
     businessCreateTitle: "Bedrijf aanmaken",
     businessCreateSubtitle: "Registreer je bedrijf.",
     businessName: "Bedrijfsnaam",
@@ -191,9 +213,20 @@ export const DICTS: Record<Locale, Dict> = {
     phone: "Telefoon",
     website: "Website",
     createBusinessCta: "Bedrijf registreren",
+
+    // Create validation / status
+    missingRequired: "Verplichte velden ontbreken",
+    fillRequired: "Vul minimaal een bedrijfsnaam en eiland in.",
+    created: "Bedrijf aangemaakt",
+    error: "Fout",
+    saveError: "Kon bedrijf niet opslaan",
+
+    // Biz detail
+    contact: "Contact",
   },
 
   es: {
+    // Navigation / common
     forBusiness: "Para Negocios",
     aruba: "Aruba",
     bonaire: "Bonaire",
@@ -207,11 +240,13 @@ export const DICTS: Record<Locale, Dict> = {
     getStarted: "Comenzar",
     connect: "Conectar",
 
+    // Hero
     exploreIslands: "Descubre las Islas ABC",
     faqSubtitle:
       "Tu guía completa de Aruba, Bonaire y Curaçao — playas, restaurantes, tours y negocios locales de confianza.",
     exploreIslandsCta: "Explorar Islas",
 
+    // For Business page
     fbHeroTitle: "Haz crecer tu negocio en las Islas ABC",
     fbHeroSubtitle:
       "Crea tu mini-sitio profesional, llega a clientes y crece con nuestra plataforma todo-en-uno.",
@@ -223,13 +258,16 @@ export const DICTS: Record<Locale, Dict> = {
     fbFinalCtaSubtitle:
       "Únete a cientos de negocios que ya llegan a más clientes en las Islas ABC.",
 
+    // Menu
     menu_for_business: "Para Negocios",
     menu_sign_in_business: "Iniciar sesión",
     menu_register_business: "Registrar nuevo negocio",
     menu_dashboard: "Panel",
 
+    // Auth
     businessAuthTitle: "Cuenta de Negocio",
-    businessAuthSubtitle: "Inicia sesión o regístrate para gestionar tu negocio",
+    businessAuthSubtitle:
+      "Inicia sesión o regístrate para gestionar tu negocio",
     signIn: "Iniciar sesión",
     signUp: "Registrarse",
     fullName: "Nombre completo",
@@ -239,7 +277,8 @@ export const DICTS: Record<Locale, Dict> = {
 
     // Forgot / Reset
     forgot_title: "¿Olvidaste tu contraseña?",
-    forgot_sub: "Introduce tu correo. Te enviaremos un enlace para restablecer la contraseña.",
+    forgot_sub:
+      "Introduce tu correo. Te enviaremos un enlace para restablecer la contraseña.",
     send_reset_link: "Enviar enlace de restablecimiento",
     sent_check_email: "Te enviamos un correo con más instrucciones.",
     reset_title: "Crear nueva contraseña",
@@ -251,15 +290,56 @@ export const DICTS: Record<Locale, Dict> = {
     show_pw: "Mostrar contraseña",
     hide_pw: "Ocultar contraseña",
 
+    // Generic UI
     sending: "Enviando…",
     saving: "Guardando…",
     back: "Atrás",
     backToDashboard: "Volver al panel",
     viewDetails: "Ver detalles",
     noMiniSite: "Sin mini-sitio",
+    none: "— Ninguno —",
+
+    // Dashboard
+    dashboardTitle: "Panel",
+    dashboardSubtitle: "Administra tus registros de negocio",
+    myBusinesses: "Mis negocios",
+    noBusinesses: "Todavía no tienes negocios",
+    business: "negocio",
+    businessesPlural: "negocios",
+    addFirstBusiness: "Comienza agregando tu primer negocio",
+    addBusiness: "Agregar negocio",
+    edit: "Editar",
+    view: "Mini-sitio",
+
+    // Create
+    businessCreateTitle: "Crear negocio",
+    businessCreateSubtitle: "Registra tu negocio.",
+    businessName: "Nombre del negocio",
+    island: "Isla",
+    selectIsland: "Selecciona isla",
+    category: "Categoría",
+    selectCategory: "Selecciona categoría",
+    description: "Descripción",
+    descriptionPlaceholder: "Cuéntanos sobre tu negocio…",
+    address: "Dirección",
+    phone: "Teléfono",
+    website: "Sitio web",
+    createBusinessCta: "Crear negocio",
+
+    // Create validation / status
+    missingRequired: "Faltan campos obligatorios",
+    fillRequired:
+      "Introduce al menos un nombre de negocio y la isla.",
+    created: "Negocio creado",
+    error: "Error",
+    saveError: "No se pudo guardar el negocio",
+
+    // Biz detail
+    contact: "Contacto",
   },
 
   pap: {
+    // Navigation / common
     forBusiness: "Pa Negoshi",
     aruba: "Aruba",
     bonaire: "Boneiru",
@@ -273,11 +353,13 @@ export const DICTS: Record<Locale, Dict> = {
     getStarted: "Kuminsá",
     connect: "Konektá",
 
+    // Hero
     exploreIslands: "Deskubrí Islanan ABC",
     faqSubtitle:
       "Bo guía kompleto pa Aruba, Boneiru i Kòrsou — playa, restoran, tour i negoshinan local ku ta konfiabel.",
     exploreIslandsCta: "Eksplorá Islanan",
 
+    // For Business page
     fbHeroTitle: "Laga bo negoshi krese riba Islanan ABC",
     fbHeroSubtitle:
       "Krea bo mini-site profesional, yega na kliente i krese ku nos plataforma tur-den-un.",
@@ -289,11 +371,13 @@ export const DICTS: Record<Locale, Dict> = {
     fbFinalCtaSubtitle:
       "Uni ku hopi negoshi ku ta yegando na mas kliente riba Islanan ABC.",
 
+    // Menu
     menu_for_business: "Pa Negoshiante",
     menu_sign_in_business: "Log in",
     menu_register_business: "Registra un negoshi nobo",
     menu_dashboard: "Dashboard",
 
+    // Auth
     businessAuthTitle: "Info di bo Negoshi",
     businessAuthSubtitle: "Log in òf registrá pa manehá bo negoshi",
     signIn: "Log in",
@@ -316,5 +400,51 @@ export const DICTS: Record<Locale, Dict> = {
     pw_mismatch: "E kódigonan no ta meskos.",
     show_pw: "Mustra kontraseña",
     hide_pw: "Skonde kontraseña",
+
+    // Generic UI
+    sending: "Mandando…",
+    saving: "Warda…",
+    back: "Bek",
+    backToDashboard: "Bek na dashboard",
+    viewDetails: "Mira detaye",
+    noMiniSite: "Sin mini-site",
+    none: "— Ningun —",
+
+    // Dashboard
+    dashboardTitle: "Dashboard",
+    dashboardSubtitle: "Manehá bo registrashonnan di negoshi",
+    myBusinesses: "Mi negoshinan",
+    noBusinesses: "Bo no tin ningun negoshi todavía",
+    business: "negoshi",
+    businessesPlural: "negoshinan",
+    addFirstBusiness: "Kuminsá ku agrega bo prome negoshi",
+    addBusiness: "Agrega negoshi",
+    edit: "Editá",
+    view: "Mini-site",
+
+    // Create
+    businessCreateTitle: "Krea negoshi",
+    businessCreateSubtitle: "Registrá bo negoshi.",
+    businessName: "Nòmber di negoshi",
+    island: "Isla",
+    selectIsland: "Skohe isla",
+    category: "Kategoria",
+    selectCategory: "Skohe kategoria",
+    description: "Deskripshon",
+    descriptionPlaceholder: "Kontá tiki tok tok tok tok tok", // feel free to tweak :)
+    address: "Adres",
+    phone: "Telefòn",
+    website: "Website",
+    createBusinessCta: "Registrá negoshi",
+
+    // Create validation / status
+    missingRequired: "Kampo obligatorio ta falta",
+    fillRequired: "Yena minimo nòmber di negoshi i isla.",
+    created: "Negoshi a wordu krea",
+    error: "Eror",
+    saveError: "No por a warda negoshi",
+
+    // Biz detail
+    contact: "Kontakt",
   },
 };

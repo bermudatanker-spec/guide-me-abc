@@ -1,437 +1,308 @@
+// app/[lang]/business/create/ui/CreateClient.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { z } from "zod";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { langHref } from "@/lib/lang-href";
-import { getLangFromPath } from "@/lib/locale-path";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-/* ----------------------------- Validation ----------------------------- */
+import { langHref } from "@/lib/lang-href";
+import { getLangFromPath } from "@/lib/locale-path";
 
-const signUpSchema = z.object({
-  fullName: z.string().trim().min(2, "Voer je volledige naam in").max(100),
-  email: z.string().trim().email("Ongeldig e-mailadres").max(255),
-  password: z.string().min(6, "Minimaal 6 tekens").max(100),
-});
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
-const signInSchema = z.object({
-  email: z.string().trim().email("Ongeldig e-mailadres").max(255),
-  password: z.string().min(1, "Wachtwoord is vereist"),
-});
+/** Type moet aansluiten op je Supabase `categories` tabel */
+type CategoryRow = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
-type T = Record<string, string>;
+type CreateClientProps = {
+  lang: string;
+  categories: CategoryRow[];
+  t: Record<string, string>;
+};
 
-type Lang = "en" | "nl" | "pap" | "es";
+export default function CreateClient({ lang, categories, t }: CreateClientProps) {
+  const router = useRouter();
+  const pathname = usePathname() ?? "/";
+  const resolvedLang = getLangFromPath(pathname) || (lang as string);
 
-export default function AuthClient({ lang, t }: { lang: string; t: T }) {
-  const router = useRouter();
-  const pathname = usePathname() ?? "/";
-  const search = useSearchParams();
+  const supabase = useMemo(() => supabaseBrowser(), []);
+  const { toast } = useToast();
 
-  const resolvedLang = (getLangFromPath(pathname) || lang) as Lang;
+  const [saving, setSaving] = useState(false);
 
-  const supabase = useMemo(() => supabaseBrowser(), []);
-  const redirectedFrom = (search.get("redirectedFrom") || "").trim();
+  const [form, setForm] = useState({
+    business_name: "",
+    island: "",
+    category_id: "",
+    description: "",
+    address: "",
+    phone: "",
+    email: "",
+    website: "",
+    whatsapp: "",
+  });
 
-  const [authLoading, setAuthLoading] = useState(true);
-  const [loading, setLoading] = useState<false | "signin" | "signup">(false);
-  const [tab, setTab] = useState<"signin" | "signup">(
-    search.get("tab") === "signup" ? "signup" : "signin"
-  );
+  /** ------------------ Auth check (mag alleen ingelogd) ------------------ */
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data?.user) {
+        router.replace(langHref(resolvedLang, "/business/auth"));
+      }
+    })();
+  }, [resolvedLang, router, supabase]);
 
-  const [okMsg, setOkMsg] = useState<string | null>(null);
-  const [errMsg, setErrMsg] = useState<string | null>(null);
+  /** ------------------------- Submit handler ------------------------- */
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
 
-  const [signIn, setSignIn] = useState({ email: "", password: "" });
-  const [signUp, setSignUp] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-  });
+    if (!form.business_name || !form.island) {
+      toast({
+        title: t.missingRequired ?? "Verplichte velden ontbreken",
+        description:
+          t.fillRequired ??
+          "Vul minimaal een bedrijfsnaam en het eiland in.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const [showPwSignIn, setShowPwSignIn] = useState(false);
-  const [showPwSignUp, setShowPwSignUp] = useState(false);
+    try {
+      setSaving(true);
 
-  // voorkom dubbele runs in React Strict Mode
-  const mountedRef = useRef(false);
+      const { error } = await supabase.from("business_listings").insert({
+        business_name: form.business_name,
+        island: form.island,
+        category_id: form.category_id || null,
+        description: form.description || null,
+        address: form.address || null,
+        phone: form.phone || null,
+        email: form.email || null,
+        website: form.website || null,
+        whatsapp: form.whatsapp || null,
+        // status & subscription_plan kun je hier later ook zetten
+      });
 
-  /* ---------------------- Already logged-in short circuit ---------------------- */
+      if (error) throw new Error(error.message);
 
-  useEffect(() => {
-    if (mountedRef.current) return;
-    mountedRef.current = true;
+      toast({
+        title: t.created ?? "Bedrijf aangemaakt",
+      });
 
-    (async () => {
-      const { data, error } = await supabase.auth.getUser();
-      console.log("[auth/mount] getUser:", { user: data?.user, error });
+      router.replace(langHref(resolvedLang, "/business/dashboard"));
+    } catch (err: any) {
+      toast({
+        title: t.error ?? "Fout",
+        description:
+          err?.message ??
+          t.saveError ??
+          "Er ging iets mis bij het opslaan van je bedrijf.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
 
-      if (data?.user) {
-        router.replace(
-          redirectedFrom || langHref(resolvedLang, "/business/dashboard")
-        );
-      } else {
-        setAuthLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /** ------------------------------ UI ------------------------------ */
+  return (
+    <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <Button
+        variant="ghost"
+        className="mb-6"
+        onClick={() =>
+          router.push(langHref(resolvedLang, "/business/dashboard"))
+        }
+      >
+        {/* eventueel ArrowLeft icoon gebruiken */}
+        {t.backToDashboard ?? "Terug naar dashboard"}
+      </Button>
 
-  /* -------------------------------- Helpers -------------------------------- */
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>{t.businessCreateTitle ?? "Nieuw bedrijf"}</CardTitle>
+          <CardDescription>
+            {t.businessCreateSubtitle ??
+              "Registreer je bedrijf om gevonden te worden op de ABC-eilanden."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Bedrijfsnaam */}
+            <div className="space-y-2">
+              <Label htmlFor="business_name">
+                {t.businessName ?? "Bedrijfsnaam"} *
+              </Label>
+              <Input
+                id="business_name"
+                value={form.business_name}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, business_name: e.target.value }))
+                }
+                required
+              />
+            </div>
 
-  function flash(type: "ok" | "err", text: string) {
-    if (type === "ok") setOkMsg(text);
-    else setErrMsg(text);
+            {/* Eiland + Categorie */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="island">{t.island ?? "Eiland"} *</Label>
+                <select
+                  id="island"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={form.island}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, island: e.target.value }))
+                  }
+                  required
+                >
+                  <option value="" disabled>
+                    {t.selectIsland ?? "Kies een eiland"}
+                  </option>
+                  <option value="aruba">Aruba</option>
+                  <option value="bonaire">Bonaire</option>
+                  <option value="curacao">Curaçao</option>
+                </select>
+              </div>
 
-    setTimeout(() => {
-      setOkMsg(null);
-      setErrMsg(null);
-    }, 3500);
-  }
+              <div className="space-y-2">
+                <Label htmlFor="category_id">
+                  {t.category ?? "Categorie"}
+                </Label>
+                <select
+                  id="category_id"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={form.category_id}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, category_id: e.target.value }))
+                  }
+                >
+                  <option value="">
+                    {t.none ?? "— Geen —"}
+                  </option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-  /* -------------------------------- Actions -------------------------------- */
+            {/* Beschrijving */}
+            <div className="space-y-2">
+              <Label htmlFor="description">
+                {t.description ?? "Beschrijving"}
+              </Label>
+              <Textarea
+                id="description"
+                rows={4}
+                value={form.description}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, description: e.target.value }))
+                }
+                placeholder={
+                  t.descriptionPlaceholder ??
+                  "Vertel iets over je bedrijf…"
+                }
+              />
+            </div>
 
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault();
+            {/* Adres */}
+            <div className="space-y-2">
+              <Label htmlFor="address">{t.address ?? "Adres"}</Label>
+              <Input
+                id="address"
+                value={form.address}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, address: e.target.value }))
+                }
+              />
+            </div>
 
-    try {
-      const v = signInSchema.parse(signIn);
-      setLoading("signin");
+            {/* Telefoon & WhatsApp */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">{t.phone ?? "Telefoon"}</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, phone: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp">WhatsApp</Label>
+                <Input
+                  id="whatsapp"
+                  inputMode="numeric"
+                  value={form.whatsapp}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, whatsapp: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: v.email,
-        password: v.password,
-      });
+            {/* E-mail & Website */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">{t.email ?? "E-mailadres"}</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, email: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="website">{t.website ?? "Website"}</Label>
+                <Input
+                  id="website"
+                  type="url"
+                  placeholder="https://..."
+                  value={form.website}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, website: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
 
-      console.log("[signInWithPassword]", { data, error });
-
-      if (error) {
-        const msg =
-          error.message === "Invalid login credentials"
-            ? "Onjuist e-mailadres of wachtwoord"
-            : error.message === "Email not confirmed"
-            ? "Je e-mailadres is nog niet bevestigd. Check je inbox."
-            : `Inloggen mislukt: ${error.message}`;
-
-        flash("err", msg);
-        return;
-      }
-
-      // extra check totdat sessie echt aanwezig is
-      let tries = 0;
-      let session = (await supabase.auth.getSession()).data.session;
-
-      while (!session && tries < 5) {
-        await new Promise((r) => setTimeout(r, 150));
-        session = (await supabase.auth.getSession()).data.session;
-        tries++;
-      }
-
-      console.log("[post-signin] session:", session);
-
-      if (!session) {
-        flash(
-          "err",
-          "Kon geen sessie starten. Controleer of cookies en localStorage zijn toegestaan."
-        );
-        return;
-      }
-
-      router.replace(
-        redirectedFrom || langHref(resolvedLang, "/business/dashboard")
-      );
-    } catch (err: any) {
-      console.error("[handleSignIn] exception:", err);
-      flash("err", err?.issues?.[0]?.message ?? "Validatiefout");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
-
-    try {
-      const v = signUpSchema.parse(signUp);
-      setLoading("signup");
-
-      const { data, error } = await supabase.auth.signUp({
-        email: v.email,
-        password: v.password,
-        options: {
-          data: { full_name: v.fullName },
-          emailRedirectTo:
-            typeof window !== "undefined"
-              ? `${window.location.origin}/auth/callback`
-              : undefined,
-        },
-      });
-
-      console.log("[signUp]", { data, error });
-
-      if (error) {
-        const msg = error.message.toLowerCase().includes("already")
-          ? "Account bestaat al. Log in."
-          : `Registratie mislukt: ${error.message}`;
-        flash("err", msg);
-        return;
-      }
-
-      if (!data?.session) {
-        flash(
-          "ok",
-          "Account aangemaakt! Check je e-mail om te bevestigen, daarna kun je inloggen."
-        );
-        setTab("signin");
-        return;
-      }
-
-      router.replace(
-        redirectedFrom || langHref(resolvedLang, "/business/dashboard")
-      );
-    } catch (err: any) {
-      console.error("[handleSignUp] exception:", err);
-      flash("err", err?.issues?.[0]?.message ?? "Validatiefout");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  /* ------------------------------ Loading gate ------------------------------ */
-
-  if (authLoading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  /* ------------------------------ Translations ------------------------------ */
-
-  const H1 = t.businessAuthTitle ?? "Business Account";
-  const Sub =
-    t.businessAuthSubtitle ?? "Log in or sign up to manage your business";
-  const SignIn = t.signIn ?? "Sign in";
-  const SignUp = t.signUp ?? "Sign up";
-  const NameLbl = t.fullName ?? "Full name";
-  const EmailLbl = t.email ?? "Email";
-  const PwLbl = t.password ?? "Password";
-  const Forgot =
-    resolvedLang === "nl" ? "Wachtwoord vergeten?" : "Forgot password?";
-
-  /* --------------------------------- Render -------------------------------- */
-
-  return (
-    <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-      <div className="max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">{H1}</h1>
-          <p className="text-muted-foreground">{Sub}</p>
-        </div>
-
-        {okMsg && (
-          <div className="mb-4 rounded-md border border-green-600/30 bg-green-600/10 px-3 py-2 text-sm text-green-700">
-            {okMsg}
-          </div>
-        )}
-
-        {errMsg && (
-          <div className="mb-4 rounded-md border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">
-            {errMsg}
-          </div>
-        )}
-
-        <div className="mb-3 grid grid-cols-2 rounded-lg border border-border bg-muted p-1">
-          <button
-            type="button"
-            className={`w-full rounded-md px-3 py-2 text-sm ${
-              tab === "signin"
-                ? "bg-background border border-border"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setTab("signin")}
-          >
-            {SignIn}
-          </button>
-          <button
-            type="button"
-            className={`w-full rounded-md px-3 py-2 text-sm ${
-              tab === "signup"
-                ? "bg-background border border-border"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setTab("signup")}
-          >
-            {SignUp}
-          </button>
-        </div>
-
-        {tab === "signin" ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>{SignIn}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email">{EmailLbl}</Label>
-                  <Input
-                    id="signin-email"
-                    type="email"
-                    value={signIn.email}
-                    onChange={(e) =>
-                      setSignIn((s) => ({ ...s, email: e.target.value }))
-                    }
-                    required
-                    autoComplete="email"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signin-password">{PwLbl}</Label>
-                  <div className="relative">
-                    <Input
-                      id="signin-password"
-                      type={showPwSignIn ? "text" : "password"}
-                      value={signIn.password}
-                      onChange={(e) =>
-                        setSignIn((s) => ({ ...s, password: e.target.value }))
-                      }
-                      required
-                      autoComplete="current-password"
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      aria-label={
-                        showPwSignIn ? "Hide password" : "Show password"
-                      }
-                      onClick={() => setShowPwSignIn((v) => !v)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPwSignIn ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="text-right">
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground hover:text-primary"
-                      onClick={() =>
-                        router.push(
-                          langHref(resolvedLang, "/business/forgot-password")
-                        )
-                      }
-                    >
-                      {Forgot}
-                    </button>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full"
-                  type="submit"
-                  disabled={loading === "signin"}
-                >
-                  {loading === "signin" && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {SignIn}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>{SignUp}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">{NameLbl}</Label>
-                  <Input
-                    id="signup-name"
-                    value={signUp.fullName}
-                    onChange={(e) =>
-                      setSignUp((s) => ({ ...s, fullName: e.target.value }))
-                    }
-                    required
-                    autoComplete="name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">{EmailLbl}</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    value={signUp.email}
-                    onChange={(e) =>
-                      setSignUp((s) => ({ ...s, email: e.target.value }))
-                    }
-                    required
-                    autoComplete="email"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">{PwLbl}</Label>
-                  <div className="relative">
-                    <Input
-                      id="signup-password"
-                      type={showPwSignUp ? "text" : "password"}
-                      value={signUp.password}
-                      onChange={(e) =>
-                        setSignUp((s) => ({ ...s, password: e.target.value }))
-                      }
-                      required
-                      autoComplete="new-password"
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      aria-label={
-                        showPwSignUp ? "Hide password" : "Show password"
-                      }
-                      onClick={() => setShowPwSignUp((v) => !v)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPwSignUp ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full"
-                  type="submit"
-                  disabled={loading === "signup"}
-                >
-                  {loading === "signup" && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {SignUp}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </main>
-  );
+            <Button
+              type="submit"
+              className="w-full"
+              variant="primaryGrad"
+              disabled={saving}
+            >
+              {saving && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {t.createBusinessCta ?? "Bedrijf aanmaken"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </main>
+  );
 }
