@@ -40,16 +40,38 @@
     --radius: 0.75rem;
 
     /* Gradients (precies jouw verloop) */
-    --header-fade: linear-gradient(90deg, var(--primary-hex) 0%, rgba(0,191,211,0) 60%);
-    --title-gradient: linear-gradient(90deg, var(--primary-hex), var(--mid-hex), var(--secondary-hex));
-    --btn-primary-gradient: linear-gradient(90deg, var(--primary-hex), var(--mid-hex));
-    --btn-secondary-gradient: linear-gradient(90deg, var(--secondary-hex), #ff8b6a);
+    --header-fade: linear-gradient(
+      90deg,
+      var(--primary-hex) 0%,
+      rgba(0, 191, 211, 0) 60%
+    );
+    --title-gradient: linear-gradient(
+      90deg,
+      var(--primary-hex),
+      var(--mid-hex),
+      var(--secondary-hex)
+    );
+    --btn-primary-gradient: linear-gradient(
+      90deg,
+      var(--primary-hex),
+      var(--mid-hex)
+    );
+    --btn-secondary-gradient: linear-gradient(
+      90deg,
+      var(--secondary-hex),
+      #ff8b6a
+    );
 
     /* Hero wash (witte waas + subtiele kleur) */
-    --hero-wash: radial-gradient(1200px 600px at 20% 0%, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.10) 55%, transparent 75%);
+    --hero-wash: radial-gradient(
+      1200px 600px at 20% 0%,
+      rgba(255, 255, 255, 0.35) 0%,
+      rgba(255, 255, 255, 0.1) 55%,
+      transparent 75%
+    );
 
     /* Schaduwen */
-    --shadow-glow: 0 8px 32px rgba(0,191,211,0.25);
+    --shadow-glow: 0 8px 32px rgba(0, 191, 211, 0.25);
     --shadow-card: 0 4px 20px rgba(15, 23, 42, 0.08);
   }
 
@@ -65,17 +87,21 @@
     --popover-foreground: 0 0% 95%;
 
     /* Kleuren blijven gelijk, maar schaduwen en wash iets subtieler */
-    --hero-wash: radial-gradient(1200px 600px at 20% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 55%, transparent 80%);
-    --shadow-glow: 0 10px 40px rgba(0,191,211,0.28);
-    --shadow-card: 0 4px 20px rgba(0,0,0,0.30);
+    --hero-wash: radial-gradient(
+      1200px 600px at 20% 0%,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.06) 55%,
+      transparent 80%
+    );
+    --shadow-glow: 0 10px 40px rgba(0, 191, 211, 0.28);
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
   }
-}
 
-/* =========================
-   Base & a11y
-   ========================= */
-@layer base {
-  html, body {
+  /* =========================
+     Base & a11y
+     ========================= */
+  html,
+  body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     -webkit-font-smoothing: antialiased;
@@ -83,14 +109,22 @@
     text-rendering: optimizeLegibility;
   }
 
-  * { border-color: hsl(var(--border)); }
+  * {
+    border-color: hsl(var(--border));
+  }
 
   ::selection {
-    background: color-mix(in oklab, var(--primary-hex) 22%, transparent);
+    background: color-mix(
+      in oklab,
+      var(--primary-hex) 22%,
+      transparent
+    );
     color: hsl(var(--foreground));
   }
 
-  a:focus-visible, button:focus-visible, [role="button"]:focus-visible {
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible {
     outline: none;
     box-shadow:
       0 0 0 2px hsl(var(--ring)),
@@ -98,7 +132,10 @@
     border-radius: 8px;
   }
 
-  img, svg, video, canvas {
+  img,
+  svg,
+  video,
+  canvas {
     display: block;
     max-width: 100%;
   }
@@ -109,109 +146,244 @@
    ========================= */
 @layer utilities {
   /* Header fade (links -> transparant) */
-  .bg-header-fade { background-image: var(--header-fade); }
+  .bg-header-fade {
+    background-image: var(--header-fade);
+  }
 
   /* Titel met 3-kleur gradient + pop-out shadow */
   .text-title-gradient {
     background-image: var(--title-gradient);
     -webkit-background-clip: text;
-            background-clip: text;
+    background-clip: text;
     color: transparent;
   }
+
   .text-pop-shadow {
     text-shadow:
-      0 2px 0 rgba(0,0,0,0.35),
-      0 6px 18px rgba(0,0,0,0.35);
+      0 2px 0 rgba(0, 0, 0, 0.35),
+      0 6px 18px rgba(0, 0, 0, 0.35);
   }
 
   /* Buttons */
-  .bg-primary-gradient { background-image: var(--btn-primary-gradient); }
-  .bg-secondary-gradient { background-image: var(--btn-secondary-gradient); }
-  .btn-glow { box-shadow: var(--shadow-glow); }
+  .bg-primary-gradient {
+    background-image: var(--btn-primary-gradient);
+  }
+
+  .bg-secondary-gradient {
+    background-image: var(--btn-secondary-gradient);
+  }
+
+  .btn-glow {
+    box-shadow: var(--shadow-glow);
+  }
 
   /* Hero wash overlay */
-  .hero-wash { background-image: var(--hero-wash); }
+  .hero-wash {
+    background-image: var(--hero-wash);
+  }
 
   /* Extra helpers */
-  .shadow-glow { box-shadow: var(--shadow-glow); }
-  .shadow-card { box-shadow: var(--shadow-card); }
-}
-
-/* =========================
-   Animations (v4 utilities)
-   ========================= */
-/* === ABC islands custom utilities === */
-@layer utilities {
-  /* Header: #00BFD3 -> transparent */
-  .bg-header-fade {
-    background-image: linear-gradient(90deg, #00BFD3 0%, rgba(0,0,0,0) 55%);
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
   }
 
-  /* CTA’s */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  /* === ABC islands custom utilities === */
+
+  /* CTA’s – ocean en coral knoppen */
   .bg-ocean-btn {
-    background-image: linear-gradient(90deg, #00BFD3 0%, #00D3C9 50%, #8BE3F0 100%);
+    background-image: linear-gradient(
+      90deg,
+      #00bfd3 0%,
+      #00d3c9 50%,
+      #8be3f0 100%
+    );
   }
-  .bg-ocean-btn:hover { filter: brightness(1.03); }
+
+  .bg-ocean-btn:hover {
+    filter: brightness(1.03);
+  }
 
   .bg-coral-btn {
-    background-image: linear-gradient(90deg, #FF7A4F 0%, #FF9A7A 100%);
+    background-image: linear-gradient(
+      90deg,
+      #ff7a4f 0%,
+      #ff9a7a 100%
+    );
   }
-  .bg-coral-btn:hover { filter: brightness(1.03); }
+
+  .bg-coral-btn:hover {
+    filter: brightness(1.03);
+  }
 
   /* Hero titel: kleurverloop + zware schaduw */
   .text-gradient-abc {
-    background-image: linear-gradient(90deg, #00BFD3 0%, #2ECC71 45%, #FF7A4F 100%);
+    background-image: linear-gradient(
+      90deg,
+      #00bfd3 0%,
+      #2ecc71 45%,
+      #ff7a4f 100%
+    );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
+
   .text-shadow-hero {
     /* multi-layered shadow voor sterk 3D-effect */
     text-shadow:
-      0 2px 0 rgba(0,0,0,.28),
-      0 4px 10px rgba(0,0,0,.35),
-      0 12px 28px rgba(0,0,0,.45);
+      0 2px 0 rgba(0, 0, 0, 0.28),
+      0 4px 10px rgba(0, 0, 0, 0.35),
+      0 12px 28px rgba(0, 0, 0, 0.45);
   }
 
-/* Brand text: #00BFD3 -> transparent */
-.brand-gradient {
-  background: linear-gradient(
-    90deg,
-    #00bfd3 0%,
-    rgba(0,191,211,0.45) 35%,
-    rgba(0,191,211,0) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent; /* belangrijk! */
-}
+  /* Brand text: #00BFD3 -> transparent */
+  .brand-gradient {
+    background: linear-gradient(
+      90deg,
+      #00bfd3 0%,
+      rgba(0, 191, 211, 0.45) 35%,
+      rgba(0, 191, 211, 0) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 
-/* Knopgradient: #00BFD3 → transparant */
-.button-gradient {
-  background: linear-gradient(90deg, #00bfd3 0%, rgba(0,191,211,0.45) 40%, rgba(0,191,211,0) 100%);
-  color: white;
-  box-shadow: 0 4px 16px rgba(0,191,211,0.3);
-  transition: all 0.25s ease;
-}
+  /* Knopgradient: #00BFD3 → transparant */
+  .button-gradient {
+    background: linear-gradient(
+      90deg,
+      #00bfd3 0%,
+      rgba(0, 191, 211, 0.45) 40%,
+      rgba(0, 191, 211, 0) 100%
+    );
+    color: white;
+    box-shadow: 0 4px 16px rgba(0, 191, 211, 0.3);
+    transition: all 0.25s ease;
+  }
 
-.button-gradient:hover {
-  opacity: 0.95;
-  box-shadow: 0 6px 20px rgba(0,191,211,0.45);
-}
+  .button-gradient:hover {
+    opacity: 0.95;
+    box-shadow: 0 6px 20px rgba(0, 191, 211, 0.45);
+  }
 
-/* Subtiele gloed zodat het boven foto's leesbaar blijft */
-.brand-glow {
-  text-shadow: 0 6px 18px rgba(0,191,211,0.25);
-}
+  /* Subtiele gloed zodat het boven foto's leesbaar blijft */
+  .brand-glow {
+    text-shadow: 0 6px 18px rgba(0, 191, 211, 0.25);
+  }
 
   /* Subtle white haze over hero image */
   .hero-haze {
     background: linear-gradient(
       to bottom,
-      rgba(255,255,255,0.16) 0%,
-      rgba(255,255,255,0.12) 35%,
-      rgba(255,255,255,0.06) 65%,
-      rgba(255,255,255,0.12) 100%
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.12) 35%,
+      rgba(255, 255, 255, 0.06) 65%,
+      rgba(255, 255, 255, 0.12) 100%
     );
+  }
+
+  /* =========================
+     Animations – exclusive touch
+     ========================= */
+
+  /* Smooth hero intro: fade + slide up */
+  .animate-hero-intro {
+    animation: hero-intro 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Luxe floating cards (bijv. voor island cards) */
+  .animate-card-float {
+    animation: card-float 6s ease-in-out infinite;
+  }
+
+  /* Glanzende highlight over tekst of knoppen */
+  .animate-gradient-sheen {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-gradient-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      120deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.55) 40%,
+      transparent 80%
+    );
+    transform: translateX(-120%);
+    animation: gradient-sheen 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Zachte pulse voor bijvoorbeeld primaire CTA-knoppen */
+  .animate-soft-pulse {
+    animation: soft-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+/* =========================
+   Keyframes voor animaties
+   ========================= */
+
+@keyframes hero-intro {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes gradient-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  60% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes soft-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 191, 211, 0.35);
+  }
+  70% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 14px rgba(0, 191, 211, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 191, 211, 0);
   }
 }
