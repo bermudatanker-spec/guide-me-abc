@@ -2,12 +2,13 @@
 import type { ReactNode } from "react";
 import ClientRoot from "../ClientRoot";
 
-type LayoutProps = {
+export default function LangLayout({
+  children,
+  params,
+}: {
   children: ReactNode;
   params: { lang: string };
-};
-
-export default function LangLayout({ children, params }: LayoutProps) {
+}) {
   return (
     <html lang={params.lang}>
       <body>
