@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import ClientRoot from "../ClientRoot";
 
 export default function LangLayout({
   children,
@@ -7,5 +8,11 @@ export default function LangLayout({
   children: ReactNode;
   params: { lang: string };
 }) {
-  return <>{children}</>;
+  const { lang } = params;
+
+  return (
+    <ClientRoot lang={lang}>
+      {children}
+    </ClientRoot>
+  );
 }
