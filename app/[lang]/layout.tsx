@@ -1,18 +1,22 @@
+// app/[lang]/layout.tsx
 import type { ReactNode } from "react";
 import ClientRoot from "../ClientRoot";
 
-export default function LangLayout({
-  children,
-  params,
-}: {
-  children: ReactNode;
-  params: { lang: string };
-}) {
-  const { lang } = params;
+type LayoutProps = {
+  children: ReactNode;
+  params: { lang: string };
+};
 
-  return (
-    <ClientRoot lang={lang}>
-      {children}
-    </ClientRoot>
-  );
+export default function LangLayout({ children, params }: LayoutProps) {
+  return (
+    <html lang={params.lang}>
+      <body>
+        <ClientRoot lang={params.lang}>
+          <main id="page-content" className="min-h-dvh pt-16">
+            {children}
+          </main>
+        </ClientRoot>
+      </body>
+    </html>
+  );
 }
