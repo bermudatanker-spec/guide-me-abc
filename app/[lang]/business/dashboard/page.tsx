@@ -1,11 +1,15 @@
 // app/[lang]/business/dashboard/page.tsx
 import DashboardClient from "./ui/DashboardClient";
 
-export default async function DashboardPage({ params }: { params: Promise<{ lang: string }> }) {
-  const { lang } = await params;
+export default function DashboardPage({
+  params,
+}: {
+  params: { lang: string };
+}) {
+  const { lang } = params;
 
-  // Als je nog geen echte vertalingen hebt:
-  const t = {};
+  // zolang we nog geen echte vertalingen hebben:
+  const t = {};
 
-  return <DashboardClient lang={lang} t={t} />;
+  return <DashboardClient lang={lang} t={t} />;
 }
