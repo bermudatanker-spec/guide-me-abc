@@ -1,38 +1,24 @@
-// app/layout.tsx
-import type { Metadata, Viewport } from "next";
-import "./globals.css";
-
-import { Geist, Geist_Mono } from "next/font/google";
+// app/[lang]/layout.tsx
 import type { ReactNode } from "react";
+import ClientRoot from "../ClientRoot";
 
-// Optioneel: basis-URL via env, met fallback
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://guide-me-abc.com";
-
-// ===== Metadata / Viewport =====
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: "Guide Me ABC",
-    template: "%s | Guide Me ABC",
-  },
-  description:
-    "Discover Aruba, Bonaire & Curaçao — businesses, tips and guides.",
-  // eventueel alvast canonical:
-  alternates: {
-    canonical: "/",
-  },
-};
-
-export const viewport: Viewport = {
-  themeColor: "#00BFD3",
-};
-
-// ... rest van je RootLayout zoals hij nu al goed was
-export default function RootLayout({
-  children,
-}: {
+type LangLayoutProps = {
   children: ReactNode;
-}) {
-  // ...
+  params: Promise<{ lang: string }>;
+};
+
+export default async function LangLayout({ children, params }: LangLayoutProps) {
+  const { lang } = await params;
+
+  return (
+    <html lang={lang}>
+      <body>
+        <ClientRoot lang={lang}>
+          <main id="page-content" className="min-h-dvh pt-16">
+            {children}
+          </main>
+        </ClientRoot>
+      </body>
+    </html>
+  );
 }
