@@ -1,5 +1,12 @@
 // next.config.ts
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  i18n: {
+    locales: ["en", "nl", "pap", "es"],
+    defaultLocale: "en",
+  },
+
   images: {
     remotePatterns: [
       {
@@ -12,7 +19,8 @@ const nextConfig = {
       },
     ],
   },
-  // Verwijder de oude eslint-config; linting regel je nu met ESLint zelf.
+
+  reactStrictMode: true,
 };
 
 export default nextConfig;

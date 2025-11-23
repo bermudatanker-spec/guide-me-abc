@@ -14,7 +14,7 @@ const islands: Island[] = [
     name: "Aruba",
     tagline: "One Happy Island",
     description: "Stranden, nightlife en familievriendelijke hotspots.",
-    image: "/images/islands/aruba.jpg",
+    image: "/images/aruba-island.jpg",
     highlights: [
       "Witte zandstranden",
       "High-rise hotels & nightlife",
@@ -28,7 +28,7 @@ const islands: Island[] = [
     tagline: "Diver's Paradise",
     description:
       "Wereldberoemde duikspots, rust en ongerepte natuur boven & onder water.",
-    image: "/images/islands/bonaire.jpg",
+    image: "/images/bonaire-island.jpg",
     highlights: [
       "Walhalla voor duikers",
       "Rustig en kleinschalig",
@@ -42,7 +42,7 @@ const islands: Island[] = [
     tagline: "Colorful Culture",
     description:
       "Kleurrijke wijken, culinaire scene en verborgen baaien om te ontdekken.",
-    image: "/images/islands/curacao.jpg",
+    image: "/images/curacao-island.jpg",
     highlights: [
       "Handelskade & Pietermaai",
       "Lokale keuken & street food",
@@ -55,13 +55,13 @@ const islands: Island[] = [
 export default function ExploreIslands({ lang }: Props) {
   return (
     <section className="space-y-3">
-      <div className="mb-1 flex items-center justify-between">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-lg font-semibold text-[#2d303b] sm:text-xl">
           Verken de eilanden
         </h2>
         <a
           href={`/${lang}/islands`}
-          className="text-xs font-semibold text-[#00bfd3] hover:underline sm:text-sm"
+          className="text-xs sm:text-sm font-semibold text-[#00bfd3] hover:underline"
         >
           Bekijk alle eilanden →
         </a>
