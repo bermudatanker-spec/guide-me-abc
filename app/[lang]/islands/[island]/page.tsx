@@ -27,7 +27,13 @@ type Copy = {
   exploreByCategory: string;
   explore: string;
   categories: {
-    slug: "shops" | "activities" | "car-rentals" | "restaurants" | "services" | "real-estate";
+    slug:
+      | "shops"
+      | "activities"
+      | "car-rentals"
+      | "restaurants"
+      | "services"
+      | "real-estate";
     title: string;
     subtitle: string;
   }[];
@@ -52,12 +58,32 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Explore by Category",
       explore: "Explore",
       categories: [
-        { slug: "shops",       title: "Shops",       subtitle: "Local boutiques & stores" },
-        { slug: "activities",  title: "Activities",  subtitle: "Tours & experiences" },
-        { slug: "car-rentals", title: "Car Rentals", subtitle: "Rent a vehicle" },
-        { slug: "restaurants", title: "Restaurants", subtitle: "Dining & cuisine" },
-        { slug: "services",    title: "Services",    subtitle: "Professional services" },
-        { slug: "real-estate", title: "Real Estate", subtitle: "Commercial & homes" },
+        { slug: "shops", title: "Shops", subtitle: "Local boutiques & stores" },
+        {
+          slug: "activities",
+          title: "Activities",
+          subtitle: "Tours & experiences",
+        },
+        {
+          slug: "car-rentals",
+          title: "Car Rentals",
+          subtitle: "Rent a vehicle",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurants",
+          subtitle: "Dining & cuisine",
+        },
+        {
+          slug: "services",
+          title: "Services",
+          subtitle: "Professional services",
+        },
+        {
+          slug: "real-estate",
+          title: "Real Estate",
+          subtitle: "Commercial & homes",
+        },
       ],
     },
     bonaire: {
@@ -77,12 +103,32 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Explore by Category",
       explore: "Explore",
       categories: [
-        { slug: "shops",       title: "Shops",       subtitle: "Local boutiques & stores" },
-        { slug: "activities",  title: "Activities",  subtitle: "Diving, tours & more" },
-        { slug: "car-rentals", title: "Car Rentals", subtitle: "Jeeps, trucks, cars" },
-        { slug: "restaurants", title: "Restaurants", subtitle: "Local & international" },
-        { slug: "services",    title: "Services",    subtitle: "Guides & amenities" },
-        { slug: "real-estate", title: "Real Estate", subtitle: "Invest & rentals" },
+        { slug: "shops", title: "Shops", subtitle: "Local boutiques & stores" },
+        {
+          slug: "activities",
+          title: "Activities",
+          subtitle: "Diving, tours & more",
+        },
+        {
+          slug: "car-rentals",
+          title: "Car Rentals",
+          subtitle: "Jeeps, trucks, cars",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurants",
+          subtitle: "Local & international",
+        },
+        {
+          slug: "services",
+          title: "Services",
+          subtitle: "Guides & amenities",
+        },
+        {
+          slug: "real-estate",
+          title: "Real Estate",
+          subtitle: "Invest & rentals",
+        },
       ],
     },
     curacao: {
@@ -102,12 +148,36 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Explore by Category",
       explore: "Explore",
       categories: [
-        { slug: "shops",       title: "Shops",       subtitle: "Local boutiques & crafts" },
-        { slug: "activities",  title: "Activities",  subtitle: "Tours & adventures" },
-        { slug: "car-rentals", title: "Car Rentals", subtitle: "Rent a vehicle" },
-        { slug: "restaurants", title: "Restaurants", subtitle: "Cuisine & cocktails" },
-        { slug: "services",    title: "Services",    subtitle: "Professional services" },
-        { slug: "real-estate", title: "Real Estate", subtitle: "Homes & investments" },
+        {
+          slug: "shops",
+          title: "Shops",
+          subtitle: "Local boutiques & crafts",
+        },
+        {
+          slug: "activities",
+          title: "Activities",
+          subtitle: "Tours & adventures",
+        },
+        {
+          slug: "car-rentals",
+          title: "Car Rentals",
+          subtitle: "Rent a vehicle",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurants",
+          subtitle: "Cuisine & cocktails",
+        },
+        {
+          slug: "services",
+          title: "Services",
+          subtitle: "Professional services",
+        },
+        {
+          slug: "real-estate",
+          title: "Real Estate",
+          subtitle: "Homes & investments",
+        },
       ],
     },
   },
@@ -130,12 +200,36 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Ontdek per categorie",
       explore: "Bekijk",
       categories: [
-        { slug: "shops",       title: "Shops",       subtitle: "Lokale boetieks & winkels" },
-        { slug: "activities",  title: "Activiteiten", subtitle: "Tours & experiences" },
-        { slug: "car-rentals", title: "Autoverhuur", subtitle: "Huur een voertuig" },
-        { slug: "restaurants", title: "Restaurants", subtitle: "Eten & drinken" },
-        { slug: "services",    title: "Services",    subtitle: "Professionele diensten" },
-        { slug: "real-estate", title: "Vastgoed",    subtitle: "Woningen & commercieel" },
+        {
+          slug: "shops",
+          title: "Shops",
+          subtitle: "Lokale boetieks & winkels",
+        },
+        {
+          slug: "activities",
+          title: "Activiteiten",
+          subtitle: "Tours & experiences",
+        },
+        {
+          slug: "car-rentals",
+          title: "Autoverhuur",
+          subtitle: "Huur een voertuig",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurants",
+          subtitle: "Eten & drinken",
+        },
+        {
+          slug: "services",
+          title: "Services",
+          subtitle: "Professionele diensten",
+        },
+        {
+          slug: "real-estate",
+          title: "Vastgoed",
+          subtitle: "Woningen & commercieel",
+        },
       ],
     },
     bonaire: {
@@ -155,12 +249,36 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Ontdek per categorie",
       explore: "Bekijk",
       categories: [
-        { slug: "shops",       title: "Shops",       subtitle: "Lokale boetieks & winkels" },
-        { slug: "activities",  title: "Activiteiten", subtitle: "Duiken, tours & meer" },
-        { slug: "car-rentals", title: "Autoverhuur", subtitle: "Jeeps, pick-ups, auto's" },
-        { slug: "restaurants", title: "Restaurants", subtitle: "Lokaal & internationaal" },
-        { slug: "services",    title: "Services",    subtitle: "Gidsen & voorzieningen" },
-        { slug: "real-estate", title: "Vastgoed",    subtitle: "Investeren & huren" },
+        {
+          slug: "shops",
+          title: "Shops",
+          subtitle: "Lokale boetieks & winkels",
+        },
+        {
+          slug: "activities",
+          title: "Activiteiten",
+          subtitle: "Duiken, tours & meer",
+        },
+        {
+          slug: "car-rentals",
+          title: "Autoverhuur",
+          subtitle: "Jeeps, pick-ups, auto's",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurants",
+          subtitle: "Lokaal & internationaal",
+        },
+        {
+          slug: "services",
+          title: "Services",
+          subtitle: "Gidsen & voorzieningen",
+        },
+        {
+          slug: "real-estate",
+          title: "Vastgoed",
+          subtitle: "Investeren & huren",
+        },
       ],
     },
     curacao: {
@@ -180,12 +298,36 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Ontdek per categorie",
       explore: "Bekijk",
       categories: [
-        { slug: "shops",       title: "Shops",       subtitle: "Boetieks & ambacht" },
-        { slug: "activities",  title: "Activiteiten", subtitle: "Tours & avontuur" },
-        { slug: "car-rentals", title: "Autoverhuur", subtitle: "Huur een voertuig" },
-        { slug: "restaurants", title: "Restaurants", subtitle: "Keuken & cocktails" },
-        { slug: "services",    title: "Services",    subtitle: "Professionele diensten" },
-        { slug: "real-estate", title: "Vastgoed",    subtitle: "Wonen & investeren" },
+        {
+          slug: "shops",
+          title: "Shops",
+          subtitle: "Boetieks & ambacht",
+        },
+        {
+          slug: "activities",
+          title: "Activiteiten",
+          subtitle: "Tours & avontuur",
+        },
+        {
+          slug: "car-rentals",
+          title: "Autoverhuur",
+          subtitle: "Huur een voertuig",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurants",
+          subtitle: "Keuken & cocktails",
+        },
+        {
+          slug: "services",
+          title: "Services",
+          subtitle: "Professionele diensten",
+        },
+        {
+          slug: "real-estate",
+          title: "Vastgoed",
+          subtitle: "Wonen & investeren",
+        },
       ],
     },
   },
@@ -208,12 +350,36 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Explorar por categoría",
       explore: "Explorar",
       categories: [
-        { slug: "shops",       title: "Tiendas",      subtitle: "Boutiques y comercios" },
-        { slug: "activities",  title: "Actividades",  subtitle: "Tours y experiencias" },
-        { slug: "car-rentals", title: "Alquileres",   subtitle: "Renta de vehículos" },
-        { slug: "restaurants", title: "Restaurantes", subtitle: "Gastronomía" },
-        { slug: "services",    title: "Servicios",    subtitle: "Servicios profesionales" },
-        { slug: "real-estate", title: "Bienes raíces",subtitle: "Viviendas & inversión" },
+        {
+          slug: "shops",
+          title: "Tiendas",
+          subtitle: "Boutiques y comercios",
+        },
+        {
+          slug: "activities",
+          title: "Actividades",
+          subtitle: "Tours y experiencias",
+        },
+        {
+          slug: "car-rentals",
+          title: "Alquileres",
+          subtitle: "Renta de vehículos",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurantes",
+          subtitle: "Gastronomía",
+        },
+        {
+          slug: "services",
+          title: "Servicios",
+          subtitle: "Servicios profesionales",
+        },
+        {
+          slug: "real-estate",
+          title: "Bienes raíces",
+          subtitle: "Viviendas & inversión",
+        },
       ],
     },
     bonaire: {
@@ -233,12 +399,36 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Explorar por categoría",
       explore: "Explorar",
       categories: [
-        { slug: "shops",       title: "Tiendas",      subtitle: "Boutiques y comercios" },
-        { slug: "activities",  title: "Actividades",  subtitle: "Buceo, tours y más" },
-        { slug: "car-rentals", title: "Alquileres",   subtitle: "Jeeps, pick-ups, autos" },
-        { slug: "restaurants", title: "Restaurantes", subtitle: "Local e internacional" },
-        { slug: "services",    title: "Servicios",    subtitle: "Guías y servicios" },
-        { slug: "real-estate", title: "Bienes raíces",subtitle: "Invertir & rentar" },
+        {
+          slug: "shops",
+          title: "Tiendas",
+          subtitle: "Boutiques y comercios",
+        },
+        {
+          slug: "activities",
+          title: "Actividades",
+          subtitle: "Buceo, tours y más",
+        },
+        {
+          slug: "car-rentals",
+          title: "Alquileres",
+          subtitle: "Jeeps, pick-ups, autos",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurantes",
+          subtitle: "Local e internacional",
+        },
+        {
+          slug: "services",
+          title: "Servicios",
+          subtitle: "Guías y servicios",
+        },
+        {
+          slug: "real-estate",
+          title: "Bienes raíces",
+          subtitle: "Invertir & rentar",
+        },
       ],
     },
     curacao: {
@@ -258,12 +448,36 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Explorar por categoría",
       explore: "Explorar",
       categories: [
-        { slug: "shops",       title: "Tiendas",      subtitle: "Boutiques y artesanías" },
-        { slug: "activities",  title: "Actividades",  subtitle: "Tours y aventuras" },
-        { slug: "car-rentals", title: "Alquileres",   subtitle: "Renta de vehículos" },
-        { slug: "restaurants", title: "Restaurantes", subtitle: "Cocina & cocteles" },
-        { slug: "services",    title: "Servicios",    subtitle: "Servicios profesionales" },
-        { slug: "real-estate", title: "Bienes raíces",subtitle: "Vivienda & inversión" },
+        {
+          slug: "shops",
+          title: "Tiendas",
+          subtitle: "Boutiques y artesanías",
+        },
+        {
+          slug: "activities",
+          title: "Actividades",
+          subtitle: "Tours y aventuras",
+        },
+        {
+          slug: "car-rentals",
+          title: "Alquileres",
+          subtitle: "Renta de vehículos",
+        },
+        {
+          slug: "restaurants",
+          title: "Restaurantes",
+          subtitle: "Cocina & cocteles",
+        },
+        {
+          slug: "services",
+          title: "Servicios",
+          subtitle: "Servicios profesionales",
+        },
+        {
+          slug: "real-estate",
+          title: "Bienes raíces",
+          subtitle: "Vivienda & inversión",
+        },
       ],
     },
   },
@@ -273,33 +487,57 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       name: "Aruba",
       tagline: "One Happy Island",
       description:
-        "Aruba ta kombina laman turkesa, playa blanku suaf i kultura bibu. For di Eagle Beach i Parque Nashonal Arikok te Oranjestad i e Natural Pool: relaks i aventura tur aña.",
-      topTitle: "Mehor kosnan pa hasi na Aruba",
+        "Aruba ta kombiná laman turkesa, playanan blanku i kultura bibu. For di Eagle Beach i Parke Nashonal Arikok te Oranjestad i e Natural Pool skondí: e isla ta ofresé un mix di sosiegu i aventura.",
+      topTitle: "Miho kosnan pa hasi na Aruba",
       topThings: [
         "Relahá na Eagle Beach",
         "Eksplorá Parque Nashonal Arikok",
         "Snòrkel na Mangel Halto",
-        "Mira atardi na Faro California",
-        "Pasea den e kaya koló di Oranjestad",
+        "Mira solo baha na Faro California",
+        "Paseá den kayanan yen koló di Oranjestad",
         "Off-road te Conchi (Natural Pool)",
       ],
-      exploreByCategory: "Eksplorá segun kategoria",
+      exploreByCategory: "Eksplorá segun kategoría",
       explore: "Mira",
       categories: [
-        { slug: "shops",       title: "Tienda",    subtitle: "Boetík i negoshi lokal" },
-        { slug: "activities",  title: "Aktividat", subtitle: "Tour i eksperiensha" },
-        { slug: "car-rentals", title: "Hür auto",  subtitle: "Hür un vehíkulo" },
-        { slug: "restaurants", title: "Restoran",  subtitle: "Kuminda i bebida" },
-        { slug: "services",    title: "Servisio",  subtitle: "Servisionan profeshonal" },
-        { slug: "real-estate", title: "Propiedat", subtitle: "Kas i komersio" },
+        {
+          slug: "shops",
+          title: "Tienda",
+          subtitle: "Boetík i negoshi lokal",
+        },
+        {
+          slug: "activities",
+          title: "Aktividat",
+          subtitle: "Tour i eksperiensha",
+        },
+        {
+          slug: "car-rentals",
+          title: "Hür auto",
+          subtitle: "Hür un vehíkulo",
+        },
+        {
+          slug: "restaurants",
+          title: "Restoran",
+          subtitle: "Kuminda i bebida",
+        },
+        {
+          slug: "services",
+          title: "Servisio",
+          subtitle: "Servisionan profeshonal",
+        },
+        {
+          slug: "real-estate",
+          title: "Propiedat",
+          subtitle: "Kas i komersio",
+        },
       ],
     },
     bonaire: {
       name: "Boneiru",
-      tagline: "Paraíso pa busadón",
+      tagline: "Paraíso pa busadó",
       description:
-        "Boneiru ta famó pa rif limp’i laman, bientu konsistente i ambiente trankil. Shore dive, windsurf na Lac Bay i flamingo na saliña—paraíso pa naturalesa.",
-      topTitle: "Mehor kosnan pa hasi na Boneiru",
+        "Boneiru ta famá pa su rif limpi den laman, bientu konsistente i ambiente trankil. Shore dive, windsurf na Lac Bay i flamingo na saliña—paraíso pa naturalesa.",
+      topTitle: "Miho kosnan pa hasi na Boneiru",
       topThings: [
         "Buska na 1000 Steps",
         "Windsurf/kitesurf na Lac Bay",
@@ -311,20 +549,44 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Eksplorá segun kategoria",
       explore: "Mira",
       categories: [
-        { slug: "shops",       title: "Tienda",    subtitle: "Boetík i negoshi lokal" },
-        { slug: "activities",  title: "Aktividat", subtitle: "Buseo, tour i mas" },
-        { slug: "car-rentals", title: "Hür auto",  subtitle: "Jeep, pickup, auto" },
-        { slug: "restaurants", title: "Restoran",  subtitle: "Lokal i internashonal" },
-        { slug: "services",    title: "Servisio",  subtitle: "Guia i servisio" },
-        { slug: "real-estate", title: "Propiedat", subtitle: "Invershon i huur" },
+        {
+          slug: "shops",
+          title: "Tienda",
+          subtitle: "Boetík i negoshi lokal",
+        },
+        {
+          slug: "activities",
+          title: "Aktividat",
+          subtitle: "Buseo, tour i mas",
+        },
+        {
+          slug: "car-rentals",
+          title: "Hür auto",
+          subtitle: "Jeep, pickup, auto",
+        },
+        {
+          slug: "restaurants",
+          title: "Restoran",
+          subtitle: "Lokal i internashonal",
+        },
+        {
+          slug: "services",
+          title: "Servisio",
+          subtitle: "Guia i servisio",
+        },
+        {
+          slug: "real-estate",
+          title: "Propiedat",
+          subtitle: "Invershon i huur",
+        },
       ],
     },
     curacao: {
       name: "Kòrsou",
-      tagline: "Karibe kolorí",
+      tagline: "Karibe kolorido",
       description:
-        "Kòrsou ta enkantá ku Willemstad koló, bahi trankil i kultura riku. For di Playa Kenepa i Blue Room te Hato Caves i Seru Christoffel—tur kos pa deskubrí.",
-      topTitle: "Mehor kosnan pa hasi na Kòrsou",
+        "Kòrsou ta gustá pa Willemstad yen koló, bainan trankil i kultura riku. For di Playa Kenepa i Blue Room te Hato Caves i Seru Christoffel—yen kos pa deskubrí.",
+      topTitle: "Miho kosnan pa hasi na Kòrsou",
       topThings: [
         "Paseá den sentro UNESCO di Willemstad",
         "Landa na Playa Kenepa (Grote Knip)",
@@ -336,12 +598,36 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Eksplorá segun kategoria",
       explore: "Mira",
       categories: [
-        { slug: "shops",       title: "Tienda",   subtitle: "Boetík i artenan" },
-        { slug: "activities",  title: "Aktividat",subtitle: "Tour i aventura" },
-        { slug: "car-rentals", title: "Hür auto", subtitle: "Hür un vehíkulo" },
-        { slug: "restaurants", title: "Restoran", subtitle: "Kuminda & koktélnan" },
-        { slug: "services",    title: "Servisio", subtitle: "Servisionan profeshonal" },
-        { slug: "real-estate", title: "Propiedat",subtitle: "Kasa i invershon" },
+        {
+          slug: "shops",
+          title: "Tienda",
+          subtitle: "Boetík i artenan",
+        },
+        {
+          slug: "activities",
+          title: "Aktividat",
+          subtitle: "Tour i aventura",
+        },
+        {
+          slug: "car-rentals",
+          title: "Hür auto",
+          subtitle: "Hür un vehíkulo",
+        },
+        {
+          slug: "restaurants",
+          title: "Restoran",
+          subtitle: "Kuminda & koktélnan",
+        },
+        {
+          slug: "services",
+          title: "Servisio",
+          subtitle: "Servisionan profeshonal",
+        },
+        {
+          slug: "real-estate",
+          title: "Propiedat",
+          subtitle: "Kasa i invershon",
+        },
       ],
     },
   },
@@ -350,38 +636,102 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
 /* ── Category actions (labels + routes) ─────────────────────────── */
 const ACTION_LABELS = {
   shops: {
-    primary: { en: "View all shops", nl: "Alle winkels", pap: "Tur tienda", es: "Ver todas las tiendas" },
-    secondary: { en: "Local boutiques", nl: "Lokale boetieks", pap: "Boetík lokal", es: "Boutiques locales" },
+    primary: {
+      en: "View all shops",
+      nl: "Alle winkels",
+      pap: "Tur tienda",
+      es: "Ver todas las tiendas",
+    },
+    secondary: {
+      en: "Local boutiques",
+      nl: "Lokale boetieks",
+      pap: "Boetík lokal",
+      es: "Boutiques locales",
+    },
     secondaryQuery: "tag=boutique",
   },
   activities: {
-    primary: { en: "View activities", nl: "Activiteiten zien", pap: "Mira aktividadnan", es: "Ver actividades" },
-    secondary: { en: "Top-rated tours", nl: "Best beoordeelde tours", pap: "Tour top-rankeá", es: "Tours mejor valorados" },
+    primary: {
+      en: "View activities",
+      nl: "Activiteiten zien",
+      pap: "Mira aktividadnan",
+      es: "Ver actividades",
+    },
+    secondary: {
+      en: "Top-rated tours",
+      nl: "Best beoordeelde tours",
+      pap: "Tour top-rankeá",
+      es: "Tours mejor valorados",
+    },
     secondaryQuery: "sort=rating_desc",
   },
   "car-rentals": {
-    primary: { en: "See car rentals", nl: "Bekijk autoverhuur", pap: "Mira hür di auto", es: "Ver alquileres" },
-    secondary: { en: "SUVs & Jeeps", nl: "SUV’s & Jeeps", pap: "SUV & Jeep", es: "SUVs y Jeeps" },
+    primary: {
+      en: "See car rentals",
+      nl: "Bekijk autoverhuur",
+      pap: "Mira hür di auto",
+      es: "Ver alquileres",
+    },
+    secondary: {
+      en: "SUVs & Jeeps",
+      nl: "SUV’s & Jeeps",
+      pap: "SUV & Jeep",
+      es: "SUVs y Jeeps",
+    },
     secondaryQuery: "type=suv",
   },
   restaurants: {
-    primary: { en: "Find restaurants", nl: "Vind restaurants", pap: "Haya restoran", es: "Buscar restaurantes" },
-    secondary: { en: "Seafood nearby", nl: "Seafood dichtbij", pap: "Seafood serka", es: "Mariscos cerca" },
+    primary: {
+      en: "Find restaurants",
+      nl: "Vind restaurants",
+      pap: "Haya restoran",
+      es: "Buscar restaurantes",
+    },
+    secondary: {
+      en: "Seafood nearby",
+      nl: "Seafood dichtbij",
+      pap: "Seafood serka",
+      es: "Mariscos cerca",
+    },
     secondaryQuery: "cuisine=seafood",
   },
   services: {
-    primary: { en: "All services", nl: "Alle services", pap: "Tur servisio", es: "Todos los servicios" },
-    secondary: { en: "Tour guides", nl: "Gidsen", pap: "Guianan di tour", es: "Guías turísticos" },
+    primary: {
+      en: "All services",
+      nl: "Alle services",
+      pap: "Tur servisio",
+      es: "Todos los servicios",
+    },
+    secondary: {
+      en: "Tour guides",
+      nl: "Gidsen",
+      pap: "Guianan di tour",
+      es: "Guías turísticos",
+    },
     secondaryQuery: "type=guide",
   },
   "real-estate": {
-    primary: { en: "Browse listings", nl: "Bekijk aanbod", pap: "Mira ofertanan", es: "Ver propiedades" },
-    secondary: { en: "Holiday rentals", nl: "Vakantieverhuur", pap: "Hür pa vakashon", es: "Alquiler vacacional" },
+    primary: {
+      en: "Browse listings",
+      nl: "Bekijk aanbod",
+      pap: "Mira ofertanan",
+      es: "Ver propiedades",
+    },
+    secondary: {
+      en: "Holiday rentals",
+      nl: "Vakantieverhuur",
+      pap: "Hür pa vakashon",
+      es: "Alquiler vacacional",
+    },
     secondaryQuery: "purpose=rent",
   },
 } as const;
 
-function categoryActions(lang: Lang, island: IslandId, slug: keyof typeof ACTION_LABELS) {
+function categoryActions(
+  lang: Lang,
+  island: IslandId,
+  slug: keyof typeof ACTION_LABELS
+) {
   const L = ACTION_LABELS[slug];
   const base = `/${lang}/islands/${island}/${slug}`;
   return [
@@ -398,7 +748,9 @@ function getCopy(lang: Lang, island: IslandId): Copy {
 
 /* ── Static params & metadata ───────────────────────────────────── */
 export function generateStaticParams() {
-  return LANGS.flatMap((lang) => ISLANDS.map((island) => ({ lang, island })));
+  return LANGS.flatMap((lang) =>
+    ISLANDS.map((island) => ({ lang, island }))
+  );
 }
 export const dynamicParams = false;
 
@@ -435,14 +787,21 @@ export async function generateMetadata(
       type: "website",
       images: [{ url: image, width: 1200, height: 630, alt: `${c.name} hero` }],
     },
-    twitter: { card: "summary_large_image", title, description: c.description, images: [image] },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: c.description,
+      images: [image],
+    },
   };
 }
 
 /* ── Page ───────────────────────────────────────────────────────── */
-export default async function IslandPage(
-  { params }: { params: Promise<{ lang: Lang; island: IslandId }> }
-) {
+export default async function IslandPage({
+  params,
+}: {
+  params: Promise<{ lang: Lang; island: IslandId }>;
+}) {
   const { lang, island } = await params;
   if (!ISLANDS.includes(island)) notFound();
 
@@ -466,14 +825,23 @@ export default async function IslandPage(
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1
               className="text-5xl md:text-6xl font-extrabold mb-2 text-white"
-              style={{ textShadow: "0 1px 0 rgba(0,0,0,.85), 0 -1px 0 rgba(0,0,0,.85), 1px 0 0 rgba(0,0,0,.85), -1px 0 0 rgba(0,0,0,.85), 0 16px 36px rgba(0,0,0,.35)" }}
+              style={{
+                textShadow:
+                  "0 1px 0 rgba(0,0,0,.85), 0 -1px 0 rgba(0,0,0,.85), 1px 0 0 rgba(0,0,0,.85), -1px 0 0 rgba(0,0,0,.85), 0 16px 36px rgba(0,0,0,.35)",
+              }}
             >
               {c.name}
             </h1>
-            <p className="text-xl md:text-2xl text-white/95 mb-4" style={{ textShadow: "0 1px 2px rgba(0,0,0,.55)" }}>
+            <p
+              className="text-xl md:text-2xl text-white/95 mb-4"
+              style={{ textShadow: "0 1px 2px rgba(0,0,0,.55)" }}
+            >
               {c.tagline}
             </p>
-            <p className="max-w-3xl mx-auto text-white/90" style={{ textShadow: "0 1px 2px rgba(0,0,0,.45)" }}>
+            <p
+              className="max-w-3xl mx-auto text-white/90"
+              style={{ textShadow: "0 1px 2px rgba(0,0,0,.45)" }}
+            >
               {c.description}
             </p>
           </div>
@@ -483,24 +851,41 @@ export default async function IslandPage(
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
         {/* CATEGORIES */}
         <section>
-          <h2 className="text-3xl font-bold mb-8">{c.exploreByCategory}</h2>
+          <h2 className="text-3xl font-bold mb-8">
+            {c.exploreByCategory}
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {c.categories.map((cat) => {
-              const [primary, secondary] = categoryActions(lang, island, cat.slug);
+              const [primary, secondary] = categoryActions(
+                lang,
+                island,
+                cat.slug
+              );
               return (
                 <div
                   key={cat.slug}
                   className="rounded-xl border p-4 text-center bg-card hover:border-primary/50 transition-shadow"
-                  style={{ boxShadow: "0 4px 20px hsl(220 15% 20% / .08)" }}
+                  style={{
+                    boxShadow:
+                      "0 4px 20px hsl(220 15% 20% / .08)",
+                  }}
                 >
                   <div className="font-semibold">{cat.title}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{cat.subtitle}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {cat.subtitle}
+                  </div>
 
                   <div className="mt-3 flex flex-col items-center gap-2 text-sm">
-                    <Link href={primary.href} className="text-primary font-medium hover:underline">
+                    <Link
+                      href={primary.href}
+                      className="text-primary font-medium hover:underline"
+                    >
                       {primary.label} →
                     </Link>
-                    <Link href={secondary.href} className="text-muted-foreground hover:underline">
+                    <Link
+                      href={secondary.href}
+                      className="text-muted-foreground hover:underline"
+                    >
                       {secondary.label}
                     </Link>
                   </div>
@@ -512,7 +897,9 @@ export default async function IslandPage(
 
         {/* TOP THINGS */}
         <section className="max-w-4xl">
-          <h2 className="text-3xl font-bold mb-4">{c.topTitle}</h2>
+          <h2 className="text-3xl font-bold mb-4">
+            {c.topTitle}
+          </h2>
           <ol className="list-decimal ml-5 space-y-2 text-muted-foreground">
             {c.topThings.map((item, i) => (
               <li key={i}>{item}</li>

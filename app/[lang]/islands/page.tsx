@@ -1,16 +1,20 @@
+// app/[lang]/islands/page.tsx
 import type { Metadata } from "next";
 import ResponsiveImage from "@/components/ResponsiveImage";
 import Link from "next/link";
 import { isLocale, type Locale } from "@/i18n/config";
 import { Button } from "@/components/ui/button";
 
-type ParamsPromise = { lang: Locale };
+type PageParams = { lang: Locale };
+
+// Maak deze route gewoon dynamic om gezeur met export paths te voorkomen
+export const dynamic = "force-dynamic";
 
 /* SEO */
-export async function generateMetadata(
-  { params }: { params: ParamsPromise }
-): Promise<Metadata> {
-  const { lang: raw } = await params;
+export function generateMetadata(
+  { params }: { params: PageParams }
+): Metadata {
+  const raw = params.lang;
   const lang = isLocale(raw) ? raw : "en";
 
   const title = "ABC Islands | Guide Me ABC";
@@ -27,14 +31,23 @@ export async function generateMetadata(
   return {
     title,
     description,
-    alternates: { languages },
-    openGraph: { title, description, url: `/${lang}/islands` },
+    alternates: {
+      canonical: `/${lang}/islands`,
+      languages,
+    },
+    openGraph: {
+      title,
+      description,
+      url: `/${lang}/islands`,
+    },
   };
 }
 
 /* Page */
-export default async function IslandsIndex({ params }: { params: ParamsPromise }) {
-  const { lang: raw } = await params;
+export default function IslandsIndex(
+  { params }: { params: PageParams }
+) {
+  const raw = params.lang;
   const lang = isLocale(raw) ? raw : "en";
 
   const islands = [
@@ -84,7 +97,9 @@ export default async function IslandsIndex({ params }: { params: ParamsPromise }
 
   return (
     <div className="min-h-screen pt-24 container mx-auto px-4 sm:px-6 lg:px-8">
-      <h1 className="text-4xl font-bold mb-12 text-center">Explore the ABC Islands</h1>
+      <h1 className="text-4xl font-bold mb-12 text-center">
+        Explore the ABC Islands
+      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {islands.map((i) => (
@@ -99,16 +114,21 @@ export default async function IslandsIndex({ params }: { params: ParamsPromise }
                 fill
                 sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                 className="object-cover"
-                priority={false}
               />
             </div>
 
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-1">{i.name}</h2>
-              <p className="text-primary font-medium mb-3">{i.tagline}</p>
-              <p className="text-muted-foreground text-sm mb-4">{i.desc}</p>
+              <p className="text-primary font-medium mb-3">
+                {i.tagline}
+              </p>
+              <p className="text-muted-foreground text-sm mb-4">
+                {i.desc}
+              </p>
 
-              <h3 className="text-sm font-semibold mb-2 text-foreground">Highlights:</h3>
+              <h3 className="text-sm font-semibold mb-2 text-foreground">
+                Highlights:
+              </h3>
               <ul className="text-sm text-muted-foreground mb-6 list-disc pl-4 space-y-1">
                 {i.highlights.map((h, idx) => (
                   <li key={idx}>{h}</li>
@@ -119,11 +139,15 @@ export default async function IslandsIndex({ params }: { params: ParamsPromise }
                 asChild
                 className="w-full font-semibold text-white"
                 style={{
-                  background: "linear-gradient(90deg, #00BFD3 0%, #00E0A1 100%)",
-                  boxShadow: "0 4px 12px rgba(0,191,211,0.45), 0 0 18px rgba(0,191,211,0.35)",
+                  background:
+                    "linear-gradient(90deg, #00BFD3 0%, #00E0A1 100%)",
+                  boxShadow:
+                    "0 4px 12px rgba(0,191,211,0.45), 0 0 18px rgba(0,191,211,0.35)",
                 }}
               >
-                <Link href={`/${lang}/islands/${i.id}`}>Explore {i.name}</Link>
+                <Link href={`/${lang}/islands/${i.id}`}>
+                  Explore {i.name}
+                </Link>
               </Button>
             </div>
           </div>
