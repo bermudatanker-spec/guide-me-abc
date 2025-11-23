@@ -144,7 +144,8 @@ const COPY: Record<Lang, PageCopy> = {
       },
       restaurants: {
         title: "Restaurantes",
-        description: "Sabores caribeños e internacionales para todos los gustos.",
+        description:
+          "Sabores caribeños e internacionales para todos los gustos.",
       },
       services: {
         title: "Servicios",
