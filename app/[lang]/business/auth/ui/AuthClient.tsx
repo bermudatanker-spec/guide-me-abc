@@ -49,7 +49,7 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
   const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState<false | "signin" | "signup">(false);
   const [tab, setTab] = useState<"signin" | "signup">(
-    search.get("tab") === "signup" ? "signup" : "signin"
+    search?.get("tab") === "signup" ? "signup" : "signin"
   );
 
   const [okMsg, setOkMsg] = useState<string | null>(null);
