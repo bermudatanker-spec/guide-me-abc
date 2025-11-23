@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
   const dict = DICTS[lang];
 
   // Als je iemand straks wilt terugsturen na reset
-  const redirectedFrom = search.get("redirectedFrom") || "";
+  const redirectedFrom = search?.get("redirectedFrom") || "";
 
   const supabase = useMemo(() => supabaseBrowser(), []);
   const baseUrl = getBaseUrl();
