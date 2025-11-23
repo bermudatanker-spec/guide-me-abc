@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
   const lang: Locale = isLocale(rawLang) ? rawLang : "en";
   const dict = DICTS[lang];
 
-  const redirectedFrom = search.get("redirectedFrom") || "";
+  const redirectedFrom = search?.get("redirectedFrom") || "";
   const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [pw, setPw] = useState("");
