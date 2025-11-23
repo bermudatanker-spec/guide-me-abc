@@ -1,6 +1,6 @@
 "use client";
 
-import Hero from "@/components/Hero";
+import Hero from "@/components/home/Hero";
 import SearchBar from "@/components/SearchBar";
 import QuickLinks from "@/components/QuickLinks";
 import IslandCard, { type Island } from "@/components/IslandCard";

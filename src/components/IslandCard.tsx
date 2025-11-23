@@ -1,3 +1,4 @@
+// src/components/IslandCard.tsx
 "use client";
 
 import ResponsiveImage from "@/components/ResponsiveImage";
@@ -13,7 +14,13 @@ export type Island = {
   highlights: string[];
 };
 
-export default function IslandCard(props: Island) {
+type IslandCardProps = Island & {
+  lang?: string; // optioneel - als je het niet meegeeft, valt hij terug op /islands/[id]
+};
+
+export default function IslandCard({ lang, ...props }: IslandCardProps) {
+  const href = lang ? `/${lang}/islands/${props.id}` : `/islands/${props.id}`;
+
   return (
     <article className="group overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-md">
       <div className="relative h-48 w-full">
@@ -28,9 +35,11 @@ export default function IslandCard(props: Island) {
       <div className="p-5">
         <h3 className="text-lg font-semibold text-foreground">{props.name}</h3>
         <p className="text-sm text-muted-foreground">{props.tagline}</p>
-        <p className="mt-3 text-sm text-muted-foreground">{props.description}</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {props.description}
+        </p>
 
-        <ul className="mt-4 list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+        <ul className="mt-4 space-y-1 list-disc pl-5 text-sm text-muted-foreground">
           {props.highlights.slice(0, 4).map((h, i) => (
             <li key={i}>{h}</li>
           ))}
@@ -38,7 +47,7 @@ export default function IslandCard(props: Island) {
 
         <div className="mt-5">
           <Link
-            href={`/islands/${props.id}`}
+            href={href}
             className="inline-flex items-center gap-1 text-primary hover:underline"
             aria-label={`Explore ${props.name}`}
           >

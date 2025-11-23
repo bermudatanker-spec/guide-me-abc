@@ -42,7 +42,7 @@ export default function FeaturedExperiences({ lang }: Props) {
       aria-labelledby="featured-experiences"
       className="space-y-3"
     >
-      <div className="flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between">
         <h2
           id="featured-experiences"
           className="text-lg font-semibold text-[#2d303b]"

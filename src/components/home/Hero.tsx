@@ -10,15 +10,13 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { getLangFromPath } from "@/lib/locale-path";
 
 type HeroProps = {
-  lang?: string; // expliciet lang doorgeven is nu mogelijk, maar niet verplicht
+  lang?: string; // kan via props of via URL
 };
 
 export default function Hero({ lang }: HeroProps) {
   const { t } = useLanguage();
   const pathname = usePathname() ?? "/";
 
-  // 1) als lang prop is meegegeven (via app/[lang]/page.tsx) → gebruik die
-  // 2) anders: haal 'm uit de URL via getLangFromPath
   const activeLang = lang ?? getLangFromPath(pathname);
 
   const title =
@@ -71,7 +69,7 @@ export default function Hero({ lang }: HeroProps) {
               {subtitle}
             </p>
 
-            {/* CTA knoppen */}
+            {/* CTA knoppen met gradients */}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button
                 asChild
