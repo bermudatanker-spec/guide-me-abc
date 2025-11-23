@@ -4,11 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ResponsiveImage from "@/components/ResponsiveImage";
 
-/* ── Types & constants ─────────────────────────────────────────── */
 type Lang = "en" | "nl" | "pap" | "es";
 type IslandId = "aruba" | "bonaire" | "curacao";
 
-const LANGS: readonly Lang[] = ["en", "nl", "pap", "es"] as const;
 const ISLANDS: readonly IslandId[] = ["aruba", "bonaire", "curacao"] as const;
 
 const ISLAND_BG: Record<IslandId, string> = {
@@ -17,7 +15,6 @@ const ISLAND_BG: Record<IslandId, string> = {
   curacao: "/images/curacao-island.jpg",
 };
 
-/* ── Meertalige content ────────────────────────────────────────── */
 type Copy = {
   name: string;
   tagline: string;
@@ -58,7 +55,11 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Explore by Category",
       explore: "Explore",
       categories: [
-        { slug: "shops", title: "Shops", subtitle: "Local boutiques & stores" },
+        {
+          slug: "shops",
+          title: "Shops",
+          subtitle: "Local boutiques & stores",
+        },
         {
           slug: "activities",
           title: "Activities",
@@ -103,7 +104,11 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       exploreByCategory: "Explore by Category",
       explore: "Explore",
       categories: [
-        { slug: "shops", title: "Shops", subtitle: "Local boutiques & stores" },
+        {
+          slug: "shops",
+          title: "Shops",
+          subtitle: "Local boutiques & stores",
+        },
         {
           slug: "activities",
           title: "Activities",
@@ -487,17 +492,17 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       name: "Aruba",
       tagline: "One Happy Island",
       description:
-        "Aruba ta kombiná laman turkesa, playanan blanku i kultura bibu. For di Eagle Beach i Parke Nashonal Arikok te Oranjestad i e Natural Pool skondí: e isla ta ofresé un mix di sosiegu i aventura.",
-      topTitle: "Miho kosnan pa hasi na Aruba",
+        "Aruba ta kombina laman turkesa, playa blanku suaf i kultura bibu. For di Eagle Beach i Parque Nashonal Arikok te Oranjestad i e Natural Pool: relaks i aventura tur aña.",
+      topTitle: "Mehor kosnan pa hasi na Aruba",
       topThings: [
         "Relahá na Eagle Beach",
         "Eksplorá Parque Nashonal Arikok",
         "Snòrkel na Mangel Halto",
-        "Mira solo baha na Faro California",
-        "Paseá den kayanan yen koló di Oranjestad",
+        "Mira atardi na Faro California",
+        "Pasea den e kaya koló di Oranjestad",
         "Off-road te Conchi (Natural Pool)",
       ],
-      exploreByCategory: "Eksplorá segun kategoría",
+      exploreByCategory: "Eksplorá segun kategoria",
       explore: "Mira",
       categories: [
         {
@@ -534,10 +539,10 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
     },
     bonaire: {
       name: "Boneiru",
-      tagline: "Paraíso pa busadó",
+      tagline: "Paraíso pa busadón",
       description:
-        "Boneiru ta famá pa su rif limpi den laman, bientu konsistente i ambiente trankil. Shore dive, windsurf na Lac Bay i flamingo na saliña—paraíso pa naturalesa.",
-      topTitle: "Miho kosnan pa hasi na Boneiru",
+        "Boneiru ta famó pa rif limp’i laman, bientu konsistente i ambiente trankil. Shore dive, windsurf na Lac Bay i flamingo na saliña—paraíso pa naturalesa.",
+      topTitle: "Mehor kosnan pa hasi na Boneiru",
       topThings: [
         "Buska na 1000 Steps",
         "Windsurf/kitesurf na Lac Bay",
@@ -583,10 +588,10 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
     },
     curacao: {
       name: "Kòrsou",
-      tagline: "Karibe kolorido",
+      tagline: "Karibe kolorí",
       description:
-        "Kòrsou ta gustá pa Willemstad yen koló, bainan trankil i kultura riku. For di Playa Kenepa i Blue Room te Hato Caves i Seru Christoffel—yen kos pa deskubrí.",
-      topTitle: "Miho kosnan pa hasi na Kòrsou",
+        "Kòrsou ta enkantá ku Willemstad koló, bahi trankil i kultura riku. For di Playa Kenepa i Blue Room te Hato Caves i Seru Christoffel—tur kos pa deskubrí.",
+      topTitle: "Mehor kosnan pa hasi na Kòrsou",
       topThings: [
         "Paseá den sentro UNESCO di Willemstad",
         "Landa na Playa Kenepa (Grote Knip)",
@@ -633,7 +638,7 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
   },
 };
 
-/* ── Category actions (labels + routes) ─────────────────────────── */
+/* Category actions (labels + routes) */
 const ACTION_LABELS = {
   shops: {
     primary: {
@@ -740,24 +745,20 @@ function categoryActions(
   ];
 }
 
-/* ── Helpers ───────────────────────────────────────────────────── */
+/* Helpers */
 function getCopy(lang: Lang, island: IslandId): Copy {
   const byLang = COPY[lang] ?? COPY.en;
   return byLang[island] ?? COPY.en[island];
 }
 
-/* ── Static params & metadata ───────────────────────────────────── */
-export function generateStaticParams() {
-  return LANGS.flatMap((lang) =>
-    ISLANDS.map((island) => ({ lang, island }))
-  );
-}
-export const dynamicParams = false;
+/* Metadata */
+type PageParams = { params: { lang: Lang; island: IslandId } };
 
 export async function generateMetadata(
-  { params }: { params: Promise<{ lang: Lang; island: IslandId }> }
+  { params }: PageParams
 ): Promise<Metadata> {
-  const { lang, island } = await params;
+  const { lang, island } = params;
+
   if (!ISLANDS.includes(island)) {
     return {
       title: "Island not found | Guide Me ABC",
@@ -765,6 +766,7 @@ export async function generateMetadata(
       robots: { index: false, follow: false },
     };
   }
+
   const c = getCopy(lang, island);
   const image = ISLAND_BG[island];
   const title = `${c.name} – ${c.tagline} | Guide Me ABC`;
@@ -785,7 +787,9 @@ export async function generateMetadata(
       description: c.description,
       url: `/${lang}/islands/${island}`,
       type: "website",
-      images: [{ url: image, width: 1200, height: 630, alt: `${c.name} hero` }],
+      images: [
+        { url: image, width: 1200, height: 630, alt: `${c.name} hero` },
+      ],
     },
     twitter: {
       card: "summary_large_image",
@@ -796,14 +800,13 @@ export async function generateMetadata(
   };
 }
 
-/* ── Page ───────────────────────────────────────────────────────── */
-export default async function IslandPage({
-  params,
-}: {
-  params: Promise<{ lang: Lang; island: IslandId }>;
-}) {
-  const { lang, island } = await params;
-  if (!ISLANDS.includes(island)) notFound();
+/* Page */
+export default function IslandPage({ params }: PageParams) {
+  const { lang, island } = params;
+
+  if (!ISLANDS.includes(island)) {
+    notFound();
+  }
 
   const c = getCopy(lang, island);
   const bg = ISLAND_BG[island];
@@ -866,8 +869,7 @@ export default async function IslandPage({
                   key={cat.slug}
                   className="rounded-xl border p-4 text-center bg-card hover:border-primary/50 transition-shadow"
                   style={{
-                    boxShadow:
-                      "0 4px 20px hsl(220 15% 20% / .08)",
+                    boxShadow: "0 4px 20px hsl(220 15% 20% / .08)",
                   }}
                 >
                   <div className="font-semibold">{cat.title}</div>
@@ -897,9 +899,7 @@ export default async function IslandPage({
 
         {/* TOP THINGS */}
         <section className="max-w-4xl">
-          <h2 className="text-3xl font-bold mb-4">
-            {c.topTitle}
-          </h2>
+          <h2 className="text-3xl font-bold mb-4">{c.topTitle}</h2>
           <ol className="list-decimal ml-5 space-y-2 text-muted-foreground">
             {c.topThings.map((item, i) => (
               <li key={i}>{item}</li>

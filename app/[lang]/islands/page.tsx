@@ -1,20 +1,21 @@
 // app/[lang]/islands/page.tsx
 import type { Metadata } from "next";
-import ResponsiveImage from "@/components/ResponsiveImage";
 import Link from "next/link";
+import ResponsiveImage from "@/components/ResponsiveImage";
 import { isLocale, type Locale } from "@/i18n/config";
 import { Button } from "@/components/ui/button";
 
-type PageParams = { lang: Locale };
+type PageProps = {
+  params: { lang: Locale };
+};
 
-// Maak deze route gewoon dynamic om gezeur met export paths te voorkomen
 export const dynamic = "force-dynamic";
 
 /* SEO */
-export function generateMetadata(
-  { params }: { params: PageParams }
-): Metadata {
-  const raw = params.lang;
+export async function generateMetadata(
+  { params }: PageProps
+): Promise<Metadata> {
+  const { lang: raw } = params;
   const lang = isLocale(raw) ? raw : "en";
 
   const title = "ABC Islands | Guide Me ABC";
@@ -31,23 +32,14 @@ export function generateMetadata(
   return {
     title,
     description,
-    alternates: {
-      canonical: `/${lang}/islands`,
-      languages,
-    },
-    openGraph: {
-      title,
-      description,
-      url: `/${lang}/islands`,
-    },
+    alternates: { languages },
+    openGraph: { title, description, url: `/${lang}/islands` },
   };
 }
 
 /* Page */
-export default function IslandsIndex(
-  { params }: { params: PageParams }
-) {
-  const raw = params.lang;
+export default function IslandsIndex({ params }: PageProps) {
+  const { lang: raw } = params;
   const lang = isLocale(raw) ? raw : "en";
 
   const islands = [
@@ -119,12 +111,8 @@ export default function IslandsIndex(
 
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-1">{i.name}</h2>
-              <p className="text-primary font-medium mb-3">
-                {i.tagline}
-              </p>
-              <p className="text-muted-foreground text-sm mb-4">
-                {i.desc}
-              </p>
+              <p className="text-primary font-medium mb-3">{i.tagline}</p>
+              <p className="text-muted-foreground text-sm mb-4">{i.desc}</p>
 
               <h3 className="text-sm font-semibold mb-2 text-foreground">
                 Highlights:

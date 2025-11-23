@@ -1,5 +1,6 @@
 // app/[lang]/page.tsx
 import type { Metadata } from "next";
+import type { Locale } from "@/i18n/config";
 
 import Hero from "@/components/home/Hero";
 import QuickFilters from "@/components/home/QuickFilters";
@@ -8,80 +9,43 @@ import ExploreIslands from "@/components/home/ExploreIslands";
 import LocalTips from "@/components/home/LocalTips";
 
 type PageProps = {
-  params: { lang: string };
+  params: { lang: Locale };
 };
 
 export const dynamic = "force-dynamic";
 
 export function generateMetadata({ params }: PageProps): Metadata {
+  const { lang } = params;
+
+  const title =
+    lang === "nl"
+      ? "Guide Me ABC – Ontdek Aruba, Bonaire & Curaçao"
+      : "Guide Me ABC – Discover the ABC Islands";
+
+  const description =
+    lang === "nl"
+      ? "Vind lokale bedrijven, activiteiten en hidden gems op Aruba, Bonaire en Curaçao. Voor toeristen én lokale ondernemers."
+      : "Find the best beaches, restaurants, tours and trusted local businesses on Aruba, Bonaire and Curaçao.";
+
   return {
-    title: "Guide Me ABC – Discover Aruba, Bonaire & Curaçao",
-    description:
-      "Your gateway to the ABC Islands. Explore beaches, food, tours, stays and trusted local businesses.",
+    title,
+    description,
   };
 }
 
-export default function LangHomePage({ params }: PageProps) {
+export default function HomePage({ params }: PageProps) {
   const { lang } = params;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-[#2d303b]">
-      {/* PREMIUM HERO */}
+    <main className="min-h-screen bg-slate-50 text-[#2d303b]">
+      {/* Hero met jouw gradient knoppen */}
       <Hero lang={lang} />
 
-      {/* CONTENT CONTAINER */}
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-10 space-y-16 pb-20">
-
-        {/* QUICK DISCOVERY FILTERS */}
+      <div className="px-4 sm:px-6 lg:px-10 max-w-6xl mx-auto pb-16 space-y-10">
         <QuickFilters lang={lang} />
-
-        {/* FEATURED EXPERIENCES */}
         <FeaturedExperiences lang={lang} />
-
-        {/* EXPLORE THE ISLANDS */}
         <ExploreIslands lang={lang} />
-
-        {/* LOCAL TIPS & GUIDES */}
         <LocalTips lang={lang} />
-
-        {/* CTA FOR BUSINESSES */}
-        <section className="rounded-3xl bg-gradient-to-r from-[#e0f8ff] via-[#dff9f6] to-[#ffeae2] px-6 py-10 border border-slate-200 shadow-sm">
-          <div className="grid gap-6 md:grid-cols-[1.5fr,1fr]">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#00bfd3]">
-                For Local Entrepreneurs
-              </p>
-              <h2 className="mt-2 text-2xl font-bold">
-                Laat toeristen jou vinden — niet andersom.
-              </h2>
-              <p className="mt-3 text-sm text-slate-700">
-                Bouw jouw bedrijfsprofiel, toon foto’s, voeg voorzieningen toe
-                en word zichtbaar voor duizenden toeristen op Aruba, Bonaire en
-                Curaçao.
-              </p>
-              <ul className="mt-3 text-sm text-slate-700 space-y-1">
-                <li>• Eerste 6 maanden gratis</li>
-                <li>• WhatsApp & website links</li>
-                <li>• Mini-website & reviews in Pro Plan</li>
-              </ul>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <a
-                href={`/${lang}/business/auth`}
-                className="inline-flex items-center justify-center rounded-full bg-[#00bfd3] px-5 py-3 text-sm font-semibold text-white shadow hover:opacity-90 transition"
-              >
-                Registreer je bedrijf
-              </a>
-              <a
-                href={`/${lang}/for-business`}
-                className="text-xs text-slate-600 hover:text-slate-800 text-center"
-              >
-                Meer info over pakketten →
-              </a>
-            </div>
-          </div>
-        </section>
       </div>
     </main>
   );
