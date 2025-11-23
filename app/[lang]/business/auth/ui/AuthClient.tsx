@@ -44,7 +44,7 @@ export default function AuthClient({ lang, t }: AuthClientProps) {
   const resolvedLang = (getLangFromPath(pathname) || lang) as Lang;
 
   const supabase = useMemo(() => supabaseBrowser(), []);
-  const redirectedFrom = (search.get("redirectedFrom") || "").trim();
+  const redirectedFrom = (search?.get("redirectedFrom") || "").trim();
 
   const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState<false | "signin" | "signup">(false);
