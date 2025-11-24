@@ -1,91 +1,99 @@
-// src/components/home/FeaturedExperiences.tsx
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 
-type Props = { lang: string };
+type Experience = {
+  id: string;
+  title: string;
+  island: string;
+  category: string;
+  price: string;
+  rating: number;
+  badge: string;
+  image: string;
+};
 
-const experiences = [
+const EXPERIENCES: Experience[] = [
   {
-    slug: "scuba-diving-bonaire",
-    title: "Scuba Diving – Bonaire",
-    island: "Bonaire",
-    image: "/images/scuba-diving-bonaire.jpg",
-    priceFrom: "$89",
-    rating: 4.9,
-  },
-  {
-    slug: "sunset-sailing-cruise",
-    title: "Sunset Sailing Cruise",
+    id: "sunset-catamaran",
+    title: "Sunset Beach Catamaran Tour",
     island: "Aruba",
-    image: "/images/sunset-sailing-cruise.jpg",
-    priceFrom: "$75",
-    rating: 4.8,
+    category: "Activity",
+    price: "€75",
+    rating: 4.9,
+    badge: "Popular",
+    image: "/images/sunset-beach-aruba.jpg",
   },
   {
-    slug: "curacao-street-food-tour",
-    title: "Street Food & Culture Tour",
-    island: "Curaçao",
-    image: "/images/curacao-punda.jpg",
-    priceFrom: "$65",
+    id: "seafood-grill",
+    title: "Palm Beach Seafood Grill",
+    island: "Aruba",
+    category: "Restaurant",
+    price: "€€€",
     rating: 4.7,
+    badge: "Featured",
+    image: "/images/ponton-curacao.jpg",
+  },
+  {
+    id: "bonaire-diving",
+    title: "Bonaire Diving Adventure",
+    island: "Bonaire",
+    category: "Activity",
+    price: "€95",
+    rating: 5.0,
+    badge: "Top Rated",
+    image: "/images/scuba-diving-bonaire.jpg",
+  },
+  {
+    id: "willemstad-walk",
+    title: "Willemstad Walking Tour",
+    island: "Curaçao",
+    category: "Activity",
+    price: "€35",
+    rating: 4.8,
+    badge: "New",
+    image: "/images/curacao-city.jpg",
   },
 ];
 
-export default function FeaturedExperiences({ lang }: Props) {
+export default function FeaturedHighlights() {
   return (
-    <section aria-labelledby="featured-experiences">
-      <div className="flex items-center justify-between mb-3">
-        <h2
-          id="featured-experiences"
-          className="text-lg sm:text-xl font-semibold text-[#2d303b]"
-        >
-          Uitgelichte Ervaringen
-        </h2>
-        <Link
-          href={`/${lang}/experiences`}
-          className="text-xs font-semibold text-[#00bfd3] hover:underline sm:text-sm"
-        >
-          Bekijk alle →
-        </Link>
-      </div>
+    <section className="py-12">
+      <h2 className="text-2xl font-bold text-foreground mb-6">
+        Featured Experiences
+      </h2>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {experiences.map((exp) => (
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {EXPERIENCES.map((item) => (
           <article
-            key={exp.slug}
-            className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-[2px] transition-all flex flex-col"
+            key={item.id}
+            className="rounded-xl bg-card border border-border shadow-sm transition hover:shadow-lg"
           >
-            <div className="relative h-40 w-full">
+            <div className="relative h-40 w-full rounded-t-xl overflow-hidden">
               <Image
-                src={exp.image}
-                alt={exp.title}
+                src={item.image}
+                alt={item.title}
                 fill
                 className="object-cover"
               />
             </div>
 
-            <div className="p-4 flex flex-col gap-2 flex-1">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>{exp.island}</span>
-                <span>⭐ {exp.rating}</span>
+            <div className="p-4 space-y-2">
+              <div className="text-xs uppercase font-medium text-primary">
+                {item.badge}
               </div>
 
-              <h3 className="font-semibold text-sm text-[#2d303b]">
-                {exp.title}
+              <h3 className="font-semibold text-foreground text-lg">
+                {item.title}
               </h3>
 
-              <p className="text-xs text-slate-500">Vanaf {exp.priceFrom}</p>
+              <p className="text-sm text-muted-foreground">
+                {item.island} • {item.category}
+              </p>
 
-              <div className="mt-auto pt-2">
-                <Link
-                  href={`/${lang}/experiences/${exp.slug}`}
-                  className="inline-flex text-xs font-semibold text-[#00bfd3] hover:underline"
-                >
-                  Bekijk details →
-                </Link>
-              </div>
+              <p className="text-sm font-medium">{item.price}</p>
+
+              <p className="text-sm text-yellow-500">⭐ {item.rating}</p>
             </div>
           </article>
         ))}
