@@ -1,20 +1,15 @@
 // app/[lang]/business/auth/page.tsx
+import { isLocale, type Locale } from "@/i18n/config";
 import AuthClient from "./ui/AuthClient";
-import { translations, type Language } from "@/i18n/translations";
-import { isLocale } from "@/i18n/config";
 
-type PageProps = {
-  params: { lang: string };
-};
-
-// Auth-pagina nooit cachen
 export const dynamic = "force-dynamic";
 
-export default function BusinessAuthPage({ params }: PageProps) {
-  const rawLang = params.lang;
-  const lang: Language = isLocale(rawLang) ? (rawLang as Language) : "en";
+type Params = { lang: string };
+type PageProps = { params: Promise<Params> };
 
-  const t = translations[lang];
+export default async function BusinessAuthPage({ params }: PageProps) {
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
 
-  return <AuthClient lang={lang} t={t} />;
+  return <AuthClient lang={lang} />;
 }

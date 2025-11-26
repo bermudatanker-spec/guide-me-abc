@@ -52,7 +52,7 @@ export default function Navigation({ lang }: NavigationProps) {
   return (
     <header className="fixed top-0 z-50 w-full border-b border-border bg-background/75 backdrop-blur">
       {/* iets hogere header + logo-wrapper zodat niets wordt afgesneden */}
-      <div className="container mx-auto flex h-12 items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto flex h-18 items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand / Logo */}
         <Link
           href={`/${activeLang}`}

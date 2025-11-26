@@ -3,11 +3,13 @@
 
 import type { ReactNode } from "react";
 import { LanguageProvider } from "@/hooks/useLanguage";
-import { AuthProvider } from "@/contexts/AuthContext"; // pad evt. aanpassen
-import Navigation from "@/components/Navigation"; // jouw header
-import Footer from "@/components/Footer"; // of "@/components/Footer"
+import { AuthProvider } from "@/contexts/AuthContext";
+import Navigation from "@/components/Navigation";
+import Footer from "@/components/Footer";
 import { ToastProvider, ToastViewport } from "@/components/ui/toast";
 import { Toaster } from "@/components/ui/toaster";
+import AuthCodeForwarder from "@/components/AuthCodeForwarder"; // 👈 hier!
+
 import type { Locale } from "@/i18n/config";
 
 type Props = {
@@ -20,13 +22,16 @@ export default function ClientRoot({ lang, children }: Props) {
     <LanguageProvider initialLang={lang}>
       <AuthProvider>
         <ToastProvider>
+          {/* 🔐 Supabase redirect handler (code/#hash -> /auth/callback) */}
+          <AuthCodeForwarder />
+
           {/* Header */}
           <Navigation />
 
-          {/* Page content – [lang]/layout.tsx geeft al pt-16 */}
+          {/* Page content – [lang]/layout.tsx zet al pt-16 / spacing */}
           {children}
 
-          {/* Footer altijd onderaan */}
+          {/* Footer */}
           <Footer />
 
           {/* Toasts */}
