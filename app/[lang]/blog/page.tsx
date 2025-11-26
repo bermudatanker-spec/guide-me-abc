@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import ResponsiveImage from "@/components/ResponsiveImage";
 import { isLocale, type Locale } from "@/i18n/config";
+import { formatDate } from "@/lib/formatDate";
 
 /* Demo content – later vervangen door CMS/Supabase data */
 const POSTS = [
@@ -121,7 +122,7 @@ export default function BlogIndex({ params }: PageProps) {
                   {p.excerpt}
                 </p>
                 <div className="mt-3 text-xs text-slate-400">
-                  {new Date(p.date).toLocaleDateString()}
+                  {formatDate(p.date)}
                 </div>
               </div>
             </Link>

@@ -1,11 +1,13 @@
 // src/components/home/ExploreIslands.tsx
 "use client";
 
+import Link from "next/link";
 import type { Island } from "@/components/IslandCard";
 import IslandCard from "@/components/IslandCard";
+import type { Locale } from "@/i18n/config";
 
 type Props = {
-  lang: string;
+  lang: Locale;
 };
 
 const islands: Island[] = [
@@ -53,18 +55,22 @@ const islands: Island[] = [
 ];
 
 export default function ExploreIslands({ lang }: Props) {
+  const title = lang === "nl" ? "Verken de eilanden" : "Explore the islands";
+  const cta =
+    lang === "nl" ? "Bekijk alle eilanden →" : "View all islands →";
+
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between mb-1">
+      <div className="mb-1 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-[#2d303b] sm:text-xl">
-          Verken de eilanden
+          {title}
         </h2>
-        <a
+        <Link
           href={`/${lang}/islands`}
-          className="text-xs sm:text-sm font-semibold text-[#00bfd3] hover:underline"
+          className="text-xs font-semibold text-[#00bfd3] hover:underline sm:text-sm"
         >
-          Bekijk alle eilanden →
-        </a>
+          {cta}
+        </Link>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

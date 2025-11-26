@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import ResponsiveImage from "@/components/ResponsiveImage";
+import { formatDate } from "@/lib/formatDate";
 
 type Props = {
   lang: string;
@@ -89,8 +90,8 @@ export default function LocalTips({ lang }: Props) {
                 {p.excerpt}
               </p>
               <span className="mt-1 text-xs text-slate-400">
-                {new Date(p.date).toLocaleDateString()}
-              </span>
+  {formatDate(p.date)}
+</span>
             </div>
           </Link>
         ))}

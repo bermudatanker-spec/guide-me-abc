@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import ResponsiveImage from "@/components/ResponsiveImage";
 import ShareBar from "./ShareBar";
 import { isLocale, type Locale } from "@/i18n/config";
+import { formatDate } from "@/lib/formatDate";
 
 /** Demo data */
 const blogPosts = {
@@ -119,7 +120,7 @@ export default function BlogPostPage({ params }: PageProps) {
 
           <div className="mt-6 flex flex-wrap gap-4 text-sm text-slate-500">
             <span>{post.author}</span>
-            <span>{new Date(post.date).toLocaleDateString()}</span>
+            <span className="mt-1 text-xs text-slate-400"> {formatDate(post.date)} </span>
             <span>{post.readTime}</span>
           </div>
 

@@ -3,35 +3,54 @@
 
 import { Umbrella, Utensils, Ship, BedDouble } from "lucide-react";
 import Link from "next/link";
+import type { Locale } from "@/i18n/config";
 
-type Props = { lang: string };
+type Props = { lang: Locale };
 
 const filters = [
   {
     icon: Umbrella,
-    label: "Beaches & Nature",
     slug: "beaches",
+    label: {
+      nl: "Stranden & natuur",
+      en: "Beaches & Nature",
+    },
   },
   {
     icon: Utensils,
-    label: "Food & Drinks",
     slug: "food-drinks",
+    label: {
+      nl: "Eten & drinken",
+      en: "Food & Drinks",
+    },
   },
   {
     icon: Ship,
-    label: "Tours & Activities",
     slug: "tours",
+    label: {
+      nl: "Tours & activiteiten",
+      en: "Tours & Activities",
+    },
   },
   {
     icon: BedDouble,
-    label: "Stays & Rentals",
     slug: "stays",
+    label: {
+      nl: "Verblijf & huur",
+      en: "Stays & Rentals",
+    },
   },
-];
+] as const;
 
 export default function QuickFilters({ lang }: Props) {
+  const pickLabel = (lbl: { nl: string; en: string }) =>
+    lang === "nl" ? lbl.nl : lbl.en;
+
   return (
-    <section aria-label="Quick filters for categories" className="mt-6">
+    <section
+      aria-label="Quick filters for categories"
+      className="mt-6"
+    >
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {filters.map((item) => {
           const Icon = item.icon;
@@ -49,7 +68,7 @@ export default function QuickFilters({ lang }: Props) {
                 <Icon className="h-6 w-6 text-[#00bfd3]" />
               </div>
               <span className="text-xs font-semibold text-center text-[#2d303b]">
-                {item.label}
+                {pickLabel(item.label)}
               </span>
             </Link>
           );

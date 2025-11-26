@@ -1,32 +1,39 @@
+// app/ClientRoot.tsx
 "use client";
 
 import type { ReactNode } from "react";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
-import { ToastProvider } from "@/components/ui/toast";
-import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/hooks/useLanguage";
+import { AuthProvider } from "@/contexts/AuthContext"; // pad evt. aanpassen
+import Navigation from "@/components/Navigation"; // jouw header
+import Footer from "@/components/Footer"; // of "@/components/Footer"
+import { ToastProvider, ToastViewport } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toaster";
 import type { Locale } from "@/i18n/config";
 
-//...
-
-type ClientRootProps = {
-  children: ReactNode;
-  lang: string;
+type Props = {
+  lang: Locale;
+  children: ReactNode;
 };
 
-export default function ClientRoot({ children, lang }: ClientRootProps) {
-  return (
-    <AuthProvider>
-      <LanguageProvider initialLang={lang as Locale}>
-        <ToastProvider>
-          <Navigation />
-          {children}
-          <Footer />
-          <Toaster />
-        </ToastProvider>
-      </LanguageProvider>
-    </AuthProvider>
-  );
+export default function ClientRoot({ lang, children }: Props) {
+  return (
+    <LanguageProvider initialLang={lang}>
+      <AuthProvider>
+        <ToastProvider>
+          {/* Header */}
+          <Navigation />
+
+          {/* Page content – [lang]/layout.tsx geeft al pt-16 */}
+          {children}
+
+          {/* Footer altijd onderaan */}
+          <Footer />
+
+          {/* Toasts */}
+          <ToastViewport />
+          <Toaster />
+        </ToastProvider>
+      </AuthProvider>
+    </LanguageProvider>
+  );
 }

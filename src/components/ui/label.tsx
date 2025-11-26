@@ -1,3 +1,4 @@
+// components/ui/label.tsx
 "use client";
 
 import * as React from "react";
@@ -7,9 +8,7 @@ export interface LabelProps
   extends React.LabelHTMLAttributes<HTMLLabelElement> {}
 
 /**
- * ✅ Label component — consistent met de rest van je UI
- * - Gebruikt Tailwind voor spacing, kleur en typografie
- * - Ondersteunt `required` state met een sterretje
+ * Simpele, typesafe Label component
  */
 const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
   ({ className, children, ...props }, ref) => {
@@ -23,9 +22,6 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
         {...props}
       >
         {children}
-        {props?.["aria-required"] && (
-          <span className="ml-1 text-red-500">*</span>
-        )}
       </label>
     );
   }

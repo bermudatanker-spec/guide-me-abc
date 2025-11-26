@@ -1,41 +1,22 @@
-// src/components/ui/ResponsiveImage.tsx
 "use client";
 
-import Image from "next/image";
-import type { ComponentProps } from "react";
+import Image, { type ImageProps } from "next/image";
 
-/**
- * ✅ ResponsiveImage
- * Veilige wrapper rond Next.js <Image /> die automatisch een `sizes` attribuut toevoegt
- * voor fill-images. Hiermee verdwijnen de “missing sizes” waarschuwingen.
- *
- * ➜ Gebruik deze component overal in plaats van <Image fill />.
- *    Bijvoorbeeld:
- *
- *    <ResponsiveImage src="/foto.jpg" alt="Strand" />
- *    <ResponsiveImage src={f.image} alt={f.title} className="rounded-xl" priority />
- *
- * Standaard instellingen:
- * - fill = true
- * - object-cover styling
- * - sizes = "(max-width:640px) 100vw, (max-width:1024px) 50vw, (max-width:1536px) 33vw, 25vw"
- */
-
-type NextImageProps = ComponentProps<typeof Image>;
-
-type Props = Omit<NextImageProps, "sizes" | "fill" | "className"> & {
-  sizes?: string;
+type Props = Omit<ImageProps, "fill" | "sizes"> & {
+  /** standaard: true */
   fill?: boolean;
+  /** standaard: responsive sizes */
+  sizes?: string;
+  /** extra classname */
   className?: string;
 };
 
 export default function ResponsiveImage({
+  fill = true,
   sizes,
   className,
-  fill = true,
   ...props
 }: Props) {
-  // ✅ Standaard responsive sizes
   const defaultSizes =
     sizes ??
     "(max-width:640px) 100vw, (max-width:1024px) 50vw, (max-width:1536px) 33vw, 25vw";

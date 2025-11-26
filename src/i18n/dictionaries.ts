@@ -1,6 +1,7 @@
+// src/i18n/dicts.ts
 import type { Locale } from "./config";
 
-type Dict = Record<string, string>;
+export type Dict = Record<string, string>;
 
 export const DICTS: Record<Locale, Dict> = {
   en: {
@@ -54,7 +55,8 @@ export const DICTS: Record<Locale, Dict> = {
 
     // Forgot / Reset password
     forgot_title: "Forgot password",
-    forgot_sub: "Enter your email. We'll send you a link to reset your password.",
+    forgot_sub:
+      "Enter your email. We'll send you a link to reset your password.",
     send_reset_link: "Send reset link",
     sent_check_email: "We sent you an email with further instructions.",
     reset_title: "Set new password",
@@ -287,6 +289,7 @@ export const DICTS: Record<Locale, Dict> = {
     save_pw: "Guardar contraseña",
     pw_too_short: "La contraseña debe tener al menos 8 caracteres.",
     pw_mismatch: "Las contraseñas no coinciden.",
+
     show_pw: "Mostrar contraseña",
     hide_pw: "Ocultar contraseña",
 
@@ -431,7 +434,7 @@ export const DICTS: Record<Locale, Dict> = {
     category: "Kategoria",
     selectCategory: "Skohe kategoria",
     description: "Deskripshon",
-    descriptionPlaceholder: "Kontá tiki tok tok tok tok tok", // feel free to tweak :)
+    descriptionPlaceholder: "Kontá tiki tok tok tok tok tok",
     address: "Adres",
     phone: "Telefòn",
     website: "Website",

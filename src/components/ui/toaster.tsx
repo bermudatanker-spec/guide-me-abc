@@ -1,3 +1,4 @@
+// components/ui/toaster.tsx
 "use client";
 
 import { useToast } from "@/hooks/use-toast";
@@ -6,25 +7,40 @@ import {
   ToastClose,
   ToastDescription,
   ToastTitle,
+  ToastViewport,
+  ToastProvider,
 } from "@/components/ui/toast";
 
 export function Toaster() {
-  const { toasts } = useToast();
+  const { toasts, dismiss } = useToast();
 
-  if (!toasts || toasts.length === 0) return null;
+  if (!toasts.length) return null;
 
   return (
-    <>
-      {toasts.map(({ id, title, description, action, variant }) => (
-        <Toast key={id} className={variant === "destructive" ? "destructive" : ""}>
+    <ToastProvider>
+      {toasts.map((t) => (
+        <Toast
+          key={t.id}
+          variant={t.variant ?? "default"} // ✅ fallback, TS blij
+          onOpenChange={(open) => {
+            // bij sluiten via swipe/timeout → item uit store halen
+            if (!open) dismiss(t.id);
+          }}
+        >
           <div className="grid gap-1">
-            {title && <ToastTitle>{title}</ToastTitle>}
-            {description && <ToastDescription>{description}</ToastDescription>}
+            {t.title && <ToastTitle>{t.title}</ToastTitle>}
+            {t.description && (
+              <ToastDescription>{t.description}</ToastDescription>
+            )}
           </div>
-          {action}
-          <ToastClose />
+
+          {t.action}
+
+          <ToastClose onClick={() => dismiss(t.id)} />
         </Toast>
       ))}
-    </>
+
+      <ToastViewport />
+    </ToastProvider>
   );
 }

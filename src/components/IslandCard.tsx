@@ -1,9 +1,9 @@
-// src/components/IslandCard.tsx
 "use client";
 
 import ResponsiveImage from "@/components/ResponsiveImage";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import type { Locale } from "@/i18n/config";
 
 export type Island = {
   id: "aruba" | "bonaire" | "curacao";
@@ -14,12 +14,12 @@ export type Island = {
   highlights: string[];
 };
 
-type IslandCardProps = Island & {
-  lang?: string; // optioneel - als je het niet meegeeft, valt hij terug op /islands/[id]
+type Props = Island & {
+  lang: Locale;
 };
 
-export default function IslandCard({ lang, ...props }: IslandCardProps) {
-  const href = lang ? `/${lang}/islands/${props.id}` : `/islands/${props.id}`;
+export default function IslandCard({ lang, ...props }: Props) {
+  const href = `/${lang}/islands/${props.id}`;
 
   return (
     <article className="group overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-md">
@@ -35,9 +35,7 @@ export default function IslandCard({ lang, ...props }: IslandCardProps) {
       <div className="p-5">
         <h3 className="text-lg font-semibold text-foreground">{props.name}</h3>
         <p className="text-sm text-muted-foreground">{props.tagline}</p>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {props.description}
-        </p>
+        <p className="mt-3 text-sm text-muted-foreground">{props.description}</p>
 
         <ul className="mt-4 space-y-1 list-disc pl-5 text-sm text-muted-foreground">
           {props.highlights.slice(0, 4).map((h, i) => (
@@ -49,10 +47,9 @@ export default function IslandCard({ lang, ...props }: IslandCardProps) {
           <Link
             href={href}
             className="inline-flex items-center gap-1 text-primary hover:underline"
-            aria-label={`Explore ${props.name}`}
           >
             Explore {props.name}
-            <ArrowRight className="h-4 w-4" aria-hidden />
+            <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </div>

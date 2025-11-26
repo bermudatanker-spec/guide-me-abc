@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { isLocale, type Locale } from "@/i18n/config";
 
 /**
  * Vangt Supabase auth-terugkeer op in zowel:
@@ -12,42 +13,52 @@ import { useRouter } from "next/navigation";
  */
 export default function AuthCodeForwarder() {
   const router = useRouter();
+  const pathname = usePathname() ?? "/";
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const { pathname, search, hash } = window.location;
+    // voorkom loop als we al op /auth/callback zitten
+    if (pathname.startsWith("/auth/callback")) return;
+
+    const { hash } = window.location;
 
     // 1) Huidige taal uit pad (eerste segment)
-    const langGuess = pathname.split("/").filter(Boolean)[0] || "en";
+    const segments = pathname.split("/").filter(Boolean);
+    const first = segments[0] ?? "en";
+    const langGuess: Locale = isLocale(first) ? first : "en";
 
     // 2) Pak zowel query als hash
-    const qs = new URLSearchParams(search);                // ?code=..., ?error=..., ?type=...
-    const hs = new URLSearchParams(hash.replace(/^#/, "")); // #access_token=..., #type=recovery, ...
+    const qs = new URLSearchParams(searchParams?.toString()); // ?code=..., ?error=..., ?type=...
+    const hs = new URLSearchParams(hash.replace(/^#/, ""));   // #access_token=..., #type=recovery, ...
 
-    // Indicatoren dat dit een Supabase-auth terugkeer is
     const hasAuthQuery =
-      qs.has("code") || qs.has("error") || qs.has("error_code") || qs.has("type");
+      qs.has("code") ||
+      qs.has("error") ||
+      qs.has("error_code") ||
+      qs.has("type");
+
     const hasAuthHash =
-      hs.has("access_token") || hs.has("refresh_token") || hs.has("type") || hs.has("error");
+      hs.has("access_token") ||
+      hs.has("refresh_token") ||
+      hs.has("type") ||
+      hs.has("error");
 
     if (!hasAuthQuery && !hasAuthHash) return;
 
     // 3) Combineer alles naar één querystring richting /auth/callback
     const out = new URLSearchParams();
 
-    // alles uit query behouden
     qs.forEach((v, k) => out.set(k, v));
-    // alles uit hash toevoegen (zonder te overschrijven wat er al staat)
     hs.forEach((v, k) => {
       if (!out.has(k)) out.set(k, v);
     });
 
-    // taal meesturen als die nog niet aanwezig is
     if (!out.has("lang")) out.set("lang", langGuess);
 
     router.replace(`/auth/callback?${out.toString()}`);
-  }, [router]);
+  }, [pathname, searchParams, router]);
 
   return null;
 }

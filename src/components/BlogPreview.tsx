@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, User } from "lucide-react";
 import { getLangFromPath } from "@/lib/locale-path";
+import { formatDate } from "@/lib/formatDate";
 
 export type BlogCard = {
   title: string;
@@ -134,10 +135,9 @@ export default function BlogPreview({
                         </span>
                       )}
                       {p.date && (
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {safeFormatDate(p.date)}
-                        </span>
+                        <span className="mt-1 text-xs text-slate-400">
+  {formatDate(p.date)}
+</span>
                       )}
                     </div>
                   )}
@@ -156,17 +156,4 @@ export default function BlogPreview({
       </div>
     </section>
   );
-}
-
-function safeFormatDate(iso?: string) {
-  try {
-    if (!iso) return "";
-    return new Date(iso).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  } catch {
-    return iso ?? "";
-  }
 }

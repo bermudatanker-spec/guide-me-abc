@@ -1,32 +1,20 @@
 // app/[lang]/business/auth/page.tsx
-
-// SERVER component – hier GEEN "use client"
 import AuthClient from "./ui/AuthClient";
 import { translations, type Language } from "@/i18n/translations";
 import { isLocale } from "@/i18n/config";
 
-// Optioneel: voorkom server-caching voor auth-pagina’s
+type PageProps = {
+  params: { lang: string };
+};
+
+// Auth-pagina nooit cachen
 export const dynamic = "force-dynamic";
 
-type Params = {
-  lang: string;
-};
+export default function BusinessAuthPage({ params }: PageProps) {
+  const rawLang = params.lang;
+  const lang: Language = isLocale(rawLang) ? (rawLang as Language) : "en";
 
-// In Next 15/16 is params een Promise, daarom zo getypt
-type PageProps = {
-  params: Promise<Params>;
-};
+  const t = translations[lang];
 
-export default async function BusinessAuthPage({ params }: PageProps) {
-  // ✅ params-Promise eerst uitpakken
-  const { lang: rawLang } = await params;
-
-  // Altijd een geldige taal afdwingen
-  const lang: Language = isLocale(rawLang) ? (rawLang as Language) : "en";
-
-  // Vertalingen voor deze taal
-  const t = translations[lang];
-
-  // Alles doorgeven aan je client-component
-  return <AuthClient lang={lang} t={t} />;
+  return <AuthClient lang={lang} t={t} />;
 }

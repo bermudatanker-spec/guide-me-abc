@@ -32,7 +32,7 @@ const EXPERIENCES: Experience[] = [
     price: "€€€",
     rating: 4.7,
     badge: "Featured",
-    image: "/images/ponton-curacao.jpg",
+    image: "/images/palmbeach-seafood-grill-aruba.jpg",
   },
   {
     id: "bonaire-diving",

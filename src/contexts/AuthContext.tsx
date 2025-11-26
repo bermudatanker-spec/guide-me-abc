@@ -10,47 +10,43 @@ import {
   type ReactNode,
 } from "react";
 
-// 👇 Dit is jouw wrapper rond supabase (client-side API)
 import { authService } from "@/lib/supabase/client";
-
-// 👇 Types rechtstreeks uit supabase-js v2
 import type {
   User,
   Session,
   AuthChangeEvent,
 } from "@supabase/supabase-js";
 
-/* ----------------------------------------------------
- * Type definitie van de context
- * -------------------------------------------------- */
 export interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
 
-  // Acties
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: unknown }>;
-  signIn: (email: string, password: string) => Promise<{ error: unknown }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string
+  ) => Promise<{ error: unknown }>;
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
-/* ----------------------------------------------------
- * Context + hook
- * -------------------------------------------------- */
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
+  if (!ctx) {
+    throw new Error("useAuth must be used within <AuthProvider>");
+  }
   return ctx;
 }
 
-/* ----------------------------------------------------
- * Provider
- * -------------------------------------------------- */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Zorg dat de service stabiel blijft (handig voor mocks/tests)
+  // stabiele service referentie (handig voor tests/mocks)
   const service = useMemo(() => authService, []);
 
   const [user, setUser] = useState<User | null>(null);
@@ -60,8 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true;
 
-    // 1) Live auth-state updates (login/logout/token-refresh)
-    const { data: { subscription } } = service.onAuthStateChange(
+    // 1) Live auth-state updates
+    const {
+      data: { subscription },
+    } = service.onAuthStateChange(
       (_event: AuthChangeEvent, newSession: Session | null) => {
         if (!alive) return;
         setSession(newSession);
@@ -86,16 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })();
 
-    // Correcte cleanup
     return () => {
       alive = false;
       subscription?.unsubscribe();
     };
   }, [service]);
 
-  /* ----------------------------------------------------
-   * Acties
-   * -------------------------------------------------- */
   const signUp = useCallback(
     async (email: string, password: string, fullName?: string) => {
       const { error } = await service.signUp(email, password, fullName);
@@ -113,17 +107,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    await authService.signOut();
-    // lokale state direct leegmaken (UI reageert meteen)
+    await service.signOut();
     setUser(null);
     setSession(null);
-  }, []);
+  }, [service]);
 
   const refresh = useCallback(async () => {
-    const { session } = await service.getSession();
-    setSession(session ?? null);
-    setUser(session?.user ?? null);
-  }, []);
+    const { session: current } = await service.getSession();
+    setSession(current ?? null);
+    setUser(current?.user ?? null);
+  }, [service]);
 
   const value: AuthContextType = {
     user,
@@ -135,5 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refresh,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 }

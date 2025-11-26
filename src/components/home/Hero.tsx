@@ -1,34 +1,27 @@
-// src/components/home/Hero.tsx
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-
 import ResponsiveImage from "@/components/ResponsiveImage";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
-import { getLangFromPath } from "@/lib/locale-path";
 
 type HeroProps = {
-  lang?: string; // kan via props of via URL
+  lang: string;
 };
 
 export default function Hero({ lang }: HeroProps) {
   const { t } = useLanguage();
-  const pathname = usePathname() ?? "/";
+  const activeLang = lang || "en";
 
-  const activeLang = lang ?? getLangFromPath(pathname);
-
-  const title =
-    (t as any)?.exploreIslands ?? "Discover the ABC Islands";
+  const title = (t as any)?.exploreIslands ?? "Discover the ABC Islands";
   const subtitle =
     (t as any)?.faqSubtitle ??
     "Find the best beaches, restaurants, tours and trusted local businesses.";
 
   const ctaExplore =
     (t as any)?.exploreIslandsCta ?? "Explore the Islands";
-  const ctaBusiness =
-    (t as any)?.forBusiness ?? "For Business";
+  const ctaBusiness = (t as any)?.forBusiness ?? "For Business";
+
 
   return (
     <section className="relative isolate w-full">
@@ -60,7 +53,7 @@ export default function Hero({ lang }: HeroProps) {
             </span>
 
             {/* Titel */}
-            <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight">
+            <h1 className="text-4xl md:text-6xl font-semibold leading-tight tracking-tight">
               {title}
             </h1>
 
