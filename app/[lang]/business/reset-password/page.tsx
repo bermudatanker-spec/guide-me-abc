@@ -1,7 +1,7 @@
 // app/[lang]/business/reset-password/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -18,13 +18,12 @@ const schema = z
   .object({
     password: z
       .string()
-      .min(8, "Wachtwoord moet minimaal 8 tekens zijn.")
-      .max(100),
+      .min(8, "Wachtwoord moet minimaal 8 tekens zijn."),
     confirm: z.string(),
   })
   .refine((data) => data.password === data.confirm, {
-    message: "Wachtwoorden komen niet overeen.",
     path: ["confirm"],
+    message: "Wachtwoorden komen niet overeen.",
   });
 
 export default function ResetPasswordPage() {
@@ -32,54 +31,32 @@ export default function ResetPasswordPage() {
   const pathname = usePathname() ?? "/";
   const { lang, t } = useLanguage();
   const { toast } = useToast();
-  const supabase = supabaseBrowser();
 
+  const supabase = supabaseBrowser();
   const effectiveLang = getLangFromPath(pathname) || lang;
 
-  const [checking, setChecking] = useState(true);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Check of de user is ingelogd (via magic link / recovery)
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      if (cancelled) return;
-
-      if (!data?.user) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description:
-            lang === "nl"
-              ? "Deze link is ongeldig of verlopen. Probeer opnieuw een reset-link aan te vragen."
-              : "This link is invalid or expired. Please request a new reset link.",
-        });
-        router.replace(`/${effectiveLang}/business/forgot-password`);
-        return;
-      }
-
-      setChecking(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, router, effectiveLang, toast, lang]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    let parsed;
+    let data: { password: string; confirm: string };
+
     try {
-      parsed = schema.parse({ password, confirm });
+      data = schema.parse({ password, confirm });
     } catch (err: any) {
-      const msg = err?.issues?.[0]?.message ?? "Validatiefout";
+      const issue = err?.issues?.[0];
+      const msg =
+        issue?.message ??
+        (lang === "nl"
+          ? "Controleer je wachtwoordvelden."
+          : "Please check your password fields.");
+
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t.error ?? (lang === "nl" ? "Fout" : "Error"),
         description: msg,
       });
       return;
@@ -87,14 +64,15 @@ export default function ResetPasswordPage() {
 
     try {
       setLoading(true);
+
       const { error } = await supabase.auth.updateUser({
-        password: parsed.password,
+        password: data.password,
       });
 
       if (error) {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t.error ?? (lang === "nl" ? "Fout" : "Error"),
           description: error.message,
         });
         return;
@@ -109,30 +87,25 @@ export default function ResetPasswordPage() {
         description:
           lang === "nl"
             ? "Je kunt nu inloggen met je nieuwe wachtwoord."
-            : "You can now log in with your new password.",
+            : "You can now sign in with your new password.",
       });
 
-      router.replace(`/${effectiveLang}/business/auth`);
+      setTimeout(() => {
+        router.replace(`/${effectiveLang}/business/auth`);
+      }, 1200);
     } finally {
       setLoading(false);
     }
   }
 
-  if (checking) {
-    return (
-      <main className="min-h-[60vh] flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          {lang === "nl"
-            ? "Bezig met controleren van je link…"
-            : "Checking your link…"}
-        </p>
-      </main>
-    );
-  }
-
   const title =
     t.reset_title ??
     (lang === "nl" ? "Nieuw wachtwoord instellen" : "Set new password");
+  const sub =
+    t.forgot_sub ??
+    (lang === "nl"
+      ? "Kies een nieuw wachtwoord voor je account."
+      : "Choose a new password for your account.");
 
   return (
     <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
@@ -141,17 +114,15 @@ export default function ResetPasswordPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {title}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {lang === "nl"
-              ? "Kies een sterk wachtwoord dat je nog niet eerder gebruikt hebt."
-              : "Choose a strong password you have not used before."}
-          </p>
+          <p className="text-sm text-muted-foreground">{sub}</p>
         </div>
 
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="text-base">
-              {lang === "nl" ? "Nieuw wachtwoord" : "New password"}
+              {lang === "nl"
+                ? "Stel je nieuwe wachtwoord in"
+                : "Set your new password"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -173,9 +144,7 @@ export default function ResetPasswordPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="confirm">
                   {t.confirm_pw ??
-                    (lang === "nl"
-                      ? "Bevestig wachtwoord"
-                      : "Confirm password")}
+                    (lang === "nl" ? "Bevestig wachtwoord" : "Confirm password")}
                 </Label>
                 <Input
                   id="confirm"
@@ -195,6 +164,19 @@ export default function ResetPasswordPage() {
                 {t.save_pw ??
                   (lang === "nl" ? "Wachtwoord opslaan" : "Save password")}
               </Button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(`/${effectiveLang}/business/auth`)
+                }
+                className="mt-2 w-full text-xs text-muted-foreground hover:text-primary"
+              >
+                {t.backToDashboard ??
+                  (lang === "nl"
+                    ? "Terug naar inloggen"
+                    : "Back to login")}
+              </button>
             </form>
           </CardContent>
         </Card>

@@ -1,15 +1,25 @@
 // app/[lang]/business/dashboard/page.tsx
+
+import type { Locale } from "@/i18n/config";
+import { isLocale } from "@/i18n/config";
+import { DICTS } from "@/i18n/dictionaries"; // ⬅️ dit is die met dashboardTitle, etc.
 import DashboardClient from "./ui/DashboardClient";
 
-export default function DashboardPage({
-  params,
-}: {
-  params: { lang: string };
-}) {
-  const { lang } = params;
+export const dynamic = "force-dynamic";
 
-  // zolang we nog geen echte vertalingen hebben:
-  const t = {};
+type Params = { lang: string };
 
-  return <DashboardClient lang={lang} t={t} />;
+// In Next 15/16 is params een Promise
+type PageProps = {
+  params: Promise<Params>;
+};
+
+export default async function DashboardPage({ params }: PageProps) {
+  const { lang: rawLang } = await params;
+
+  const safeLang: Locale = isLocale(rawLang) ? (rawLang as Locale) : "en";
+
+  const t = DICTS[safeLang];
+
+  return <DashboardClient lang={safeLang} t={t} />;
 }

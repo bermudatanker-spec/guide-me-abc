@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { Locale } from "@/i18n/config";
 
 /** Type moet aansluiten op je Supabase `categories` tabel */
 type CategoryRow = {
@@ -31,18 +32,25 @@ type CategoryRow = {
 };
 
 type CreateClientProps = {
-  lang: string;
-  categories: CategoryRow[];
+  lang: Locale;
   t: Record<string, string>;
+  categories?: CategoryRow[]; // ✅ optioneel gemaakt
 };
 
-export default function CreateClient({ lang, categories, t }: CreateClientProps) {
+export default function CreateClient({
+  lang,
+  t,
+  categories = [],
+}: CreateClientProps) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
-  const resolvedLang = getLangFromPath(pathname) || (lang as string);
+  const resolvedLang = (getLangFromPath(pathname) || lang) as Locale;
 
   const supabase = useMemo(() => supabaseBrowser(), []);
   const { toast } = useToast();
+
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
 
@@ -60,24 +68,52 @@ export default function CreateClient({ lang, categories, t }: CreateClientProps)
 
   /** ------------------ Auth check (mag alleen ingelogd) ------------------ */
   useEffect(() => {
+    let alive = true;
+
     (async () => {
-      const { data } = await supabase.auth.getUser();
+      const { data, error } = await supabase.auth.getUser();
+      console.log("[business/create] getUser:", { user: data?.user, error });
+
+      if (!alive) return;
+
       if (!data?.user) {
         router.replace(langHref(resolvedLang, "/business/auth"));
+      } else {
+        setUserId(data.user.id);
+        setAuthLoading(false);
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [resolvedLang, router, supabase]);
 
   /** ------------------------- Submit handler ------------------------- */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (!userId) {
+      toast({
+        title: t.error ?? "Fout",
+        description:
+          t.fillRequired ??
+          (lang === "nl"
+            ? "Je moet ingelogd zijn om een bedrijf aan te maken."
+            : "You must be logged in to create a business."),
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!form.business_name || !form.island) {
       toast({
         title: t.missingRequired ?? "Verplichte velden ontbreken",
         description:
           t.fillRequired ??
-          "Vul minimaal een bedrijfsnaam en het eiland in.",
+          (lang === "nl"
+            ? "Vul minimaal een bedrijfsnaam en het eiland in."
+            : "Please provide at least a business name and island."),
         variant: "destructive",
       });
       return;
@@ -87,6 +123,7 @@ export default function CreateClient({ lang, categories, t }: CreateClientProps)
       setSaving(true);
 
       const { error } = await supabase.from("business_listings").insert({
+        owner_id: userId,                     // ✅ KOPPELING MET USER
         business_name: form.business_name,
         island: form.island,
         category_id: form.category_id || null,
@@ -96,13 +133,19 @@ export default function CreateClient({ lang, categories, t }: CreateClientProps)
         email: form.email || null,
         website: form.website || null,
         whatsapp: form.whatsapp || null,
-        // status & subscription_plan kun je hier later ook zetten
+        status: "pending",                    // ✅ zodat dashboard iets heeft
+        subscription_plan: "starter",         // ✅ default plan
       });
 
       if (error) throw new Error(error.message);
 
       toast({
         title: t.created ?? "Bedrijf aangemaakt",
+        description:
+          t.addFirstBusiness ??
+          (lang === "nl"
+            ? "Je bedrijf is aangemaakt en wordt gecontroleerd."
+            : "Your business was created and will be reviewed."),
       });
 
       router.replace(langHref(resolvedLang, "/business/dashboard"));
@@ -112,7 +155,9 @@ export default function CreateClient({ lang, categories, t }: CreateClientProps)
         description:
           err?.message ??
           t.saveError ??
-          "Er ging iets mis bij het opslaan van je bedrijf.",
+          (lang === "nl"
+            ? "Er ging iets mis bij het opslaan van je bedrijf."
+            : "Something went wrong while saving your business."),
         variant: "destructive",
       });
     } finally {
@@ -121,6 +166,15 @@ export default function CreateClient({ lang, categories, t }: CreateClientProps)
   }
 
   /** ------------------------------ UI ------------------------------ */
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <Button
@@ -130,7 +184,6 @@ export default function CreateClient({ lang, categories, t }: CreateClientProps)
           router.push(langHref(resolvedLang, "/business/dashboard"))
         }
       >
-        {/* eventueel ArrowLeft icoon gebruiken */}
         {t.backToDashboard ?? "Terug naar dashboard"}
       </Button>
 
@@ -218,8 +271,7 @@ export default function CreateClient({ lang, categories, t }: CreateClientProps)
                   setForm((s) => ({ ...s, description: e.target.value }))
                 }
                 placeholder={
-                  t.descriptionPlaceholder ??
-                  "Vertel iets over je bedrijf…"
+                  t.descriptionPlaceholder ?? "Vertel iets over je bedrijf…"
                 }
               />
             </div>
@@ -295,9 +347,7 @@ export default function CreateClient({ lang, categories, t }: CreateClientProps)
               variant="primaryGrad"
               disabled={saving}
             >
-              {saving && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t.createBusinessCta ?? "Bedrijf aanmaken"}
             </Button>
           </form>
