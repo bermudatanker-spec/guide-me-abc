@@ -7,8 +7,6 @@ import {
   ToastClose,
   ToastDescription,
   ToastTitle,
-  ToastViewport,
-  ToastProvider,
 } from "@/components/ui/toast";
 
 export function Toaster() {
@@ -17,13 +15,15 @@ export function Toaster() {
   if (!toasts.length) return null;
 
   return (
-    <ToastProvider>
+    <>
       {toasts.map((t) => (
         <Toast
           key={t.id}
-          variant={t.variant ?? "default"} // ✅ fallback, TS blij
+          // ✅ variant uit jouw ToastOptions ("default" | "success" | "destructive")
+          //    fallback naar "default" voor de zekerheid
+          variant={t.variant ?? "default"}
           onOpenChange={(open) => {
-            // bij sluiten via swipe/timeout → item uit store halen
+            // Als de toast sluit (via swipe, timeout, ESC, etc.) → uit store halen
             if (!open) dismiss(t.id);
           }}
         >
@@ -34,13 +34,13 @@ export function Toaster() {
             )}
           </div>
 
+          {/* Optionele action (bijv. knop) */}
           {t.action}
 
+          {/* Handmatig sluiten via X-knop */}
           <ToastClose onClick={() => dismiss(t.id)} />
         </Toast>
       ))}
-
-      <ToastViewport />
-    </ToastProvider>
+    </>
   );
 }

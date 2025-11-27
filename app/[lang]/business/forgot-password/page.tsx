@@ -1,165 +1,175 @@
+// app/[lang]/business/forgot-password/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { z } from "zod";
+import { useRouter } from "next/navigation";
+
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useToast } from "@/hooks/use-toast";
 import { getLangFromPath } from "@/lib/locale-path";
-import { DICTS } from "@/i18n/dictionaries";
-import { isLocale, type Locale } from "@/i18n/config";
+import { usePathname } from "next/navigation";
 
-/** Bepaalt een veilige base URL voor redirectTo */
-function getBaseUrl() {
-  const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (envUrl) return envUrl.replace(/\/$/, "");
-  if (typeof window !== "undefined") return window.location.origin;
-  return "http://localhost:3000";
-}
-
-/** Simpele e-mailvalidatie */
-function isValidEmailAddress(v: string) {
-  return /^\S+@\S+\.\S+$/.test(v);
-}
+const schema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email("Ongeldig e-mailadres")
+    .max(255, "E-mailadres is te lang"),
+});
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const pathname = usePathname() ?? "/";
-  const search = useSearchParams();
-
-  // taal bepalen
-  const rawLang = getLangFromPath(pathname) || "en";
-  const lang: Locale = isLocale(rawLang) ? rawLang : "en";
-  const dict = DICTS[lang];
-
-  // veilige helper (search kan theoretisch null zijn)
-  const getParam = (key: string) => search?.get(key) ?? "";
-
-  const redirectedFrom = getParam("redirectedFrom");
-
-  const supabase = useMemo(() => supabaseBrowser(), []);
-  const baseUrl = getBaseUrl();
+  const { lang, t } = useLanguage();
+  const { toast } = useToast();
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
 
-  const normalizedEmail = email.trim().toLowerCase();
-  const emailLooksOk = isValidEmailAddress(normalizedEmail);
+  const effectiveLang = getLangFromPath(pathname) || lang;
+  const supabase = supabaseBrowser();
 
-  async function onSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (loading || submitted) return;
 
-    setMsg(null);
-
-    if (!emailLooksOk) {
-      const invalid =
-        lang === "nl"
-          ? "Voer een geldig e-mailadres in."
-          : lang === "pap"
-          ? "Yena un email válido."
-          : lang === "es"
-          ? "Introduce un correo válido."
-          : "Enter a valid email.";
-      setMsg(invalid);
+    let parsed;
+    try {
+      parsed = schema.parse({ email });
+    } catch (err: any) {
+      const msg =
+        err?.issues?.[0]?.message ??
+        (lang === "nl"
+          ? "Controleer je e-mailadres."
+          : "Please check your email address.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: msg,
+      });
       return;
     }
 
     try {
       setLoading(true);
 
-      const redirectTo =
-        `${baseUrl}/auth/callback?` +
-        new URLSearchParams({
-          type: "recovery",
-          lang,
-          ...(redirectedFrom ? { redirectedFrom } : {}),
-        }).toString();
+      // Waar de magic link naartoe moet gaan
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+
+      const redirectTo = `${origin}/auth/callback?lang=${effectiveLang}&redirectedFrom=/${effectiveLang}/business/reset-password`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(
-        normalizedEmail,
-        { redirectTo }
+        parsed.email,
+        {
+          redirectTo,
+        }
       );
 
       if (error) {
-        const base =
-          lang === "nl"
-            ? "Kon reset-mail niet versturen: "
-            : lang === "pap"
-            ? "No por a manda email pa reset: "
-            : lang === "es"
-            ? "No se pudo enviar el correo de restablecimiento: "
-            : "Failed to send reset email: ";
-        setMsg(base + error.message);
-      } else {
-        setSubmitted(true);
-        setMsg(dict.sent_check_email);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message,
+        });
+        return;
       }
-    } catch (err: any) {
-      const generic =
-        lang === "nl"
-          ? "Er ging iets mis."
-          : lang === "pap"
-          ? "Algu a bai robes."
-          : lang === "es"
-          ? "Algo salió mal."
-          : "Something went wrong.";
-      setMsg(err?.message ?? generic);
+
+      toast({
+        variant: "success",
+        title:
+          lang === "nl"
+            ? "E-mail verzonden"
+            : "Email sent",
+        description:
+          lang === "nl"
+            ? "Check je inbox voor de link om je wachtwoord te resetten."
+            : "Check your inbox for the link to reset your password.",
+      });
+
+      // optioneel: terug naar login
+      setTimeout(() => {
+        router.push(`/${effectiveLang}/business/auth`);
+      }, 1200);
     } finally {
       setLoading(false);
     }
   }
 
+  const title =
+    t.forgot_title ??
+    (lang === "nl" ? "Wachtwoord vergeten" : "Forgot password");
+  const subtitle =
+    t.forgot_sub ??
+    (lang === "nl"
+      ? "Vul je e-mailadres in. We sturen je een link om je wachtwoord te resetten."
+      : "Enter your email. We'll send you a link to reset your password.");
+
   return (
-    <main className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl border shadow-sm p-6 space-y-4">
-        <h1 className="text-xl font-semibold text-center">
-          {dict.forgot_title}
-        </h1>
-        <p className="text-sm text-muted-foreground text-center">
-          {dict.forgot_sub}
-        </p>
+    <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+      <div className="mx-auto max-w-md space-y-6">
+        <div className="space-y-2 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            {title}
+          </h1>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
+        </div>
 
-        <form onSubmit={onSubmit} className="space-y-3">
-          <label className="text-sm" htmlFor="email">
-            {dict.email}
-          </label>
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="text-base">
+              {lang === "nl"
+                ? "Reset je wachtwoord"
+                : "Reset your password"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-1.5">
+                <Label htmlFor="email">
+                  {t.email ?? (lang === "nl" ? "E-mailadres" : "Email")}
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={
+                    lang === "nl" ? "jij@example.com" : "you@example.com"
+                  }
+                  required
+                />
+              </div>
 
-          <input
-            id="email"
-            type="email"
-            className={`w-full rounded-md border px-3 py-2 text-sm ${
-              normalizedEmail && !emailLooksOk
-                ? "border-red-400"
-                : "border-gray-300"
-            }`}
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-            disabled={submitted}
-          />
+              <Button
+                type="submit"
+                className="w-full"
+                isLoading={loading}
+              >
+                {t.send_reset_link ??
+                  (lang === "nl"
+                    ? "Verstuur reset-link"
+                    : "Send reset link")}
+              </Button>
 
-          <button
-            type="submit"
-            disabled={loading || !emailLooksOk || submitted}
-            className="w-full rounded-md bg-blue-600 text-white py-2 text-sm hover:bg-blue-700 disabled:opacity-60"
-          >
-            {loading ? dict.sending || "Sending…" : dict.send_reset_link}
-          </button>
-        </form>
-
-        {msg && (
-          <p
-            className={`text-center text-sm ${
-              /kon|failed|no se pudo|no por|error/i.test(msg)
-                ? "text-red-600"
-                : "text-muted-foreground"
-            }`}
-          >
-            {msg}
-          </p>
-        )}
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(`/${effectiveLang}/business/auth`)
+                }
+                className="mt-2 w-full text-xs text-muted-foreground hover:text-primary"
+              >
+                {t.back ?? (lang === "nl" ? "Terug naar login" : "Back to login")}
+              </button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );
