@@ -6,13 +6,11 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { isLocale, type Locale } from "@/i18n/config";
 
 /**
- * Vangt Supabase auth-terugkeer op in zowel:
- * - hash (#access_token, #type=recovery, ...)
- * - query (?code=..., ?error=..., ?type=recovery)
+ * Vangt Supabase auth callbacks op voor:
+ * - magic links / OAuth / PKCE (?code=..., etc.)
  *
- * ⚠️ Uitzondering:
- * - type=recovery (reset wachtwoord) → NIET doorsturen,
- *   die moet direct naar /[lang]/business/reset-password gaan.
+ * ❌ NIET voor password recovery (type=recovery → /[lang]/business/reset-password)
+ *    Die flow handelen we direct af op de reset-password pagina.
  */
 export default function AuthCodeForwarder() {
   const router = useRouter();
@@ -22,8 +20,11 @@ export default function AuthCodeForwarder() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // voorkom loop als we al op /auth/callback zitten
+    // 1) Nooit op /auth/callback zelf ingrijpen (anders loop)
     if (pathname.startsWith("/auth/callback")) return;
+
+    // 2) Nooit ingrijpen op de reset-password pagina
+    if (pathname.includes("/business/reset-password")) return;
 
     const { hash } = window.location;
 
@@ -34,10 +35,11 @@ export default function AuthCodeForwarder() {
     const qs = new URLSearchParams(searchParams?.toString());
     const hs = new URLSearchParams(hash.replace(/^#/, ""));
 
-    // 👇 NEW: als dit een password-recovery flow is → met rust laten
-    const typeParam = qs.get("type") || hs.get("type");
-    if (typeParam === "recovery") {
-      // reset-password pagina handelt dit verder af
+    const typeInQuery = qs.get("type");
+    const typeInHash = hs.get("type");
+
+    // 3) Password recovery links (type=recovery) met rust laten
+    if (typeInQuery === "recovery" || typeInHash === "recovery") {
       return;
     }
 
