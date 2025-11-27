@@ -1,9 +1,8 @@
-// app/[lang]/business/forgot-password/page.tsx
 "use client";
 
 import { useState } from "react";
 import { z } from "zod";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useToast } from "@/hooks/use-toast";
 import { getLangFromPath } from "@/lib/locale-path";
-import { usePathname } from "next/navigation";
 
 const schema = z.object({
   email: z
@@ -58,17 +56,15 @@ export default function ForgotPasswordPage() {
     try {
       setLoading(true);
 
-      // Waar de magic link naartoe moet gaan
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
 
-      const redirectTo = `${origin}/auth/callback?lang=${effectiveLang}&redirectedFrom=/${effectiveLang}/business/reset-password`;
+      // ⬇️ BELANGRIJK: direct naar reset-password
+      const redirectTo = `${origin}/${effectiveLang}/business/reset-password`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(
         parsed.email,
-        {
-          redirectTo,
-        }
+        { redirectTo }
       );
 
       if (error) {
@@ -82,10 +78,7 @@ export default function ForgotPasswordPage() {
 
       toast({
         variant: "success",
-        title:
-          lang === "nl"
-            ? "E-mail verzonden"
-            : "Email sent",
+        title: lang === "nl" ? "E-mail verzonden" : "Email sent",
         description:
           lang === "nl"
             ? "Check je inbox voor de link om je wachtwoord te resetten."
@@ -123,9 +116,7 @@ export default function ForgotPasswordPage() {
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="text-base">
-              {lang === "nl"
-                ? "Reset je wachtwoord"
-                : "Reset your password"}
+              {lang === "nl" ? "Reset je wachtwoord" : "Reset your password"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -147,26 +138,12 @@ export default function ForgotPasswordPage() {
                 />
               </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                isLoading={loading}
-              >
+              <Button type="submit" className="w-full" isLoading={loading}>
                 {t.send_reset_link ??
                   (lang === "nl"
                     ? "Verstuur reset-link"
                     : "Send reset link")}
               </Button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(`/${effectiveLang}/business/auth`)
-                }
-                className="mt-2 w-full text-xs text-muted-foreground hover:text-primary"
-              >
-                {t.back ?? (lang === "nl" ? "Terug naar login" : "Back to login")}
-              </button>
             </form>
           </CardContent>
         </Card>
