@@ -1,8 +1,8 @@
-// app/[lang]/business/edit/[id]/page.tsx
+// app/[lang]/business/edit/[id]/ui/EditBusinessClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { z } from "zod";
 import { Loader2, ArrowLeft } from "lucide-react";
 
@@ -10,7 +10,6 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 import { langHref } from "@/lib/lang-href";
-import { getLangFromPath } from "@/lib/locale-path";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +22,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { Locale } from "@/i18n/config";
+import OpeningHoursField from "@/components/business/OpeningHoursField";
 
+/* ----------------------------------------------------------------
+   Types — sluiten aan op je DB schema
+----------------------------------------------------------------- */
 type CategoryRow = {
   id: string;
   name: string;
@@ -42,12 +46,15 @@ type ListingRow = {
   email: string | null;
   website: string | null;
   whatsapp: string | null;
-  opening_hours: string | null;
-  temporarily_closed: boolean | null;
   status: "pending" | "active" | "inactive";
   subscription_plan: "starter" | "growth" | "pro";
+  opening_hours: string | null;        // ✅
+  temporarily_closed: boolean | null;  // ✅
 };
 
+/* ----------------------------------------------------------------
+   Zod schema voor validatie
+----------------------------------------------------------------- */
 const FormSchema = z.object({
   business_name: z.string().trim().min(2, "Bedrijfsnaam is verplicht"),
   island: z.enum(["aruba", "bonaire", "curacao"], {
@@ -100,17 +107,20 @@ const FormSchema = z.object({
   opening_hours: z
     .string()
     .trim()
-    .max(1200, "Maximaal 1200 tekens")
+    .max(1000, "Maximaal 1000 tekens")
     .optional()
     .or(z.literal("")),
-  temporarily_closed: z.boolean(),
+  temporarily_closed: z.boolean().optional(),
 });
 
-export default function EditBusinessPage() {
-  const router = useRouter();
-  const pathname = usePathname() ?? "/";
-  const lang = (getLangFromPath(pathname) || "en") as "nl" | "en" | "pap" | "es";
+type EditBusinessClientProps = {
+  lang: Locale;
+};
 
+export default function EditBusinessClient(props:
+  EditBusinessClientProps){
+    const { lang } = props;
+  const router = useRouter();
   const params = useParams() as { id: string };
   const id = params.id;
 
@@ -148,22 +158,22 @@ export default function EditBusinessPage() {
 
   const [categories, setCategories] = useState<CategoryRow[]>([]);
 
-  const isNl = lang === "nl";
-
-  // -------------------- Load categories + listing -------------------- //
+  /* ----------------------------------------------------------------
+     Ophalen categorieën + bestaande listing
+  ----------------------------------------------------------------- */
   useEffect(() => {
     let alive = true;
 
     (async () => {
       try {
-        // Auth check
+        // 1) Auth check
         const { data: userResult } = await supabase.auth.getUser();
         if (!userResult?.user) {
           router.replace(langHref(lang, "/business/auth"));
           return;
         }
 
-        // Categories
+        // 2) Categorieën
         const { data: cats, error: catError } = await supabase
           .from("categories")
           .select("id, name, slug")
@@ -173,11 +183,11 @@ export default function EditBusinessPage() {
         if (!alive) return;
         setCategories(cats ?? []);
 
-        // Listing
+        // 3) Bestaande listing
         const { data: row, error: rowError } = await supabase
           .from("business_listings")
           .select(
-            "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, opening_hours, temporarily_closed, status, subscription_plan"
+            "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, status, subscription_plan, opening_hours, temporarily_closed"
           )
           .eq("id", id)
           .single<ListingRow>();
@@ -206,7 +216,7 @@ export default function EditBusinessPage() {
           website: row.website ?? "",
           whatsapp: row.whatsapp ?? "",
           opening_hours: row.opening_hours ?? "",
-          temporarily_closed: row.temporarily_closed ?? false,
+          temporarily_closed: !!row.temporarily_closed,
         });
       } catch (e: any) {
         toast({
@@ -225,7 +235,9 @@ export default function EditBusinessPage() {
     };
   }, [id, lang, router, supabase, toast]);
 
-  // ----------------------------- Submit ----------------------------- //
+  /* ----------------------------------------------------------------
+     Submit
+  ----------------------------------------------------------------- */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -266,21 +278,17 @@ export default function EditBusinessPage() {
       if (error) throw new Error(error.message);
 
       toast({
-        title: isNl ? "Opgeslagen" : "Saved",
-        description: isNl
-          ? "Je wijzigingen zijn succesvol opgeslagen."
-          : "Your changes have been saved.",
+        title: "Opgeslagen",
+        description: "Je wijzigingen zijn succesvol opgeslagen.",
       });
 
       router.replace(langHref(lang, "/business/dashboard"));
     } catch (err: any) {
       toast({
-        title: isNl ? "Fout" : "Error",
+        title: "Fout",
         description:
           err?.message ??
-          (isNl
-            ? "Er ging iets mis bij het opslaan van je wijzigingen."
-            : "Something went wrong while saving your changes."),
+          "Er ging iets mis bij het opslaan van je wijzigingen.",
         variant: "destructive",
       });
     } finally {
@@ -288,7 +296,9 @@ export default function EditBusinessPage() {
     }
   }
 
-  // ---------------------------- Loading ---------------------------- //
+  /* ----------------------------------------------------------------
+     Loading state
+  ----------------------------------------------------------------- */
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -297,7 +307,9 @@ export default function EditBusinessPage() {
     );
   }
 
-  // ------------------------------ UI ------------------------------ //
+  /* ----------------------------------------------------------------
+     UI
+  ----------------------------------------------------------------- */
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <Button
@@ -306,27 +318,21 @@ export default function EditBusinessPage() {
         onClick={() => router.push(langHref(lang, "/business/dashboard"))}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
-        {isNl ? "Terug naar Dashboard" : "Back to dashboard"}
+        Terug naar Dashboard
       </Button>
 
-      <Card className="max-w-2xl mx-auto shadow-card">
+      <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>
-            {isNl ? "Bedrijf bewerken" : "Edit business"}
-          </CardTitle>
+          <CardTitle>Bedrijf bewerken</CardTitle>
           <CardDescription>
-            {isNl
-              ? "Pas hier de gegevens van je bedrijf aan."
-              : "Update your business details here."}
+            Pas hier de gegevens van je bedrijf aan.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Bedrijfsnaam */}
             <div className="space-y-2">
-              <Label htmlFor="business_name">
-                {isNl ? "Bedrijfsnaam" : "Business name"} *
-              </Label>
+              <Label htmlFor="business_name">Bedrijfsnaam *</Label>
               <Input
                 id="business_name"
                 value={form.business_name}
@@ -340,9 +346,7 @@ export default function EditBusinessPage() {
             {/* Eiland + Categorie */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="island">
-                  {isNl ? "Eiland" : "Island"} *
-                </Label>
+                <Label htmlFor="island">Eiland *</Label>
                 <select
                   id="island"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -360,7 +364,7 @@ export default function EditBusinessPage() {
                   required
                 >
                   <option value="" disabled>
-                    {isNl ? "Kies een eiland" : "Choose an island"}
+                    Kies een eiland
                   </option>
                   <option value="aruba">Aruba</option>
                   <option value="bonaire">Bonaire</option>
@@ -369,9 +373,7 @@ export default function EditBusinessPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category_id">
-                  {isNl ? "Categorie" : "Category"}
-                </Label>
+                <Label htmlFor="category_id">Categorie</Label>
                 <select
                   id="category_id"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -383,9 +385,7 @@ export default function EditBusinessPage() {
                     }))
                   }
                 >
-                  <option value="">
-                    {isNl ? "— Geen —" : "— None —"}
-                  </option>
+                  <option value="">— Geen —</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -397,9 +397,7 @@ export default function EditBusinessPage() {
 
             {/* Beschrijving */}
             <div className="space-y-2">
-              <Label htmlFor="description">
-                {isNl ? "Beschrijving" : "Description"}
-              </Label>
+              <Label htmlFor="description">Beschrijving</Label>
               <Textarea
                 id="description"
                 rows={4}
@@ -407,19 +405,13 @@ export default function EditBusinessPage() {
                 onChange={(e) =>
                   setForm((s) => ({ ...s, description: e.target.value }))
                 }
-                placeholder={
-                  isNl
-                    ? "Vertel iets over je bedrijf..."
-                    : "Tell something about your business..."
-                }
+                placeholder="Vertel iets over je bedrijf..."
               />
             </div>
 
             {/* Adres */}
             <div className="space-y-2">
-              <Label htmlFor="address">
-                {isNl ? "Adres" : "Address"}
-              </Label>
+              <Label htmlFor="address">Adres</Label>
               <Input
                 id="address"
                 value={form.address}
@@ -432,9 +424,7 @@ export default function EditBusinessPage() {
             {/* Telefoon & WhatsApp */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">
-                  {isNl ? "Telefoon" : "Phone"}
-                </Label>
+                <Label htmlFor="phone">Telefoon</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -445,9 +435,7 @@ export default function EditBusinessPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="whatsapp">
-                  {isNl ? "WhatsApp (alleen cijfers)" : "WhatsApp (digits only)"}
-                </Label>
+                <Label htmlFor="whatsapp">WhatsApp (alleen cijfers)</Label>
                 <Input
                   id="whatsapp"
                   inputMode="numeric"
@@ -462,9 +450,7 @@ export default function EditBusinessPage() {
             {/* E-mail & Website */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="email">
-                  {isNl ? "E-mailadres" : "Email"}
-                </Label>
+                <Label htmlFor="email">E-mailadres</Label>
                 <Input
                   id="email"
                   type="email"
@@ -475,9 +461,7 @@ export default function EditBusinessPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="website">
-                  {isNl ? "Website (https://…)" : "Website (https://…)"}
-                </Label>
+                <Label htmlFor="website">Website (https://…)</Label>
                 <Input
                   id="website"
                   type="url"
@@ -491,23 +475,16 @@ export default function EditBusinessPage() {
             </div>
 
             {/* Openingstijden + tijdelijk gesloten */}
-            <div className="space-y-3">
-              <Label htmlFor="opening_hours">
-                {isNl ? "Openingstijden" : "Opening hours"}
-              </Label>
-              <Textarea
-                id="opening_hours"
-                rows={5}
+            <div className="space-y-2">
+
+              <OpeningHoursField
+                lang={lang}
                 value={form.opening_hours}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, opening_hours: e.target.value }))
-                }
-                placeholder={
-                  isNl
-                    ? "Maandag: 09:00 – 18:00\nDinsdag: 09:00 – 18:00\nWoensdag: Gesloten\n..."
-                    : "Monday: 09:00 – 6:00 PM\nTuesday: 09:00 – 6:00 PM\nWednesday: Closed\n..."
+                onChange={(v) =>
+                  setForm((s) => ({ ...s, opening_hours: v }))
                 }
               />
+
               <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                 <input
                   type="checkbox"
@@ -521,9 +498,8 @@ export default function EditBusinessPage() {
                   }
                 />
                 <span>
-                  {isNl
-                    ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
-                    : "Temporarily closed (show 'Closed now' on the mini-site)"}
+                  Tijdelijk gesloten (toon &quot;Nu gesloten&quot; op de
+                  mini-site)
                 </span>
               </label>
             </div>
@@ -534,10 +510,8 @@ export default function EditBusinessPage() {
               variant="primaryGrad"
               disabled={saving}
             >
-              {saving && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {isNl ? "Wijzigingen opslaan" : "Save changes"}
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Wijzigingen opslaan
             </Button>
           </form>
         </CardContent>

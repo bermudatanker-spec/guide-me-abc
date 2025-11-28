@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { Locale } from "@/i18n/config";
+import OpeningHoursField from "@/components/business/OpeningHoursField";
 
 /** Type moet aansluiten op je Supabase `categories` tabel */
 type CategoryRow = {
@@ -34,7 +35,7 @@ type CategoryRow = {
 type CreateClientProps = {
   lang: Locale;
   t: Record<string, string>;
-  categories?: CategoryRow[]; // ✅ optioneel gemaakt
+  categories?: CategoryRow[];
 };
 
 export default function CreateClient({
@@ -64,9 +65,11 @@ export default function CreateClient({
     email: "",
     website: "",
     whatsapp: "",
+    opening_hours: "",        // ✅ nieuw
+    temporarily_closed: false // ✅ nieuw
   });
 
-  /** ------------------ Auth check (mag alleen ingelogd) ------------------ */
+  /** ------------------ Auth check ------------------ */
   useEffect(() => {
     let alive = true;
 
@@ -89,7 +92,7 @@ export default function CreateClient({
     };
   }, [resolvedLang, router, supabase]);
 
-  /** ------------------------- Submit handler ------------------------- */
+  /** ------------------------- Submit ------------------------- */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -123,7 +126,7 @@ export default function CreateClient({
       setSaving(true);
 
       const { error } = await supabase.from("business_listings").insert({
-        owner_id: userId,                     // ✅ KOPPELING MET USER
+        owner_id: userId,
         business_name: form.business_name,
         island: form.island,
         category_id: form.category_id || null,
@@ -133,8 +136,10 @@ export default function CreateClient({
         email: form.email || null,
         website: form.website || null,
         whatsapp: form.whatsapp || null,
-        status: "pending",                    // ✅ zodat dashboard iets heeft
-        subscription_plan: "starter",         // ✅ default plan
+        opening_hours: form.opening_hours || null,           // ✅
+        temporarily_closed: form.temporarily_closed, // ✅
+        status: "pending",
+        subscription_plan: "starter",
       });
 
       if (error) throw new Error(error.message);
@@ -246,9 +251,7 @@ export default function CreateClient({
                     setForm((s) => ({ ...s, category_id: e.target.value }))
                   }
                 >
-                  <option value="">
-                    {t.none ?? "— Geen —"}
-                  </option>
+                  <option value="">{t.none ?? "— Geen —"}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -341,6 +344,39 @@ export default function CreateClient({
               </div>
             </div>
 
+            {/* Openingstijden + tijdelijk gesloten */}
+<div className="space-y-2">
+  <Label htmlFor="opening_hours">
+    {lang === "nl" ? "Openingstijden" : "Opening hours"}
+  </Label>
+
+  <OpeningHoursField
+    lang={resolvedLang}
+    value={form.opening_hours}
+    onChange={(v) => {
+      if (v !== form.opening_hours) {
+        setForm((s) => ({ ...s, opening_hours: v }));
+      }
+    }}
+  />
+
+  <label className="inline-flex items-center gap-2 text-xs text-muted-foreground mt-2">
+    <input
+      type="checkbox"
+      className="h-4 w-4 rounded border-border"
+      checked={form.temporarily_closed}
+      onChange={(e) =>
+        setForm((s) => ({
+          ...s,
+          temporarily_closed: e.target.checked,
+        }))
+      }
+    />
+    {lang === "nl"
+      ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
+      : "Temporarily closed (show 'Closed now' on mini-site)"}
+  </label>
+</div>
             <Button
               type="submit"
               className="w-full"

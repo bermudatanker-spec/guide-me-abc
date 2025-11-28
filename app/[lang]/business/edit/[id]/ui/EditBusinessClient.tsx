@@ -22,6 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { Locale } from "@/i18n/config";
+import OpeningHoursField from "@/components/business/OpeningHoursField";
 
 /* ----------------------------------------------------------------
    Types — sluiten aan op je DB schema
@@ -44,6 +45,8 @@ type ListingRow = {
   email: string | null;
   website: string | null;
   whatsapp: string | null;
+  opening_hours: string | null;
+  temporarily_closed: boolean | null;
   status: "pending" | "active" | "inactive";
   subscription_plan: "starter" | "growth" | "pro";
 };
@@ -100,6 +103,12 @@ const FormSchema = z.object({
     .regex(/^[0-9]*$/, "Alleen cijfers")
     .optional()
     .or(z.literal("")),
+  opening_hours: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("")),
+  temporarily_closed: z.boolean().optional(),
 });
 
 type Props = {
@@ -127,6 +136,8 @@ export default function EditBusinessClient({ lang }: Props) {
     email: string;
     website: string;
     whatsapp: string;
+    opening_hours: string;
+    temporarily_closed: boolean;
   }>({
     business_name: "",
     island: "",
@@ -137,6 +148,8 @@ export default function EditBusinessClient({ lang }: Props) {
     email: "",
     website: "",
     whatsapp: "",
+    opening_hours: "",
+    temporarily_closed: false,
   });
 
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -170,7 +183,7 @@ export default function EditBusinessClient({ lang }: Props) {
         const { data: row, error: rowError } = await supabase
           .from("business_listings")
           .select(
-            "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, status, subscription_plan"
+            "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, opening_hours, temporarily_closed, status, subscription_plan"
           )
           .eq("id", id)
           .single<ListingRow>();
@@ -198,6 +211,8 @@ export default function EditBusinessClient({ lang }: Props) {
           email: row.email ?? "",
           website: row.website ?? "",
           whatsapp: row.whatsapp ?? "",
+          opening_hours: row.opening_hours ?? "",
+          temporarily_closed: row.temporarily_closed ?? false,
         });
       } catch (e: any) {
         toast({
@@ -251,6 +266,8 @@ export default function EditBusinessClient({ lang }: Props) {
           email: data.email || null,
           website: data.website || null,
           whatsapp: data.whatsapp || null,
+          opening_hours: form.opening_hours || null,
+          temporarily_closed: form.temporarily_closed,
         })
         .eq("id", id);
 
@@ -453,6 +470,37 @@ export default function EditBusinessClient({ lang }: Props) {
               </div>
             </div>
 
+           {/* Openingstijden + tijdelijk gesloten */}
+<div className="space-y-2">
+  <Label htmlFor="opening_hours">Openingstijden</Label>
+
+  <OpeningHoursField
+    lang={lang}
+    value={form.opening_hours}
+    onChange={(v) => {
+      if (v !== form.opening_hours) {
+        setForm((s) => ({ ...s, opening_hours: v }));
+      }
+    }}
+  />
+
+  <label className="inline-flex items-center gap-2 text-xs text-muted-foreground mt-2">
+    <input
+      type="checkbox"
+      className="h-4 w-4 rounded border-border"
+      checked={form.temporarily_closed}
+      onChange={(e) =>
+        setForm((s) => ({
+          ...s,
+          temporarily_closed: e.target.checked,
+        }))
+      }
+    />
+    {lang === "nl"
+      ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
+      : "Temporarily closed (show 'Closed now' on mini-site)"}
+  </label>
+</div>
             <Button
               type="submit"
               className="w-full"
