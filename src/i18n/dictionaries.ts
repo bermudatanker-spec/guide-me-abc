@@ -113,6 +113,9 @@ export const DICTS: Record<Locale, Dict> = {
 
     // Biz detail
     contact: "Contact",
+    opening_hours: "Opening hours",
+    closed_temporarily: "Temporarily closed",
+    closed_temporarily_long: "This business is currently temporarily closed.",
   },
 
   nl: {
@@ -225,6 +228,9 @@ export const DICTS: Record<Locale, Dict> = {
 
     // Biz detail
     contact: "Contact",
+    opening_hours: "Openingstijden",
+    closed_temporarily: "Tijdelijk gesloten",
+    closed_temporarily_long: "Dit bedrijf is momenteel tijdelijk gesloten.",
   },
 
   es: {
@@ -289,7 +295,6 @@ export const DICTS: Record<Locale, Dict> = {
     save_pw: "Guardar contraseña",
     pw_too_short: "La contraseña debe tener al menos 8 caracteres.",
     pw_mismatch: "Las contraseñas no coinciden.",
-
     show_pw: "Mostrar contraseña",
     hide_pw: "Ocultar contraseña",
 
@@ -339,6 +344,9 @@ export const DICTS: Record<Locale, Dict> = {
 
     // Biz detail
     contact: "Contacto",
+    opening_hours: "Horario de apertura",
+    closed_temporarily: "Cerrado temporalmente",
+    closed_temporarily_long: "Este negocio está cerrado temporalmente.",
   },
 
   pap: {
@@ -421,7 +429,7 @@ export const DICTS: Record<Locale, Dict> = {
     business: "negoshi",
     businessesPlural: "negoshinan",
     addFirstBusiness: "Kuminsá ku agrega bo prome negoshi",
-    addBusiness: "Agrega negoshi",
+    addBusiness: "Agregá negoshi",
     edit: "Editá",
     view: "Mini-site",
 
@@ -449,5 +457,8 @@ export const DICTS: Record<Locale, Dict> = {
 
     // Biz detail
     contact: "Kontakt",
+    opening_hours: "Orario di habri",
+    closed_temporarily: "Temporalmente sera",
+    closed_temporarily_long: "E negoshi aki ta temporalmente sera.",
   },
 };
