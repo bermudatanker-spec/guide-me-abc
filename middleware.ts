@@ -83,7 +83,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // 1) Enforce language prefix (not for /biz since it's excluded in the matcher)
-  let lang = getLangFromPath(pathname);
+  const lang = getLangFromPath(pathname);
   if (!lang) {
     const guess = guessFromAcceptLanguage(req.headers.get("accept-language"));
     const url = req.nextUrl.clone();
