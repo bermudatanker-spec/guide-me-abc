@@ -42,6 +42,7 @@ type BizRow = {
 const TEXTS: Record<Locale, Record<string, string>> = {
   en: {
     opening_hours: "Opening hours",
+    opening_hours_missing: "Opening hours not filled in yet",
     closed_temporarily: "Temporarily closed",
     closed_temporarily_long:
       "This business is currently temporarily closed.",
@@ -58,6 +59,7 @@ const TEXTS: Record<Locale, Record<string, string>> = {
   },
   nl: {
     opening_hours: "Openingstijden",
+    opening_hours_missing: "Openingstijden nog niet ingevuld.",
     closed_temporarily: "Tijdelijk gesloten",
     closed_temporarily_long:
       "Dit bedrijf is op dit moment tijdelijk gesloten.",
@@ -74,6 +76,7 @@ const TEXTS: Record<Locale, Record<string, string>> = {
   },
   es: {
     opening_hours: "Horario",
+    opening_hours_missing: "El horario aún no se ha rellenado.",
     closed_temporarily: "Cerrado temporalmente",
     closed_temporarily_long:
       "Este negocio está cerrado temporalmente en este momento.",
@@ -90,9 +93,10 @@ const TEXTS: Record<Locale, Record<string, string>> = {
   },
   pap: {
     opening_hours: "Ora di habri",
-    closed_temporarily: "Será serrá tempuario",
+    opening_hours_missing: "Ora di habri noa wordu yená ahinda.",
+    closed_temporarily: "Temporalmente será",
     closed_temporarily_long:
-      "E negoshi aki ta keda sera tempuario awor aki.",
+      "E negoshi aki ta keda temporalmente será awor aki.",
     contact: "Kontakt",
     aruba: "Aruba",
     bonaire: "Boneiru",
@@ -137,6 +141,63 @@ const ISLAND_THEME: Record<
     pill: "bg-white text-slate-900",
   },
 };
+
+/* ------------------------ Opening hours helper ------------------------ */
+
+type OpeningLine = {
+  day: string;
+  closed: boolean;
+  from: string; // "09:00"
+  to: string;   // "18:00"
+};
+
+// simpele parser: elke regel "Maandag: 09:00 - 18:00" of "Zondag: Gesloten"
+function splitOpeningHours(raw: string, lang: Locale): OpeningLine[] {
+  if (!raw || !raw.trim()) return [];
+
+  const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  return lines.map<OpeningLine>((line) => {
+    // dag + rest
+    const [dayPart, restPartRaw] = line.split(":");
+    const day = (dayPart ?? "").trim() || "?";
+    const restPart = (restPartRaw ?? "").trim();
+
+    // woorden voor "gesloten" in verschillende talen
+    const closedWords = ["gesloten", "closed", "cerrado", "será"];
+    const isClosed = closedWords.some((w) =>
+      restPart.toLowerCase().includes(w)
+    );
+
+    if (isClosed) {
+      return {
+        day,
+        closed: true,
+        from: "",
+        to: "",
+      };
+    }
+
+    // probeer "09:00 - 18:00" te parsen
+    const match = restPart.match(/(\d{1,2}:\d{2}).*?(\d{1,2}:\d{2})/);
+    if (!match) {
+      // fallback: geen tijden gevonden, laat dag zien zonder tijden
+      return {
+        day,
+        closed: false,
+        from: "",
+        to: "",
+      };
+    }
+
+    return {
+      day,
+      closed: false,
+      from: match[1],
+      to: match[2],
+    };
+  });
+}
 
 /* ------------------------ Metadata (SEO) ------------------------ */
 
@@ -242,6 +303,9 @@ export default async function BizDetailPage({ params }: PageProps) {
     temporarily_closed: data.temporarily_closed,
     offers: data.offers ?? [],
   };
+
+  const openingLines =
+  splitOpeningHours(biz.opening_hours??"", locale);
 
   const islandKey =
     biz.island === "aruba" ||
@@ -362,29 +426,60 @@ export default async function BizDetailPage({ params }: PageProps) {
               </p>
             </div>
 
-            {/* Openingstijden */}
-            <div className="rounded-2xl border border-white/5 bg-white/5 p-6 shadow-card">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-white/70">
-                  {t.opening_hours}
-                </h2>
-                {biz.temporarily_closed && (
-                  <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-100">
-                    {t.closed_temporarily}
-                  </span>
-                )}
-              </div>
+           {/* Openingstijden */}
+<div className="rounded-2xl border border-white/5 bg-white/5 p-6 shadow-card">
+  <div className="mb-2 flex items-center justify_between">
+    <h2 className="text-sm font-semibold uppercase tracking-wide text-white/70">
+      {t.opening_hours}
+    </h2>
+    {biz.temporarily_closed && (
+      <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-100">
+        {t.closed_temporarily}
+      </span>
+    )}
+  </div>
 
-              {biz.temporarily_closed && (
-                <p className="mb-3 text-xs text-red-100/80">
-                  {t.closed_temporarily_long}
-                </p>
-              )}
+  {biz.temporarily_closed && (
+    <p className="mb-3 text-xs text-red-100/80">
+      {t.closed_temporarily_long}
+    </p>
+  )}
 
-              <p className="whitespace-pre-line text-sm text-white/90">
-                {biz.opening_hours ?? "Openingstijden nog niet ingevuld."}
-              </p>
-            </div>
+  {openingLines.length === 0 ? (
+    <p className="text-sm text-white/70">
+      Openingstijden nog niet ingevuld.
+    </p>
+  ) : (
+    <ul className="space-y-1 text-sm text-white/90">
+      {openingLines.map((line, i) => (
+        <li key={i} className="flex items-center justify-between">
+          <span className="w-32 text-white/80 font-medium">
+            {line.day}
+          </span>
+
+          {line.closed ? (
+            <span className="text-red-300 text-sm flex items-center gap-1">
+              {/* klein icoontje */}
+              <svg width="14" height="14" fill="currentColor">
+                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="2" fill="none" />
+                <line x1="4" y1="4" x2="10" y2="10" stroke="currentColor" strokeWidth="2" />
+              </svg>
+              {t.closed_temporarily}
+            </span>
+          ) : (
+            <span className="text-green-300 text-sm flex items-center gap-1">
+              <svg width="14" height="14" fill="currentColor">
+                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="2" fill="none" />
+                <circle cx="7" cy="7" r="3" />
+              </svg>
+              {line.from} – {line.to}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
 
             {/* Aanbiedingen */}
             <div className="rounded-2xl border border-white/5 bg-white/5 p-6 shadow-card">

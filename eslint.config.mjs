@@ -1,4 +1,4 @@
-// eslint.config.mjs
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { defineConfig } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
@@ -23,8 +23,24 @@ export default defineConfig([
       },
     },
     rules: {
-      // Extra regels hier toevoegen indien nodig
-      // "import/no-unresolved": "off",
+      // evt. bestaande regels
+      // "import/no-anonymous-default-export": "off",
+
+      // Geen warnings over console.log
+      "no-console": "off",
+
+      // ✅ Hier voeg je de TS-rule toe
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+
+      // ✅ Standaard JS-variant uitzetten
+      "no-unused-vars": "off",
     },
   },
   {

@@ -105,7 +105,7 @@ export default function AuthClient({ lang }: AuthClientProps) {
         setAuthLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   /* --------------------------- Helper: flash --------------------------- */

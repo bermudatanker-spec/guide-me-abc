@@ -2,14 +2,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 import { langHref } from "@/lib/lang-href";
-import { getLangFromPath } from "@/lib/locale-path";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,8 +43,6 @@ export default function CreateClient({
   categories = [],
 }: CreateClientProps) {
   const router = useRouter();
-  const pathname = usePathname() ?? "/";
-  const resolvedLang = (getLangFromPath(pathname) || lang) as Locale;
 
   const supabase = useMemo(() => supabaseBrowser(), []);
   const { toast } = useToast();
@@ -65,8 +62,8 @@ export default function CreateClient({
     email: "",
     website: "",
     whatsapp: "",
-    opening_hours: "",        // ✅ nieuw
-    temporarily_closed: false // ✅ nieuw
+    opening_hours: "",       // ✅
+    temporarily_closed: false, // ✅
   });
 
   /** ------------------ Auth check ------------------ */
@@ -80,7 +77,7 @@ export default function CreateClient({
       if (!alive) return;
 
       if (!data?.user) {
-        router.replace(langHref(resolvedLang, "/business/auth"));
+        router.replace(langHref(lang, "/business/auth"));
       } else {
         setUserId(data.user.id);
         setAuthLoading(false);
@@ -90,7 +87,7 @@ export default function CreateClient({
     return () => {
       alive = false;
     };
-  }, [resolvedLang, router, supabase]);
+  }, [lang, router, supabase]);
 
   /** ------------------------- Submit ------------------------- */
   async function handleSubmit(e: React.FormEvent) {
@@ -136,7 +133,7 @@ export default function CreateClient({
         email: form.email || null,
         website: form.website || null,
         whatsapp: form.whatsapp || null,
-        opening_hours: form.opening_hours || null,           // ✅
+        opening_hours: form.opening_hours || null,   // ✅
         temporarily_closed: form.temporarily_closed, // ✅
         status: "pending",
         subscription_plan: "starter",
@@ -153,7 +150,7 @@ export default function CreateClient({
             : "Your business was created and will be reviewed."),
       });
 
-      router.replace(langHref(resolvedLang, "/business/dashboard"));
+      router.replace(langHref(lang, "/business/dashboard"));
     } catch (err: any) {
       toast({
         title: t.error ?? "Fout",
@@ -186,7 +183,7 @@ export default function CreateClient({
         variant="ghost"
         className="mb-6"
         onClick={() =>
-          router.push(langHref(resolvedLang, "/business/dashboard"))
+          router.push(langHref(lang, "/business/dashboard"))
         }
       >
         {t.backToDashboard ?? "Terug naar dashboard"}
@@ -345,38 +342,37 @@ export default function CreateClient({
             </div>
 
             {/* Openingstijden + tijdelijk gesloten */}
-<div className="space-y-2">
-  <Label htmlFor="opening_hours">
-    {lang === "nl" ? "Openingstijden" : "Opening hours"}
-  </Label>
+            <div className="space-y-2">
+              <Label htmlFor="opening_hours">
+                {lang === "nl" ? "Openingstijden" : "Opening hours"}
+              </Label>
 
-  <OpeningHoursField
-    lang={resolvedLang}
-    value={form.opening_hours}
-    onChange={(v) => {
-      if (v !== form.opening_hours) {
-        setForm((s) => ({ ...s, opening_hours: v }));
-      }
-    }}
-  />
+              <OpeningHoursField
+                lang={lang}
+                value={form.opening_hours}
+                onChange={(v) =>
+                  setForm((s) => ({ ...s, opening_hours: v }))
+                }
+              />
 
-  <label className="inline-flex items-center gap-2 text-xs text-muted-foreground mt-2">
-    <input
-      type="checkbox"
-      className="h-4 w-4 rounded border-border"
-      checked={form.temporarily_closed}
-      onChange={(e) =>
-        setForm((s) => ({
-          ...s,
-          temporarily_closed: e.target.checked,
-        }))
-      }
-    />
-    {lang === "nl"
-      ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
-      : "Temporarily closed (show 'Closed now' on mini-site)"}
-  </label>
-</div>
+              <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-border"
+                  checked={form.temporarily_closed}
+                  onChange={(e) =>
+                    setForm((s) => ({
+                      ...s,
+                      temporarily_closed: e.target.checked,
+                    }))
+                  }
+                />
+                {lang === "nl"
+                  ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
+                  : "Temporarily closed (show 'Closed now' on mini-site)"}
+              </label>
+            </div>
+
             <Button
               type="submit"
               className="w-full"

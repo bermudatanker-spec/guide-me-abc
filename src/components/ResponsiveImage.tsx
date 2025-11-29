@@ -3,11 +3,8 @@
 import Image, { type ImageProps } from "next/image";
 
 type Props = Omit<ImageProps, "fill" | "sizes"> & {
-  /** standaard: true */
   fill?: boolean;
-  /** standaard: responsive sizes */
   sizes?: string;
-  /** extra classname */
   className?: string;
 };
 
@@ -15,6 +12,7 @@ export default function ResponsiveImage({
   fill = true,
   sizes,
   className,
+  alt = "",          // 👈 ESLint FIX: alt is verplicht → default leeg
   ...props
 }: Props) {
   const defaultSizes =
@@ -24,6 +22,7 @@ export default function ResponsiveImage({
   return (
     <Image
       {...props}
+      alt={alt}         // 👈 Alt wordt gegarandeerd meegegeven
       fill={fill}
       sizes={defaultSizes}
       className={`object-cover ${className ?? ""}`}

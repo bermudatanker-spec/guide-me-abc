@@ -27,8 +27,9 @@ import OpeningHoursField from "@/components/business/OpeningHoursField";
 /* ----------------------------------------------------------------
    Types — sluiten aan op je DB schema
 ----------------------------------------------------------------- */
+
 type CategoryRow = {
-  id: string; // meestal uuid in Supabase
+  id: string;
   name: string;
   slug: string;
 };
@@ -54,6 +55,7 @@ type ListingRow = {
 /* ----------------------------------------------------------------
    Zod schema voor validatie
 ----------------------------------------------------------------- */
+
 const FormSchema = z.object({
   business_name: z.string().trim().min(2, "Bedrijfsnaam is verplicht"),
   island: z.enum(["aruba", "bonaire", "curacao"], {
@@ -157,6 +159,7 @@ export default function EditBusinessClient({ lang }: Props) {
   /* ----------------------------------------------------------------
      Ophalen categorieën + bestaande listing
   ----------------------------------------------------------------- */
+
   useEffect(() => {
     let alive = true;
 
@@ -183,7 +186,7 @@ export default function EditBusinessClient({ lang }: Props) {
         const { data: row, error: rowError } = await supabase
           .from("business_listings")
           .select(
-            "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, opening_hours, temporarily_closed, status, subscription_plan"
+            "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, opening_hours, temporarily_closed, status, subscription_plan",
           )
           .eq("id", id)
           .single<ListingRow>();
@@ -212,7 +215,7 @@ export default function EditBusinessClient({ lang }: Props) {
           website: row.website ?? "",
           whatsapp: row.whatsapp ?? "",
           opening_hours: row.opening_hours ?? "",
-          temporarily_closed: row.temporarily_closed ?? false,
+          temporarily_closed: !!row.temporarily_closed,
         });
       } catch (e: any) {
         toast({
@@ -234,6 +237,7 @@ export default function EditBusinessClient({ lang }: Props) {
   /* ----------------------------------------------------------------
      Submit
   ----------------------------------------------------------------- */
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -295,6 +299,7 @@ export default function EditBusinessClient({ lang }: Props) {
   /* ----------------------------------------------------------------
      Loading state
   ----------------------------------------------------------------- */
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -306,6 +311,7 @@ export default function EditBusinessClient({ lang }: Props) {
   /* ----------------------------------------------------------------
      UI
   ----------------------------------------------------------------- */
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <Button
@@ -472,34 +478,32 @@ export default function EditBusinessClient({ lang }: Props) {
 
            {/* Openingstijden + tijdelijk gesloten */}
 <div className="space-y-2">
-  <Label htmlFor="opening_hours">Openingstijden</Label>
+  <Label htmlFor="opening_hours">Openingstijden</Label>
 
-  <OpeningHoursField
-    lang={lang}
-    value={form.opening_hours}
-    onChange={(v) => {
-      if (v !== form.opening_hours) {
-        setForm((s) => ({ ...s, opening_hours: v }));
-      }
-    }}
-  />
+  <OpeningHoursField
+    lang={lang}
+    value={form.opening_hours}
+    onChange={(v) =>
+      setForm((s) => ({ ...s, opening_hours: v }))
+    }
+  />
 
-  <label className="inline-flex items-center gap-2 text-xs text-muted-foreground mt-2">
-    <input
-      type="checkbox"
-      className="h-4 w-4 rounded border-border"
-      checked={form.temporarily_closed}
-      onChange={(e) =>
-        setForm((s) => ({
-          ...s,
-          temporarily_closed: e.target.checked,
-        }))
-      }
-    />
-    {lang === "nl"
-      ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
-      : "Temporarily closed (show 'Closed now' on mini-site)"}
-  </label>
+  <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+    <input
+      type="checkbox"
+      className="h-4 w-4 rounded border-border"
+      checked={form.temporarily_closed}
+      onChange={(e) =>
+        setForm((s) => ({
+          ...s,
+          temporarily_closed: e.target.checked,
+        }))
+      }
+    />
+    {lang === "nl"
+      ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
+      : "Temporarily closed (show 'Closed now' on mini-site)"}
+  </label>
 </div>
             <Button
               type="submit"

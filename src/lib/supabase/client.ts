@@ -13,7 +13,7 @@ const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 if ((!URL || !ANON) && process.env.NODE_ENV !== "production") {
-  // eslint-disable-next-line no-console
+   
   console.warn(
     "[supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. " +
       "Zet ze in .env.local en herstart je dev server."
@@ -68,7 +68,7 @@ export const supabase = supabaseBrowser();
 export async function getSession(): Promise<{ session: Session | null }> {
   const { data, error } = await supabase.auth.getSession();
   if (error && process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
+     
     console.warn("[supabase] getSession error:", error.message);
   }
   return { session: data?.session ?? null };

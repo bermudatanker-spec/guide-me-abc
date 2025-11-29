@@ -119,7 +119,7 @@ export function LanguageProvider({
     } catch {
       /* ignore */
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Route wisselt → update lang op basis van /[lang]
