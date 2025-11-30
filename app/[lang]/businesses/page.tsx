@@ -5,25 +5,54 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import BusinessMenu from "@/components/BusinessMenu";
 
-type Params = { params: { lang: Locale } };
+/* ----------------------------- Types ----------------------------- */
 
-// ✨ Type precies wat je ophaalt
+type SubscriptionPlan = "free" | "starter" | "growth" | "pro" | null;
+type Plan = Exclude<SubscriptionPlan, null>;
+type Island = "aruba" | "bonaire" | "curacao";
+type Status = "pending" | "active" | "inactive" | null;
+
 type Row = {
   id: string;
   business_name: string;
   description: string | null;
-  island: "aruba" | "bonaire" | "curacao";
-  category_id: number | null; // bigint in DB → number in TS
-  categories: { name: string; slug: string } | null; // alias in select
+  island: Island;
+  category_id: number | null;
+  categories: { name: string; slug: string } | null;
   logo_url: string | null;
   cover_image_url: string | null;
-  subscription_plan: "starter" | "growth" | "pro" | null;
+  subscription_plan: SubscriptionPlan;
+  status: Status;
 };
 
+type Params = {
+  params: Promise<{ lang: Locale }>; // ⬅️ let op: Promise
+};
+
+/* --------------------- Plan labels & styles ---------------------- */
+
+const PLAN_LABEL: Record<Plan, string> = {
+  free: "Free",
+  starter: "Starter",
+  growth: "Growth",
+  pro: "Pro",
+};
+
+const PLAN_BADGE_CLASS: Record<Plan, string> = {
+  free: "bg-slate-600 text-slate-50",
+  starter: "bg-sky-600 text-sky-50",
+  growth: "bg-emerald-600 text-emerald-50",
+  pro: "bg-primary text-primary-foreground",
+};
+
+/* ----------------------------- Page ------------------------------ */
+
 export default async function BusinessesPage({ params }: Params) {
-  const lang = isLocale(params.lang) ? params.lang : "en";
+  // ⬇️ params eerst “uitpakken”
+  const { lang: rawLang } = await params;
+  const lang = isLocale(rawLang) ? rawLang : "en";
+
   const s = await supabaseServer();
 
   const { data, error } = await s
@@ -38,12 +67,13 @@ export default async function BusinessesPage({ params }: Params) {
       categories:category_id ( name, slug ),
       logo_url,
       cover_image_url,
-      subscription_plan
+      subscription_plan,
+      status
     `
     )
     .eq("status", "active")
     .order("business_name", { ascending: true })
-    .returns<Row[]>(); // ✅ laat Supabase de shape bevestigen
+    .returns<Row[]>();
 
   const listings: Row[] = data ?? [];
 
@@ -73,14 +103,21 @@ export default async function BusinessesPage({ params }: Params) {
       {error ? (
         <p className="text-destructive">Error: {error.message}</p>
       ) : listings.length === 0 ? (
-        <p className="text-muted-foreground">No active businesses published yet.</p>
+        <p className="text-muted-foreground">
+          No active businesses published yet.
+        </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listings.map((b) => {
-            const isPro = (b.subscription_plan ?? "") === "pro";
-            const href = isPro ? `/${lang}/biz/${b.id}` : undefined;
+            const plan: Plan = (b.subscription_plan ?? "free") as Plan;
+            const hasMiniSite = plan === "pro";
+            const href = `/${lang}/biz/${b.id}`;
+
             return (
-              <Card key={b.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <Card
+                key={b.id}
+                className="overflow-hidden hover:shadow-lg transition-shadow"
+              >
                 <CardContent className="p-6">
                   {b.logo_url && (
                     <div className="mb-4 h-32 flex items-center justify-center bg-muted rounded-lg overflow-hidden">
@@ -93,29 +130,42 @@ export default async function BusinessesPage({ params }: Params) {
                       />
                     </div>
                   )}
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-bold text-lg text-foreground">{b.business_name}</h3>
-                    {isPro && <Badge className="bg-primary text-primary-foreground">Pro</Badge>}
+
+                  <div className="flex items-start justify-between mb-2 gap-2">
+                    <h3 className="font-bold text-lg text-foreground">
+                      {b.business_name}
+                    </h3>
+
+                    <Badge className={PLAN_BADGE_CLASS[plan]}>
+                      {PLAN_LABEL[plan]}
+                    </Badge>
                   </div>
+
                   <div className="text-sm text-muted-foreground mb-3">
                     {cap(b.island)} • {b.categories?.name ?? "—"}
                   </div>
+
                   {b.description && (
-                    <p className="text-sm text-foreground/80 mb-4 line-clamp-2">{b.description}</p>
+                    <p className="text-sm text-foreground/80 mb-4 line-clamp-2">
+                      {b.description}
+                    </p>
                   )}
+
                   <Button
-                    variant={isPro ? "outline" : "ghost"}
+                    variant={hasMiniSite ? "outline" : "ghost"}
                     size="sm"
                     className="w-full"
-                    disabled={!isPro}
-                    asChild={isPro}
+                    disabled={!hasMiniSite}
+                    asChild={hasMiniSite}
                   >
-                    {isPro ? (
-                      <Link href={href!}>
+                    {hasMiniSite ? (
+                      <Link href={href}>
                         {lang === "nl" ? "Bekijk details" : "View details"}
                       </Link>
                     ) : (
-                      <span>{lang === "nl" ? "Geen mini-site" : "No mini-site"}</span>
+                      <span>
+                        {lang === "nl" ? "Geen mini-site" : "No mini-site"}
+                      </span>
                     )}
                   </Button>
                 </CardContent>
@@ -127,6 +177,8 @@ export default async function BusinessesPage({ params }: Params) {
     </div>
   );
 }
+
+/* ----------------------------- Helpers --------------------------- */
 
 function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);

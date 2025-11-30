@@ -1,4 +1,4 @@
-// app/islands/[island]/[category]/not-found.tsx
+// app/[lang]/islands/[island]/[category]/not-found.tsx
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -22,13 +22,15 @@ export default function NotFound() {
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button asChild variant="outline">
-            <Link href="/islands">
+            {/* terug naar /[lang]/islands */}
+            <Link href="../..">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to all islands
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/">
+            {/* terug naar /[lang] */}
+            <Link href="../../../">
               Go to homepage
             </Link>
           </Button>

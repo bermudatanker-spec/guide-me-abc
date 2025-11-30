@@ -290,7 +290,7 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       name: "Curaçao",
       tagline: "Colorful Caribbean",
       description:
-        "Curaçao betovert met pastelkleurig Willemstad, intieme baaien en rijke cultuur. Van Playa Kenepa en de Blue Room tot de Hato-grotten en de top van de Christoffelberg—hier valt altijd iets te ontdekken.",
+        "Curaçao betovert met pastelkleurig Willemstad, intieme baaien en rijke cultuur. Van Playa Kenepa en de Blue Room tot de Hato-grotten en de top van de Christoffelberg — hier valt altijd iets te ontdekken.",
       topTitle: "Top dingen om te doen op Curaçao",
       topThings: [
         "Dwaal door het UNESCO-centrum van Willemstad",
@@ -492,8 +492,8 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       name: "Aruba",
       tagline: "One Happy Island",
       description:
-        "Aruba ta kombina laman turkesa, playa blanku suaf i kultura bibu. For di Eagle Beach i Parque Nashonal Arikok te Oranjestad i e Natural Pool: relaks i aventura tur aña.",
-      topTitle: "Mehor kosnan pa hasi na Aruba",
+        "Aruba ta kombiná laman turkesa, playa blanku suave i kultura bibu. For di Eagle Beach i Parque Nashonal Arikok te Oranjestad i e Natural Pool: relaks i aventurá tur aña.",
+      topTitle: "Mihó kosnan pa hasi na Aruba",
       topThings: [
         "Relahá na Eagle Beach",
         "Eksplorá Parque Nashonal Arikok",
@@ -541,13 +541,13 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       name: "Boneiru",
       tagline: "Paraíso pa busadón",
       description:
-        "Boneiru ta famó pa rif limp’i laman, bientu konsistente i ambiente trankil. Shore dive, windsurf na Lac Bay i flamingo na saliña—paraíso pa naturalesa.",
-      topTitle: "Mehor kosnan pa hasi na Boneiru",
+        "Boneiru ta famá pa su rif limpinan den laman, bientu konsistente i ambiente trankil. Shore dive, windsurf na Lac Bay i flamingo na saliña—paraíso pa naturalesa.",
+      topTitle: "Mihó kosnan pa hasi na Boneiru",
       topThings: [
         "Buska na 1000 Steps",
         "Windsurf/kitesurf na Lac Bay",
         "Eksplorá Parque Washington Slagbaai",
-        "Mira flamingo na saliña",
+        "Wak flamingo na saliña",
         "Snòrkel na Klein Bonaire",
         "Paseá den Kralendijk",
       ],
@@ -590,7 +590,7 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
       name: "Kòrsou",
       tagline: "Karibe kolorí",
       description:
-        "Kòrsou ta enkantá ku Willemstad koló, bahi trankil i kultura riku. For di Playa Kenepa i Blue Room te Hato Caves i Seru Christoffel—tur kos pa deskubrí.",
+        "Kòrsou ta enkantá ku su Willemstad na koló pastel, bahíanan íntimo i kultura riku. For di Playa Kenepa i Blue Room te na Kueba di Hato i riba Seru Kristòfel — semper tin algu pa deskubrí aki.",
       topTitle: "Mehor kosnan pa hasi na Kòrsou",
       topThings: [
         "Paseá den sentro UNESCO di Willemstad",
@@ -659,13 +659,13 @@ const ACTION_LABELS = {
     primary: {
       en: "View activities",
       nl: "Activiteiten zien",
-      pap: "Mira aktividadnan",
+      pap: "Wak tur aktividad",
       es: "Ver actividades",
     },
     secondary: {
       en: "Top-rated tours",
       nl: "Best beoordeelde tours",
-      pap: "Tour top-rankeá",
+      pap: "Mihó Tournan evaluá ",
       es: "Tours mejor valorados",
     },
     secondaryQuery: "sort=rating_desc",
@@ -674,7 +674,7 @@ const ACTION_LABELS = {
     primary: {
       en: "See car rentals",
       nl: "Bekijk autoverhuur",
-      pap: "Mira hür di auto",
+      pap: "Wak outo di hür",
       es: "Ver alquileres",
     },
     secondary: {
@@ -689,7 +689,7 @@ const ACTION_LABELS = {
     primary: {
       en: "Find restaurants",
       nl: "Vind restaurants",
-      pap: "Haya restoran",
+      pap: "Haña restoran",
       es: "Buscar restaurantes",
     },
     secondary: {
@@ -710,7 +710,7 @@ const ACTION_LABELS = {
     secondary: {
       en: "Tour guides",
       nl: "Gidsen",
-      pap: "Guianan di tour",
+      pap: "Guíanan di tour",
       es: "Guías turísticos",
     },
     secondaryQuery: "type=guide",
@@ -719,7 +719,7 @@ const ACTION_LABELS = {
     primary: {
       en: "Browse listings",
       nl: "Bekijk aanbod",
-      pap: "Mira ofertanan",
+      pap: "Wak ofertanan",
       es: "Ver propiedades",
     },
     secondary: {
@@ -752,12 +752,14 @@ function getCopy(lang: Lang, island: IslandId): Copy {
 }
 
 /* Metadata */
-type PageParams = { params: { lang: Lang; island: IslandId } };
+type PageParams = {
+  params: Promise<{ lang: Lang; island: IslandId }>;
+};
 
 export async function generateMetadata(
   { params }: PageParams
 ): Promise<Metadata> {
-  const { lang, island } = params;
+  const { lang, island } = await params;
 
   if (!ISLANDS.includes(island)) {
     return {
@@ -801,8 +803,9 @@ export async function generateMetadata(
 }
 
 /* Page */
-export default function IslandPage({ params }: PageParams) {
-  const { lang, island } = params;
+export default async function IslandPage({ params }:
+  PageParams) {
+  const { lang, island } = await params;
 
   if (!ISLANDS.includes(island)) {
     notFound();

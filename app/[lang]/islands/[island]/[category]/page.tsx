@@ -1,10 +1,10 @@
 // app/[lang]/islands/[island]/[category]/page.tsx
-import { notFound } from "next/navigation";
 import Link from "next/link";
+import { isLocale, type Locale } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
-type Lang = "en" | "nl" | "pap" | "es";
+type Lang = Locale;
 type IslandId = "aruba" | "bonaire" | "curacao";
 type CategorySlug =
   | "shops"
@@ -165,22 +165,24 @@ const CATEGORY_LABELS: Record<
 
 type PageParams = {
   params: {
-    lang: Lang;
-    island: IslandId;
-    category: CategorySlug;
+    lang: string;
+    island: string;
+    category: string;
   };
 };
 
 export default function IslandCategoryPage({ params }: PageParams) {
-  const { lang, island, category } = params;
+  // 1) taal normaliseren
+  const lang: Lang = isLocale(params.lang as Lang) ? (params.lang as Lang) : "en";
 
-  const islandLabel = ISLAND_LABELS[island];
-  const catConfig = CATEGORY_LABELS[category]?.[lang];
+  // 2) eiland + categorie gewoon vertrouwen, met fallbacks
+  const island = params.island as IslandId;
+  const category = params.category as CategorySlug;
 
-  // Als er iets niet klopt met de URL -> 404
-  if (!islandLabel || !catConfig) {
-    notFound();
-  }
+  const islandLabel = ISLAND_LABELS[island] ?? params.island;
+  const categoryConfig =
+    CATEGORY_LABELS[category] ?? CATEGORY_LABELS["shops"]; // fallback als slug raar is
+  const catCopy = categoryConfig[lang];
 
   return (
     <div className="min-h-screen container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
@@ -188,9 +190,9 @@ export default function IslandCategoryPage({ params }: PageParams) {
         <p className="text-xs uppercase tracking-wide text-teal-600">
           {islandLabel} • {category}
         </p>
-        <h1 className="text-3xl font-bold text-slate-900">{catConfig.title}</h1>
+        <h1 className="text-3xl font-bold text-slate-900">{catCopy.title}</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          {catConfig.description}
+          {catCopy.description}
         </p>
       </header>
 

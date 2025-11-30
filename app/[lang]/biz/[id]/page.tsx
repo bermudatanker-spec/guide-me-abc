@@ -372,6 +372,36 @@ export default async function BizDetailPage({ params }: PageProps) {
                 {biz.description}
               </p>
             )}
+
+{/* Openingstijden */}
+{biz.opening_hours && (
+  <div className="rounded-2xl border border-white/5 bg-white/5 p-6 shadow-card">
+    <div className="mb-2 flex items-center justify-between">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-white/70">
+        {t.opening_hours ?? (lang === "nl" ? "Openingstijden" : "Opening hours")}
+      </h2>
+
+      {biz.temporarily_closed && (
+        <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-100">
+          {t.closed_temporarily ?? (lang === "nl" ? "Tijdelijk gesloten" : "Temporarily closed")}
+        </span>
+      )}
+    </div>
+
+    {biz.temporarily_closed && (
+      <p className="mb-3 text-xs text-red-100/80">
+        {t.closed_temporarily_long ??
+          (lang === "nl"
+            ? "Dit bedrijf heeft aangegeven tijdelijk gesloten te zijn. De openingstijden hieronder kunnen afwijken."
+            : "This business marked itself as temporarily closed. Opening hours below may not be accurate.")}
+      </p>
+    )}
+
+    <p className="whitespace-pre-line text-sm text-white/90">
+      {biz.opening_hours}
+    </p>
+  </div>
+)}
           </div>
 
           {/* CTAs */}
