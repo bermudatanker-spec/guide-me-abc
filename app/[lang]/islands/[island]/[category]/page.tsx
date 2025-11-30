@@ -56,7 +56,7 @@ const CATEGORY_LABELS: Record<
     pap: {
       title: "Tienda & boetík lokal",
       description:
-        "Deskubrí tienda lokal, boetík i chikí negoshinan riba e isla.",
+        "Deskubrí tienda lokal, boetík i negoshinan chikí riba e isla.",
     },
     es: {
       title: "Tiendas y boutiques locales",
@@ -78,7 +78,7 @@ const CATEGORY_LABELS: Record<
     pap: {
       title: "Tour & aktividat",
       description:
-        "Snòrkel, buseo, trip na barku, hike i otro aventura riba e isla.",
+        "Snòrkel, buseá, trip na barku, hike i otro aventura riba e isla.",
     },
     es: {
       title: "Tours y actividades",
@@ -100,7 +100,7 @@ const CATEGORY_LABELS: Record<
     pap: {
       title: "Hür di auto",
       description:
-        "Hür jeep, SUV of auto pa eksplorá e isla na bo propio tempo.",
+        "Hür jeep, SUV of outo pa eksplorá e isla na bo propio tempu.",
     },
     es: {
       title: "Alquiler de autos",
@@ -122,7 +122,7 @@ const CATEGORY_LABELS: Record<
     pap: {
       title: "Restoran & kuminda",
       description:
-        "For di street food te fine dining, eksplorá e kulinario di e isla.",
+        "For di kuminda di kaya te restoran luho, eksplorá e kulinario di e isla.",
     },
     es: {
       title: "Restaurantes y comida",
@@ -144,7 +144,7 @@ const CATEGORY_LABELS: Record<
     pap: {
       title: "Servisionan lokal",
       description:
-        "Guia, bienestar, transport i otro servisio útil pa bo estadia.",
+        "Guia, bienestar, transport i otro servisio útil pa bo estadía.",
     },
     es: {
       title: "Servicios locales",
@@ -166,7 +166,7 @@ const CATEGORY_LABELS: Record<
     pap: {
       title: "Propiedat & huur",
       description:
-        "Hür pa vakashon, long-stay apartamentu i kas pa kumpra riba e isla.",
+        "Hür pa vakashon, long-stay apartament i kas pa kumpra riba e isla.",
     },
     es: {
       title: "Bienes raíces y alquileres",
