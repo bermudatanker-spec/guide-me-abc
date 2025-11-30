@@ -1,10 +1,12 @@
 // app/[lang]/islands/[island]/[category]/page.tsx
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { isLocale, type Locale } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
-type Lang = Locale;
+/* ---------- Types ---------- */
+
+type Lang = "en" | "nl" | "pap" | "es";
 type IslandId = "aruba" | "bonaire" | "curacao";
 type CategorySlug =
   | "shops"
@@ -13,6 +15,17 @@ type CategorySlug =
   | "restaurants"
   | "services"
   | "real-estate";
+
+const VALID_LANGS: Lang[] = ["en", "nl", "pap", "es"];
+const VALID_ISLANDS: IslandId[] = ["aruba", "bonaire", "curacao"];
+const VALID_CATEGORIES: CategorySlug[] = [
+  "shops",
+  "activities",
+  "car-rentals",
+  "restaurants",
+  "services",
+  "real-estate",
+];
 
 const ISLAND_LABELS: Record<IslandId, string> = {
   aruba: "Aruba",
@@ -163,26 +176,42 @@ const CATEGORY_LABELS: Record<
   },
 };
 
+/* ---------- Props type: params is een Promise in Next 16 ---------- */
+
 type PageParams = {
-  params: {
+  params: Promise<{
     lang: string;
     island: string;
     category: string;
-  };
+  }>;
 };
 
-export default function IslandCategoryPage({ params }: PageParams) {
-  // 1) taal normaliseren
-  const lang: Lang = isLocale(params.lang as Lang) ? (params.lang as Lang) : "en";
+/* ---------- Page ---------- */
 
-  // 2) eiland + categorie gewoon vertrouwen, met fallbacks
-  const island = params.island as IslandId;
-  const category = params.category as CategorySlug;
+export default async function IslandCategoryPage({ params }: PageParams) {
+  // params uitpakken (is een Promise)
+  const resolved = await params;
 
-  const islandLabel = ISLAND_LABELS[island] ?? params.island;
-  const categoryConfig =
-    CATEGORY_LABELS[category] ?? CATEGORY_LABELS["shops"]; // fallback als slug raar is
-  const catCopy = categoryConfig[lang];
+  // ruwe waardes uit de URL
+  const rawLang = (resolved.lang ?? "").toLowerCase();
+  const rawIsland = (resolved.island ?? "").toLowerCase().trim();
+  const rawCategory = (resolved.category ?? "").toLowerCase().trim();
+
+  // language normaliseren
+  const lang: Lang = (VALID_LANGS.includes(rawLang as Lang)
+    ? rawLang
+    : "en") as Lang;
+
+  const island = rawIsland as IslandId;
+  const category = rawCategory as CategorySlug;
+
+  // URL-guard: als iets niet klopt → 404
+  if (!VALID_ISLANDS.includes(island) || !VALID_CATEGORIES.includes(category)) {
+    notFound();
+  }
+
+  const islandLabel = ISLAND_LABELS[island];
+  const catConfig = CATEGORY_LABELS[category][lang];
 
   return (
     <div className="min-h-screen container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
@@ -190,9 +219,9 @@ export default function IslandCategoryPage({ params }: PageParams) {
         <p className="text-xs uppercase tracking-wide text-teal-600">
           {islandLabel} • {category}
         </p>
-        <h1 className="text-3xl font-bold text-slate-900">{catCopy.title}</h1>
+        <h1 className="text-3xl font-bold text-slate-900">{catConfig.title}</h1>
         <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          {catCopy.description}
+          {catConfig.description}
         </p>
       </header>
 
