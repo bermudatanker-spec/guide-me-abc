@@ -1,6 +1,9 @@
-// tailwind.config.js (ESM)
-export default /** @type {import('tailwindcss').Config} */ ({
-  darkMode: ["class"],
+// tailwind.config.js
+
+//Zorg dat TS/VS Code snapt welk type dit is
+/** @type {import('tailwindcss').Config}  */
+const config = {
+darkMode: ["class"],
   content: [
     "./app/**/*.{ts,tsx,js,jsx}",
     "./components/**/*.{ts,tsx,js,jsx}",
@@ -56,4 +59,6 @@ export default /** @type {import('tailwindcss').Config} */ ({
     },
   },
   plugins: [],
-});
+};
+
+export default config;

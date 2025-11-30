@@ -6,7 +6,9 @@
     "dev": "set TURBOPACK=0 && next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 3000",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "lint:strict": "eslint . --config eslint.strict.config.mjs",
+    "lint:strict:fix":"eslint . --config eslint.strict.config.mjs --fix"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
