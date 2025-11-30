@@ -2,6 +2,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
+import { supabaseServer } from "@/lib/supabase/server";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
 export const dynamic = "force-dynamic";
 
 /* ---------- Types ---------- */
@@ -16,6 +21,24 @@ type CategorySlug =
   | "services"
   | "real-estate";
 
+type SubscriptionPlan = "free" | "starter" | "growth" | "pro" | null;
+type Plan = Exclude<SubscriptionPlan, null>;
+
+type Row = {
+  id: string;
+  business_name: string;
+  description: string | null;
+  island: IslandId;
+  category_id: number | null;
+  categories: { name: string; slug: CategorySlug } | null;
+  logo_url: string | null;
+  cover_image_url: string | null;
+  subscription_plan: SubscriptionPlan;
+  status: "pending" | "active" | "inactive" | null;
+};
+
+/* ---------- Whitelists ---------- */
+
 const VALID_LANGS: Lang[] = ["en", "nl", "pap", "es"];
 const VALID_ISLANDS: IslandId[] = ["aruba", "bonaire", "curacao"];
 const VALID_CATEGORIES: CategorySlug[] = [
@@ -26,6 +49,8 @@ const VALID_CATEGORIES: CategorySlug[] = [
   "services",
   "real-estate",
 ];
+
+/* ---------- Labels & copy ---------- */
 
 const ISLAND_LABELS: Record<IslandId, string> = {
   aruba: "Aruba",
@@ -176,7 +201,30 @@ const CATEGORY_LABELS: Record<
   },
 };
 
-/* ---------- Props type: params is een Promise in Next 16 ---------- */
+/* ---------- Plan badges (zelfde als /businesses) ---------- */
+
+const PLAN_LABEL: Record<Plan, string> = {
+  free: "Free",
+  starter: "Starter",
+  growth: "Growth",
+  pro: "Pro",
+};
+
+const PLAN_BADGE_CLASS: Record<Plan, string> = {
+  free: "bg-slate-600 text-slate-50",
+  starter: "bg-sky-600 text-sky-50",
+  growth: "bg-emerald-600 text-emerald-50",
+  pro: "bg-primary text-primary-foreground",
+};
+
+const PLAN_ORDER: Record<Plan, number> = {
+  pro: 0,
+  growth: 1,
+  starter: 2,
+  free: 3,
+};
+
+/* ---------- Params type (Next 16 = Promise) ---------- */
 
 type PageParams = {
   params: Promise<{
@@ -189,18 +237,16 @@ type PageParams = {
 /* ---------- Page ---------- */
 
 export default async function IslandCategoryPage({ params }: PageParams) {
-  // params uitpakken (is een Promise)
-  const resolved = await params;
+  // params uitpakken (is een Promise in Next 16)
+  const raw = await params;
 
-  // ruwe waardes uit de URL
-  const rawLang = (resolved.lang ?? "").toLowerCase();
-  const rawIsland = (resolved.island ?? "").toLowerCase().trim();
-  const rawCategory = (resolved.category ?? "").toLowerCase().trim();
+  const rawLang = (raw.lang ?? "").toLowerCase();
+  const rawIsland = (raw.island ?? "").toLowerCase().trim();
+  const rawCategory = (raw.category ?? "").toLowerCase().trim();
 
-  // language normaliseren
-  const lang: Lang = (VALID_LANGS.includes(rawLang as Lang)
-    ? rawLang
-    : "en") as Lang;
+  const lang: Lang = VALID_LANGS.includes(rawLang as Lang)
+    ? (rawLang as Lang)
+    : "en";
 
   const island = rawIsland as IslandId;
   const category = rawCategory as CategorySlug;
@@ -211,37 +257,147 @@ export default async function IslandCategoryPage({ params }: PageParams) {
   }
 
   const islandLabel = ISLAND_LABELS[island];
-  const catConfig = CATEGORY_LABELS[category][lang];
+  const catCopy = CATEGORY_LABELS[category][lang];
+
+  const s = await supabaseServer();
+
+  const { data, error } = await s
+    .from("business_listings")
+    .select(
+      `
+      id,
+      business_name,
+      description,
+      island,
+      category_id,
+      categories:category_id!inner (
+        name,
+        slug
+      ),
+      logo_url,
+      cover_image_url,
+      subscription_plan,
+      status
+    `
+    )
+    .eq("status", "active")
+    .eq("island", island)
+    // hier filteren we echt op categorie-slug
+    .eq("categories.slug", category)
+    .returns<Row[]>();
+
+  // sorteren op plan (Pro → Growth → Starter → Free) en dan naam
+  const listings = (data ?? []).slice().sort((a, b) => {
+    const aPlan = (a.subscription_plan ?? "free") as Plan;
+    const bPlan = (b.subscription_plan ?? "free") as Plan;
+
+    const byPlan = PLAN_ORDER[aPlan] - PLAN_ORDER[bPlan];
+    if (byPlan !== 0) return byPlan;
+
+    return a.business_name.localeCompare(b.business_name);
+  });
 
   return (
     <div className="min-h-screen container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+      {/* Header */}
       <header className="mb-8">
         <p className="text-xs uppercase tracking-wide text-teal-600">
           {islandLabel} • {category}
         </p>
-        <h1 className="text-3xl font-bold text-slate-900">{catConfig.title}</h1>
-        <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-          {catConfig.description}
+        <h1 className="text-3xl font-bold text-foreground">{catCopy.title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+          {catCopy.description}
         </p>
       </header>
 
-      {/* Placeholder tot Supabase listings live zijn */}
-      <section className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-6 text-sm text-slate-700">
-        <p className="font-semibold mb-2">
-          Listings coming soon / Binnenkort beschikbaar
-        </p>
-        <p className="mb-3">
-          We zijn nog lokale bedrijven aan het onboarden in deze categorie.
-          Bezoek later opnieuw of bekijk andere categorieën en tips voor{" "}
-          <Link
-            href={`/${lang}/islands/${island}`}
-            className="text-teal-600 font-semibold underline-offset-4 hover:underline"
-          >
-            {islandLabel}
-          </Link>
-          .
-        </p>
-      </section>
+      {/* Error / geen data */}
+      {error ? (
+        <p className="text-destructive">Error: {error.message}</p>
+      ) : listings.length === 0 ? (
+        <section className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-6 text-sm text-slate-700">
+          <p className="font-semibold mb-2">
+            Listings coming soon / Binnenkort beschikbaar
+          </p>
+          <p className="mb-3">
+            We zijn nog lokale bedrijven aan het onboarden in deze categorie.
+            Bezoek later opnieuw of bekijk andere categorieën en tips voor{" "}
+            <Link
+              href={`/${lang}/islands/${island}`}
+              className="text-teal-600 font-semibold underline-offset-4 hover:underline"
+            >
+              {islandLabel}
+            </Link>
+            .
+          </p>
+        </section>
+      ) : (
+        // Zelfde kaart-stijl als /businesses
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {listings.map((b) => {
+            const plan = (b.subscription_plan ?? "free") as Plan;
+            const hasMiniSite = plan === "pro";
+            const href = `/${lang}/biz/${b.id}`;
+
+            return (
+              <Card
+                key={b.id}
+                className="overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <CardContent className="p-6">
+                  {b.logo_url && (
+                    <div className="mb-4 h-32 flex items-center justify-center bg-muted rounded-lg overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={b.logo_url}
+                        alt={b.business_name}
+                        className="max-h-full max-w-full object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-start justify-between mb-2 gap-2">
+                    <h3 className="font-bold text-lg text-foreground">
+                      {b.business_name}
+                    </h3>
+                    <Badge className={PLAN_BADGE_CLASS[plan]}>
+                      {PLAN_LABEL[plan]}
+                    </Badge>
+                  </div>
+
+                  <div className="text-sm text-muted-foreground mb-3">
+                    {islandLabel} • {b.categories?.name ?? "—"}
+                  </div>
+
+                  {b.description && (
+                    <p className="text-sm text-foreground/80 mb-4 line-clamp-2">
+                      {b.description}
+                    </p>
+                  )}
+
+                  <Button
+                    variant={hasMiniSite ? "outline" : "ghost"}
+                    size="sm"
+                    className="w-full"
+                    disabled={!hasMiniSite}
+                    asChild={hasMiniSite}
+                  >
+                    {hasMiniSite ? (
+                      <Link href={href}>
+                        {lang === "nl" ? "Bekijk details" : "View details"}
+                      </Link>
+                    ) : (
+                      <span>
+                        {lang === "nl" ? "Geen mini-site" : "No mini-site"}
+                      </span>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </section>
+      )}
     </div>
   );
 }
