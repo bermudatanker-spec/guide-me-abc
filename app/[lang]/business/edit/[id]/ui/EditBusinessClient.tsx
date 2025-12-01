@@ -1,3 +1,4 @@
+// app/[lang]/business/edit/[id]/ui/EditBusinessClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -7,7 +8,6 @@ import { Loader2, ArrowLeft } from "lucide-react";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
 import { langHref } from "@/lib/lang-href";
 
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ type ListingRow = {
   email: string | null;
   website: string | null;
   whatsapp: string | null;
-  opening_hours: string | null;
+  opening_hours: string | null;        // JSON-string uit OpeningHoursField
   temporarily_closed: boolean | null;
   status: "pending" | "active" | "inactive";
   subscription_plan: "starter" | "growth" | "pro";
@@ -105,11 +105,7 @@ const FormSchema = z.object({
     .regex(/^[0-9]*$/, "Alleen cijfers")
     .optional()
     .or(z.literal("")),
-  opening_hours: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("")),
+  opening_hours: z.string().trim().optional().or(z.literal("")), // JSON-string
   temporarily_closed: z.boolean().optional(),
 });
 
@@ -138,7 +134,7 @@ export default function EditBusinessClient({ lang }: Props) {
     email: string;
     website: string;
     whatsapp: string;
-    opening_hours: string;
+    opening_hours: string;        // JSON-string of ""
     temporarily_closed: boolean;
   }>({
     business_name: "",
@@ -186,7 +182,7 @@ export default function EditBusinessClient({ lang }: Props) {
         const { data: row, error: rowError } = await supabase
           .from("business_listings")
           .select(
-            "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, opening_hours, temporarily_closed, status, subscription_plan",
+            "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, opening_hours, temporarily_closed, status, subscription_plan"
           )
           .eq("id", id)
           .single<ListingRow>();
@@ -214,7 +210,7 @@ export default function EditBusinessClient({ lang }: Props) {
           email: row.email ?? "",
           website: row.website ?? "",
           whatsapp: row.whatsapp ?? "",
-          opening_hours: row.opening_hours ?? "",
+          opening_hours: row.opening_hours ?? "",   // JSON-string uit DB
           temporarily_closed: !!row.temporarily_closed,
         });
       } catch (e: any) {
@@ -270,6 +266,7 @@ export default function EditBusinessClient({ lang }: Props) {
           email: data.email || null,
           website: data.website || null,
           whatsapp: data.whatsapp || null,
+          // hier gewoon de JSON-string opslaan
           opening_hours: form.opening_hours || null,
           temporarily_closed: form.temporarily_closed,
         })
@@ -381,10 +378,7 @@ export default function EditBusinessClient({ lang }: Props) {
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                   value={form.category_id}
                   onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      category_id: e.target.value,
-                    }))
+                    setForm((s) => ({ ...s, category_id: e.target.value }))
                   }
                 >
                   <option value="">— Geen —</option>
@@ -476,35 +470,38 @@ export default function EditBusinessClient({ lang }: Props) {
               </div>
             </div>
 
-           {/* Openingstijden + tijdelijk gesloten */}
-<div className="space-y-2">
-  <Label htmlFor="opening_hours">Openingstijden</Label>
+            {/* Openingstijden + tijdelijk gesloten */}
+            <div className="space-y-2">
+              <Label htmlFor="opening_hours">
+                {lang === "nl" ? "Openingstijden" : "Opening hours"}
+              </Label>
 
-  <OpeningHoursField
-    lang={lang}
-    value={form.opening_hours}
-    onChange={(v) =>
-      setForm((s) => ({ ...s, opening_hours: v }))
-    }
-  />
+              <OpeningHoursField
+                lang={lang}
+                value={form.opening_hours}      // JSON-string
+                onChange={(v) =>
+                  setForm((s) => ({ ...s, opening_hours: v }))
+                }
+              />
 
-  <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-    <input
-      type="checkbox"
-      className="h-4 w-4 rounded border-border"
-      checked={form.temporarily_closed}
-      onChange={(e) =>
-        setForm((s) => ({
-          ...s,
-          temporarily_closed: e.target.checked,
-        }))
-      }
-    />
-    {lang === "nl"
-      ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
-      : "Temporarily closed (show 'Closed now' on mini-site)"}
-  </label>
-</div>
+              <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-border"
+                  checked={form.temporarily_closed}
+                  onChange={(e) =>
+                    setForm((s) => ({
+                      ...s,
+                      temporarily_closed: e.target.checked,
+                    }))
+                  }
+                />
+                {lang === "nl"
+                  ? "Tijdelijk gesloten (toon 'Nu gesloten' op de mini-site)"
+                  : "Temporarily closed (show 'Closed now' on mini-site)"}
+              </label>
+            </div>
+
             <Button
               type="submit"
               className="w-full"

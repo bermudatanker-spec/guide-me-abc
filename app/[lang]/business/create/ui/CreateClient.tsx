@@ -24,7 +24,6 @@ import {
 import type { Locale } from "@/i18n/config";
 import OpeningHoursField from "@/components/business/OpeningHoursField";
 
-/** Type moet aansluiten op je Supabase `categories` tabel */
 type CategoryRow = {
   id: string;
   name: string;
@@ -62,17 +61,20 @@ export default function CreateClient({
     email: "",
     website: "",
     whatsapp: "",
-    opening_hours: "",       // ✅
-    temporarily_closed: false, // ✅
+    opening_hours: "", // JSON string
+    temporarily_closed: false,
   });
 
-  /** ------------------ Auth check ------------------ */
+  /* ---------- Auth check ---------- */
   useEffect(() => {
     let alive = true;
 
     (async () => {
       const { data, error } = await supabase.auth.getUser();
-      console.log("[business/create] getUser:", { user: data?.user, error });
+      console.log("[business/create] getUser:", {
+        user: data?.user,
+        error,
+      });
 
       if (!alive) return;
 
@@ -89,7 +91,7 @@ export default function CreateClient({
     };
   }, [lang, router, supabase]);
 
-  /** ------------------------- Submit ------------------------- */
+  /* ---------- Submit ---------- */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -133,8 +135,8 @@ export default function CreateClient({
         email: form.email || null,
         website: form.website || null,
         whatsapp: form.whatsapp || null,
-        opening_hours: form.opening_hours || null,   // ✅
-        temporarily_closed: form.temporarily_closed, // ✅
+        opening_hours: form.opening_hours || null, // JSON string
+        temporarily_closed: form.temporarily_closed,
         status: "pending",
         subscription_plan: "starter",
       });
@@ -167,7 +169,7 @@ export default function CreateClient({
     }
   }
 
-  /** ------------------------------ UI ------------------------------ */
+  /* ---------- UI ---------- */
 
   if (authLoading) {
     return (
@@ -182,9 +184,7 @@ export default function CreateClient({
       <Button
         variant="ghost"
         className="mb-6"
-        onClick={() =>
-          router.push(langHref(lang, "/business/dashboard"))
-        }
+        onClick={() => router.push(langHref(lang, "/business/dashboard"))}
       >
         {t.backToDashboard ?? "Terug naar dashboard"}
       </Button>
@@ -199,7 +199,7 @@ export default function CreateClient({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Bedrijfsnaam */}
+            {/* naam */}
             <div className="space-y-2">
               <Label htmlFor="business_name">
                 {t.businessName ?? "Bedrijfsnaam"} *
@@ -214,7 +214,7 @@ export default function CreateClient({
               />
             </div>
 
-            {/* Eiland + Categorie */}
+            {/* eiland + categorie */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="island">{t.island ?? "Eiland"} *</Label>
@@ -258,7 +258,7 @@ export default function CreateClient({
               </div>
             </div>
 
-            {/* Beschrijving */}
+            {/* beschrijving */}
             <div className="space-y-2">
               <Label htmlFor="description">
                 {t.description ?? "Beschrijving"}
@@ -276,7 +276,7 @@ export default function CreateClient({
               />
             </div>
 
-            {/* Adres */}
+            {/* adres */}
             <div className="space-y-2">
               <Label htmlFor="address">{t.address ?? "Adres"}</Label>
               <Input
@@ -288,7 +288,7 @@ export default function CreateClient({
               />
             </div>
 
-            {/* Telefoon & WhatsApp */}
+            {/* telefoon & whatsapp */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">{t.phone ?? "Telefoon"}</Label>
@@ -314,7 +314,7 @@ export default function CreateClient({
               </div>
             </div>
 
-            {/* E-mail & Website */}
+            {/* email & website */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">{t.email ?? "E-mailadres"}</Label>
@@ -341,7 +341,7 @@ export default function CreateClient({
               </div>
             </div>
 
-            {/* Openingstijden + tijdelijk gesloten */}
+            {/* openingstijden + tijdelijk gesloten */}
             <div className="space-y-2">
               <Label htmlFor="opening_hours">
                 {lang === "nl" ? "Openingstijden" : "Opening hours"}
@@ -379,7 +379,9 @@ export default function CreateClient({
               variant="primaryGrad"
               disabled={saving}
             >
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {saving && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               {t.createBusinessCta ?? "Bedrijf aanmaken"}
             </Button>
           </form>
