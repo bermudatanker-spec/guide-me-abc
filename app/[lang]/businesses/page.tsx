@@ -26,8 +26,10 @@ type Row = {
   status: Status;
 };
 
-type Params = {
-  params: Promise<{ lang: Locale }>; // ⬅️ let op: Promise
+// In Next 16 zijn params & searchParams Promises
+type PageProps = {
+  params: Promise<{ lang: Locale }>;
+  searchParams: Promise<{ island?: string }> | { island?: string };
 };
 
 /* --------------------- Plan labels & styles ---------------------- */
@@ -46,16 +48,46 @@ const PLAN_BADGE_CLASS: Record<Plan, string> = {
   pro: "bg-primary text-primary-foreground",
 };
 
+// ranking: pro > growth > starter > free
+const PLAN_RANK: Record<Plan, number> = {
+  pro: 0,
+  growth: 1,
+  starter: 2,
+  free: 3,
+};
+
+/* --------------------- Island labels & helpers ------------------- */
+
+const ISLAND_LABELS: Record<Island, string> = {
+  aruba: "Aruba",
+  bonaire: "Bonaire",
+  curacao: "Curaçao",
+};
+
+const VALID_ISLANDS: Island[] = ["aruba", "bonaire", "curacao"];
+
 /* ----------------------------- Page ------------------------------ */
 
-export default async function BusinessesPage({ params }: Params) {
-  // ⬇️ params eerst “uitpakken”
-  const { lang: rawLang } = await params;
-  const lang = isLocale(rawLang) ? rawLang : "en";
+export default async function BusinessesPage({
+  params,
+  searchParams,
+}: PageProps) {
+  // params / searchParams eerst "unwrappen"
+  const resolvedParams = await params;
+  const resolvedSearch =
+    (await Promise.resolve(searchParams)) as { island?: string } | undefined;
+
+  const lang = isLocale(resolvedParams.lang) ? resolvedParams.lang : "en";
+
+  // island filter from URL (?island=aruba)
+  const rawIsland = (resolvedSearch?.island ?? "").toLowerCase().trim();
+  const islandFilter = VALID_ISLANDS.includes(rawIsland as Island)
+    ? (rawIsland as Island)
+    : null;
 
   const s = await supabaseServer();
 
-  const { data, error } = await s
+  let query = s
     .from("business_listings")
     .select(
       `
@@ -71,40 +103,87 @@ export default async function BusinessesPage({ params }: Params) {
       status
     `
     )
-    .eq("status", "active")
-    .order("business_name", { ascending: true })
-    .returns<Row[]>();
+    .eq("status", "active");
 
-  const listings: Row[] = data ?? [];
+  if (islandFilter) {
+    query = query.eq("island", islandFilter);
+  }
+
+  const { data, error } = await query.returns<Row[]>();
+
+  // PRO > Growth > Starter > Free, binnen elke groep A–Z op naam
+  const listings: Row[] = (data ?? []).slice().sort((a, b) => {
+    const planA: Plan = (a.subscription_plan ?? "free") as Plan;
+    const planB: Plan = (b.subscription_plan ?? "free") as Plan;
+
+    const rankDiff = PLAN_RANK[planA] - PLAN_RANK[planB];
+    if (rankDiff !== 0) return rankDiff;
+
+    return a.business_name.localeCompare(b.business_name);
+  });
+
+  const t = {
+    heading:
+      lang === "nl"
+        ? "Ontdek Bedrijven"
+        : lang === "pap"
+        ? "Deskubri Negoshinan"
+        : lang === "es"
+        ? "Descubre Negocios"
+        : "Discover Businesses",
+    sub:
+      lang === "nl"
+        ? "Browse lokale bedrijven op de ABC-eilanden"
+        : lang === "pap"
+        ? "Eksplora negoshinan lokal riba e Islanan ABC"
+        : lang === "es"
+        ? "Explora negocios locales en las Islas ABC"
+        : "Browse local businesses across the ABC Islands",
+    allIslands:
+      lang === "nl"
+        ? "Alle eilanden"
+        : lang === "pap"
+        ? "Tur isla"
+        : lang === "es"
+        ? "Todas las islas"
+        : "All islands",
+  };
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
-      <div className="mb-8">
+      {/* Header */}
+      <div className="mb-6">
         <h1 className="text-4xl font-bold mb-2 text-foreground">
-          {lang === "nl"
-            ? "Ontdek Bedrijven"
-            : lang === "pap"
-            ? "Deskubri Negoshinan"
-            : lang === "es"
-            ? "Descubre Negocios"
-            : "Discover Businesses"}
+          {t.heading}
         </h1>
-        <p className="text-muted-foreground">
-          {lang === "nl"
-            ? "Browse lokale bedrijven op de ABC-eilanden"
-            : lang === "pap"
-            ? "Eksplora negoshinan lokal riba e Islanan ABC"
-            : lang === "es"
-            ? "Explora negocios locales en las Islas ABC"
-            : "Browse local businesses across the ABC Islands"}
-        </p>
+        <p className="text-muted-foreground">{t.sub}</p>
       </div>
 
+      {/* Island filter bar */}
+      <div className="mb-8 flex flex-wrap gap-2">
+        <FilterChip
+          href={`/${lang}/businesses`}
+          active={!islandFilter}
+          label={t.allIslands}
+        />
+        {VALID_ISLANDS.map((isl) => (
+          <FilterChip
+            key={isl}
+            href={`/${lang}/businesses?island=${isl}`}
+            active={isl === islandFilter}
+            label={ISLAND_LABELS[isl]}
+          />
+        ))}
+      </div>
+
+      {/* Data states */}
       {error ? (
         <p className="text-destructive">Error: {error.message}</p>
       ) : listings.length === 0 ? (
         <p className="text-muted-foreground">
-          No active businesses published yet.
+          {lang === "nl"
+            ? "Nog geen actieve bedrijven in deze selectie."
+            : "No active businesses published yet for this selection."}
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -135,14 +214,13 @@ export default async function BusinessesPage({ params }: Params) {
                     <h3 className="font-bold text-lg text-foreground">
                       {b.business_name}
                     </h3>
-
                     <Badge className={PLAN_BADGE_CLASS[plan]}>
                       {PLAN_LABEL[plan]}
                     </Badge>
                   </div>
 
                   <div className="text-sm text-muted-foreground mb-3">
-                    {cap(b.island)} • {b.categories?.name ?? "—"}
+                    {ISLAND_LABELS[b.island]} • {b.categories?.name ?? "—"}
                   </div>
 
                   {b.description && (
@@ -178,8 +256,28 @@ export default async function BusinessesPage({ params }: Params) {
   );
 }
 
-/* ----------------------------- Helpers --------------------------- */
+/* ------------------------- Small helper chip --------------------- */
 
-function cap(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+function FilterChip({
+  href,
+  active,
+  label,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={[
+        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+        active
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-background text-foreground hover:bg-muted",
+      ].join(" ")}
+    >
+      {label}
+    </Link>
+  );
 }
