@@ -753,13 +753,19 @@ function getCopy(lang: Lang, island: IslandId): Copy {
 
 /* Metadata */
 type PageParams = {
-  params: Promise<{ lang: Lang; island: IslandId }>;
+  params: Promise<{ lang: string; island: string }>;
 };
 
 export async function generateMetadata(
   { params }: PageParams
 ): Promise<Metadata> {
-  const { lang, island } = await params;
+  const { lang: rawLang, island: rawIsland } = await params;
+
+  const lang = (["en", "nl", "pap", "es"].includes(rawLang)
+    ? rawLang
+    : "en") as Lang;
+
+  const island = rawIsland as IslandId;
 
   if (!ISLANDS.includes(island)) {
     return {
@@ -789,9 +795,7 @@ export async function generateMetadata(
       description: c.description,
       url: `/${lang}/islands/${island}`,
       type: "website",
-      images: [
-        { url: image, width: 1200, height: 630, alt: `${c.name} hero` },
-      ],
+      images: [{ url: image, width: 1200, height: 630, alt: `${c.name} hero` }],
     },
     twitter: {
       card: "summary_large_image",
@@ -802,10 +806,13 @@ export async function generateMetadata(
   };
 }
 
-/* Page */
-export default async function IslandPage({ params }:
-  PageParams) {
-  const { lang, island } = await params;
+export default async function IslandPage({ params }: PageParams) {
+  const { lang: rawLang, island: rawIsland } = await params;
+
+  const lang = (["en", "nl", "pap", "es"].includes(rawLang)
+    ? rawLang
+    : "en") as Lang;
+  const island = rawIsland as IslandId;
 
   if (!ISLANDS.includes(island)) {
     notFound();
@@ -813,6 +820,8 @@ export default async function IslandPage({ params }:
 
   const c = getCopy(lang, island);
   const bg = ISLAND_BG[island];
+
+  // ... rest van je JSX ongewijzigd ...
 
   return (
     <div className="min-h-screen bg-background">

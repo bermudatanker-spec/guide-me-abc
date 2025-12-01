@@ -10,13 +10,13 @@ import LocalTips from "@/components/home/LocalTips";
 import SearchBar from "@/components/home/SearchBar";
 
 type PageProps = {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 };
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: PageProps): Metadata {
-  const { lang } = params;
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { lang } = await params;
 
   const title =
     lang === "nl"
@@ -31,17 +31,14 @@ export function generateMetadata({ params }: PageProps): Metadata {
   return { title, description };
 }
 
-export default function HomePage({ params }: PageProps) {
-  const { lang } = params;
+export default async function HomePage({ params }: PageProps) {
+  const { lang } = await params;
 
   return (
     <main className="min-h-screen bg-[#fdf7f1] text-slate-900">
-      {/* HERO + zwevende searchbar */}
       <section className="pb-32">
-        {/* Hero zelf */}
         <Hero lang={lang} />
 
-        {/* Searchbar die over de hero “zweeft” */}
         <div className="mt-[-80px] flex justify-center px-4 sm:px-6 lg:px-8">
           <div className="w-full max-w-[880px]">
             <SearchBar lang={lang} />
@@ -49,7 +46,6 @@ export default function HomePage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* rest van de homepage */}
       <div className="px-4 sm:px-6 lg:px-10 max-w-6xl mx-auto pb-16 space-y-10">
         <QuickFilters lang={lang} />
         <FeaturedExperiences />

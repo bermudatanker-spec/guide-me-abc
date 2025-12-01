@@ -3,53 +3,53 @@
 
 import ResponsiveImage from "@/components/ResponsiveImage";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu, X, Mail, MessageCircle } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
+import { Menu, X, Mail, MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import LanguageSelector from "@/components/LanguageSelector";
-import { useLanguage } from "@/hooks/useLanguage";
-import { getLangFromPath } from "@/lib/locale-path";
+import { useLanguage } from "@/hooks/useLanguage";
+import { getLangFromPath } from "@/lib/locale-path";
 import BusinessMenu from "@/components/BusinessMenu";
 
-type NavigationProps = {
+type NavigationProps = {
   lang?: string;
 };
 
-export default function Navigation({ lang }: NavigationProps) {
-  const [open, setOpen] = useState(false);
+export default function Navigation({ lang }: NavigationProps) {
+  const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "/";
-  const { t } = useLanguage();
+  const { t } = useLanguage();
 
   useEffect(() => setOpen(false), [pathname]);
 
-  const activeLang = (lang ?? getLangFromPath(pathname)) || "en";
+  const activeLang = (lang ?? getLangFromPath(pathname)) || "en";
 
-  const L = {
+  const L = {
     aruba: t.aruba ?? "Aruba",
     bonaire: t.bonaire ?? "Bonaire",
     curacao: t.curacao ?? "Curaçao",
     businesses: t.businesses ?? "Businesses",
     blog: t.blog ?? "Blog",
     faq: t.faq ?? "FAQ",
-    contact: (t as any).contact ?? "Contact",
+    contact: (t as any).contact ?? "Contact",
     forBusiness: t.forBusiness ?? "For Business",
   };
 
-  const links = [
-    { href: `/${activeLang}/islands/aruba`, label: L.aruba },
-    { href: `/${activeLang}/islands/bonaire`, label: L.bonaire },
-    { href: `/${activeLang}/islands/curacao`, label: L.curacao },
-    { href: `/${activeLang}/businesses`, label: L.businesses },
-    { href: `/${activeLang}/blog`, label: L.blog },
-    { href: `/${activeLang}/faq`, label: L.faq },
-    { href: `/${activeLang}/contact`, label: L.contact },
+  const links = [
+    { href: `/${activeLang}/islands/aruba`, label: L.aruba },
+    { href: `/${activeLang}/islands/bonaire`, label: L.bonaire },
+    { href: `/${activeLang}/islands/curacao`, label: L.curacao },
+    { href: `/${activeLang}/businesses`, label: L.businesses },
+    { href: `/${activeLang}/blog`, label: L.blog },
+    { href: `/${activeLang}/faq`, label: L.faq },
+    { href: `/${activeLang}/contact`, label: L.contact },
   ];
 
-  const isActive = (href: string) =>
+  const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
 
-  return (
+  return (
     <header className="fixed top-0 z-50 w-full border-b border-border bg-background/75 backdrop-blur">
       {/* iets hogere header + logo-wrapper zodat niets wordt afgesneden */}
       <div className="container mx-auto flex h-18 items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -72,11 +72,11 @@ export default function Navigation({ lang }: NavigationProps) {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          {links.map((l) => (
+          {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              aria-current={isActive(l.href) ? "page" : undefined}
+              aria-current={isActive(l.href) ? "page" : undefined}
               className={`flex h-10 items-center leading-none ${
                 isActive(l.href)
                   ? "text-primary"
@@ -116,24 +116,24 @@ export default function Navigation({ lang }: NavigationProps) {
         {/* Mobile burger */}
         <button
           className="md:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-accent"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
           aria-expanded={open}
         >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       {/* Mobile dropdown */}
-      {open && (
+      {open && (
         <nav className="md:hidden border-t border-border bg-background">
           <div className="flex flex-col items-start space-y-3 p-4">
-            {links.map((l) => (
+            {links.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
                 className={
-                  "w-full py-2 text-sm " +
+                  "w-full py-2 text-sm " +
                   (isActive(l.href)
                     ? "text-primary"
                     : "text-muted-foreground hover:text-primary")
