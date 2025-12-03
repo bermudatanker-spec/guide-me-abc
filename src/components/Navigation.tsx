@@ -198,8 +198,8 @@ export default function Navigation({ lang }: NavigationProps) {
 
       {/* Mobiel menu – dropdown onder de header, met glas-effect achtig gevoel */}
       {open && (
-        <div className="fixed inset-x-0 z-40 bg-black/50">
-          <nav className="fixed inset-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 supports-[backdrop-filter]:backdrop-blur-md">
+        <div className="fixed inset-0 z-40 bg-black/50">
+          <nav className="fixed inset-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             {/* Links */}
             {links.map((l) => (
               <Link
