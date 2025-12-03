@@ -69,10 +69,9 @@ export default function Navigation({ lang }: NavigationProps) {
 
   return (
     <>
-      {/* ===================== HEADER (desktop + mobiel) ===================== */}
+      {/* ===================== HEADER ===================== */}
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="container mx-auto flex h-22 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Logo */}
           <Link href={`/${activeLang}`} className="flex items-center gap-3">
             <div className="relative flex h-[100px] w-[150px] items-center">
               <ResponsiveImage
@@ -85,7 +84,6 @@ export default function Navigation({ lang }: NavigationProps) {
             </div>
           </Link>
 
-          {/* Desktop navigatie */}
           <nav className="hidden md:flex flex-1 items-center justify-center gap-6 text-sm font-medium">
             {links.map((l) => (
               <Link
@@ -103,7 +101,6 @@ export default function Navigation({ lang }: NavigationProps) {
             ))}
           </nav>
 
-          {/* Desktop rechts */}
           <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-3 text-muted-foreground">
               <Link href="https://wa.me/59996763535" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
@@ -114,7 +111,6 @@ export default function Navigation({ lang }: NavigationProps) {
               </Link>
             </div>
 
-            {/* Taalknop */}
             <div className="rounded-full shadow-glow">
               <button
                 onClick={() => setLangOpen(v => !v)}
@@ -155,7 +151,6 @@ export default function Navigation({ lang }: NavigationProps) {
             </Button>
           </div>
 
-          {/* Mobiele hamburger */}
           <button
             onClick={() => setOpen(v => !v)}
             className="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent md:hidden"
@@ -166,20 +161,17 @@ export default function Navigation({ lang }: NavigationProps) {
         </div>
       </header>
 
-      {/* ===================== MOBIEL FULLSCREEN MENU ===================== */}
+      {/* ===================== MOBIEL MENU ===================== */}
       {open && (
         <>
-          {/* Overlay */}
           <div
             className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
 
-          {/* Glas menu */}
           <nav className="fixed inset-0 z-50 flex flex-col bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex flex-col h-full px-6 pt-28 pb-10 overflow-y-auto">
-              {/* Links */}
               {links.map((l) => (
                 <Link
                   key={l.href}
@@ -193,18 +185,41 @@ export default function Navigation({ lang }: NavigationProps) {
                 </Link>
               ))}
 
-              {/* Knoppen onderaan */}
               <div className="mt-auto space-y-4 pt-10">
-                <Button
-                  asChild
-                  className="w-full text-white font-semibold transition hover:scale-[1.02]"
-                  style={{
-                    background: "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
-                    boxShadow: "0 3px 8px rgba(0,191,211,0.25)",
-                  }}
-                >
-                  <Link href="#">{LANG_LABEL[activeLang]}</Link>
-                </Button>
+                {/* Taalselector – nu volledig werkend op mobiel */}
+                <div className="relative">
+                  <button
+                    onClick={() => setLangOpen(v => !v)}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-white font-semibold transition hover:scale-[1.02]"
+                    style={{
+                      background: "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
+                      boxShadow: "0 3px 8px rgba(0,191,211,0.25)",
+                    }}
+                  >
+                    {LANG_LABEL[activeLang]}
+                    <ChevronDown className={`h-5 w-5 transition-transform ${langOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {langOpen && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 rounded-xl border bg-card shadow-xl overflow-hidden">
+                      {SUPPORTED.map((code) => (
+                        <Link
+                          key={code}
+                          href={replaceLangInPath(code)}
+                          onClick={() => {
+                            setLangOpen(false);
+                            setOpen(false);
+                          }}
+                          className={`block px-6 py-4 text-center font-medium transition hover:bg-muted ${
+                            code === activeLang ? "text-primary" : "text-foreground"
+                          }`}
+                        >
+                          {LANG_LABEL[code]}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <Button
                   asChild
