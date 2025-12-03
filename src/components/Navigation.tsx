@@ -73,7 +73,7 @@ export default function Navigation({ lang }: NavigationProps) {
   };
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-border bg-background/75 backdrop-blur">
+    <header className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter] : bg-background/80 supports-[backdrop-filter] : backdrop-blur-md">
       {/* iets hogere header + logo-wrapper zodat niets wordt afgesneden */}
       <div className="container mx-auto flex h-22 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand / Logo */}
@@ -199,7 +199,7 @@ export default function Navigation({ lang }: NavigationProps) {
       {/* Mobiel menu – dropdown onder de header, met glas-effect achtig gevoel */}
       {open && (
         <div className="md:hidden fixed inset-x-0 top-[88px] z-40 bg-background/80 backdrop-blur-lg border-t border-border shadow-lg">
-          <nav className="md:hidden border-t border-border bg-white/40 backdrop-blur-xl supports-[backdrop-filter]:bg-white/30">
+          <nav className="fixed inset-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter] : bg-background/80 supports-[backdrop-filter] : backdrop-blur-md">
             {/* Links */}
             {links.map((l) => (
               <Link
