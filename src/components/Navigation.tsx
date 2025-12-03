@@ -197,55 +197,52 @@ export default function Navigation({ lang }: NavigationProps) {
       </div>
 
       {/* Mobiel menu – dropdown onder de header, met glas-effect achtig gevoel */}
-      {open && (
-        <div className="fixed inset-0 z-40 bg-black/50">
-          <nav className="fixed inset-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            {/* Links */}
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={
-                  "block py-2 text-base font-medium " +
-                  (isActive(l.href)
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-primary")
-                }
-              >
-                {l.label}
-              </Link>
-            ))}
+     {open && (
+  <>
+    {/* 1. Overlay – alleen achtergrond dimmen + blur */}
+    <div
+      className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+      onClick={() => setOpen(false)}
+      aria-hidden="true"
+    />
 
-            {/* Language knop (mobiel) */}
-            <Button
-              asChild
-              className="mt-2 w-full text-white font-semibold transition hover:scale-[1.02]"
-              style={{
-                background:
-                  "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
-                boxShadow: "0 3px 8px rgba(0,191,211,0.25)",
-              }}
-            >
-              <Link href="#">{LANG_LABEL[activeLang]}</Link>
-            </Button>
+    {/* 2. Het echte menu – erbovenop, met glass-effect */}
+    <nav className="fixed inset-0 z-50 flex flex-col bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      
+      {/* Nu pas je inhoud – met padding, scroll, etc. */}
+      <div className="flex flex-col h-full px-6 pt-24 pb-8">   {/* pt-24 = ruimte voor je header erboven */}
+        
+        {/* Je links – netjes onder elkaar */}
+        {links.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            onClick={() => setOpen(false)}
+            className={`py-4 text-lg font-medium border-b border-border/20 last:border-0 ${
+              isActive(l.href) ? "text-primary" : "text-foreground"
+            }`}
+          >
+            {l.label}
+          </Link>
+        ))}
 
-            {/* For Business (mobiel) */}
-            <Button
-              asChild
-              className="w-full text-white font-semibold transition hover:scale-[1.02]"
-              style={{
-                background:
-                  "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)",
-                boxShadow: "0 3px 8px rgba(255,122,79,0.25)",
-              }}
-            >
-              <Link href={`/${activeLang}/business/auth`}>
-                {Lbl.forBusiness}
-              </Link>
-            </Button>
-          </nav>
-        </div>
-      )}
-    </header>
-  );
+        {/* Knoppen onderaan */}
+        <div className="mt-auto space-y-4 pt-8">
+          <Button asChild className="w-full text-white font-semibold" style={{ background: "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)", boxShadow: "0 3px 8px rgba(0,191,211,0.25)" }}>
+            <Link href="#">{LANG_LABEL[activeLang]}</Link>
+          </Button>
+
+          <Button asChild className="w-full text-white font-semibold" style={{ background: "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)", boxShadow: "0 3px 10px rgba(255,122,79,0.3)" }}>
+            <Link href={`/${activeLang}/business/auth`} onClick={() => setOpen(false)}>
+              {Lbl.forBusiness}
+            </Link>
+          </Button>
+        </div>
+
+      </div>
+    </nav>
+  </>
+)}
+</header>
+  );
 }
