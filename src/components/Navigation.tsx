@@ -187,34 +187,34 @@ export default function Navigation({ lang }: NavigationProps) {
         </div>
 
         {/* Mobile burger */}
-        <button
-          className="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent md:hidden"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
-        >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-      </div>
+        <button
+          className="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent md:hidden"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Toggle menu"
+        >
+          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </div>
 
-      {/* Mobiel menu */}
-      {open && (
-        <div className="fixed inset-x-0 top-20 bottom-0 z-40 bg-background/95 backdrop-blur-sm md:hidden">
-          <nav className="flex flex-col h-full border-t border-border overflow-y-auto">
-            <div className="flex flex-1 flex-col space-y-3 p-4 pb-6">
-              {links.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className={
-                    "w-full py-2 text-base " +
-                    (isActive(l.href)
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-primary")
-                  }
-                >
-                  {l.label}
-                </Link>
-              ))}
+      {/* Mobiel menu */}
+      {open && (
+        <div className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-sm md:hidden">
+          <nav className="mt-20 flex h-full flex-col border-t border-border overflow-y-auto">
+            <div className="flex flex-1 flex-col space-y-3 p-4 pb-6">
+              {links.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={
+                    "w-full py-2 text-base " +
+                    (isActive(l.href)
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-primary")
+                  }
+                >
+                  {l.label}
+                </Link>
+              ))}
 
               {/* Onderkant */}
               <div className="mt-auto border-t border-border pt-4 space-y-3">
