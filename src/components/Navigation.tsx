@@ -199,7 +199,7 @@ export default function Navigation({ lang }: NavigationProps) {
       {/* Mobiel menu – dropdown onder de header, met glas-effect achtig gevoel */}
       {open && (
         <div className="md:hidden fixed inset-x-0 top-[88px] z-40 bg-background/80 backdrop-blur-lg border-t border-border shadow-lg">
-          <nav className="flex flex-col space-y-3 p-4 max-h-[70vh] overflow-y-auto">
+          <nav className="md:hidden border-t border-border bg-white/40 backdrop-blur-xl supports-[backdrop-filter]:bg-white/30">
             {/* Links */}
             {links.map((l) => (
               <Link
