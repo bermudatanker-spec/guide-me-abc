@@ -1,11 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // i18n eruit:
-  // i18n: {
-  //   locales: ["en", "nl", "pap", "es"],
-  //   defaultLocale: "en",
-  // },
 
   images: {
     remotePatterns: [
