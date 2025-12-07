@@ -1,112 +1,209 @@
 // app/[lang]/godmode/page.tsx
 import type { Metadata } from "next";
 import { isLocale, type Locale } from "@/i18n/config";
+import Link from "next/link";
+import { Settings, Users, Briefcase, Globe2, Sparkles, Activity, Eye, UserCog } from "lucide-react";
 
-type PageParams = { lang: Locale };
-type PageProps = { params: Promise<PageParams> };
+type Params = { lang: Locale };
+type Props = { params: Promise<Params> };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+// ---------- SEO ----------
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang: raw } = await params;
   const lang = isLocale(raw) ? raw : "en";
+  const isNl = lang === "nl";
 
   return {
-    title:
-      lang === "nl"
-        ? "God Mode Dashboard | Guide Me ABC"
-        : "God Mode Dashboard | Guide Me ABC",
-    description:
-      lang === "nl"
-        ? "Volledige controle over Guide Me ABC als super_admin."
-        : "Full control over Guide Me ABC as super_admin.",
+    title: isNl ? "Super Admin | Guide Me ABC" : "Super Admin | Guide Me ABC",
+    description: isNl
+      ? "God Mode – volledige controle over Guide Me ABC."
+      : "God Mode – full control over Guide Me ABC.",
   };
 }
 
-export default async function GodmodePage({ params }: PageProps) {
+// ---------- PAGE ----------
+export default async function GodmodePage({ params }: Props) {
   const { lang: raw } = await params;
   const lang = isLocale(raw) ? raw : "en";
-
   const isNl = lang === "nl";
 
   return (
-    <main className="container mx-auto max-w-6xl px-4 pt-24 pb-16">
-      <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-        {isNl ? "God Mode Dashboard" : "God Mode Dashboard"}
-      </h1>
+    <main className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+      {/* Header */}
+      <section className="mb-10">
+        <p className="text-sm font-semibold tracking-wide text-primary mb-2">
+          GOD MODE
+        </p>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
+          {isNl ? "Super Admin Dashboard" : "Super Admin Dashboard"}
+        </h1>
+        <p className="text-muted-foreground max-w-2xl">
+          {isNl
+            ? "Welkom in God Mode – vanaf hier beheer je gebruikers, bedrijven, content, AI en alle platforminstellingen. Jij bepaalt."
+            : "Welcome to God Mode – from here you manage users, businesses, content, AI and all platform settings. You are in control."}
+        </p>
+      </section>
 
-      <p className="text-muted-foreground mb-8 max-w-2xl">
-        {isNl
-          ? "Je bent ingelogd als super_admin. Vanaf hier beheer je het volledige platform: bedrijven, gebruikers, reviews en instellingen."
-          : "You are logged in as super_admin. From here you control the entire platform: businesses, users, reviews and settings."}
-      </p>
-
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        <GodmodeTile
-          href={`/${lang}/admin/businesses`}
-          title={isNl ? "Alle bedrijven" : "All businesses"}
-          description={
-            isNl
-              ? "Beheer bedrijfsvermeldingen, pending aanvragen en abonnementen."
-              : "Manage business listings, pending requests and subscriptions."
-          }
-        />
-        <GodmodeTile
+      {/* GRID */}
+      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* 1. Users & Roles */}
+        <GodCard
           href={`/${lang}/godmode/users`}
-          title={isNl ? "Gebruikers & rollen" : "Users & roles"}
+          accent="from-sky-700 via-sky-600 to-cyan-500"
+          label={isNl ? "Gebruikers & rollen" : "Users & roles"}
+          badge="God Mode"
+          icon={<Users className="h-6 w-6" />}
           description={
             isNl
-              ? "Bekijk accounts, rollen en status. Later: rolbeheer vanuit de UI."
-              : "View accounts, their roles and status. Later: role management from the UI."
+              ? "Bekijk alle accounts, pas rollen aan en blokkeer of activeer gebruikers."
+              : "View all accounts, change roles and block or activate users."
           }
         />
-        <GodmodeTile
-          href={`/${lang}/godmode/reviews`}
-          title={isNl ? "Reviews & meldingen" : "Reviews & reports"}
+
+        {/* 2. Businesses moderation */}
+        <GodCard
+          href={`/${lang}/admin/businesses`}
+          accent="from-blue-700 via-blue-600 to-cyan-500"
+          label={isNl ? "Bedrijven beoordelen" : "Moderate businesses"}
+          badge={isNl ? "Admin" : "Admin"}
+          icon={<Briefcase className="h-6 w-6" />}
           description={
             isNl
-              ? "Modereren van reviews en meldingen van misbruik."
-              : "Moderate reviews and handle abuse reports."
+              ? "Keur nieuwe bedrijfsvermeldingen goed of af en beheer status en pakketten."
+              : "Approve or reject new business listings and manage status and plans."
           }
         />
-        <GodmodeTile
+
+        {/* 3. Content & SEO */}
+        <GodCard
           href={`/${lang}/godmode/content`}
-          title={isNl ? "Eiland-content" : "Island content"}
+          accent="from-emerald-700 via-emerald-600 to-teal-500"
+          label={isNl ? "Content & SEO" : "Content & SEO"}
+          badge={isNl ? "Content" : "Content"}
+          icon={<Globe2 className="h-6 w-6" />}
           description={
             isNl
-              ? "Beheer uitgelichte plekken, categorieën en redactionele content."
-              : "Manage featured spots, categories and editorial content."
+              ? "Beheer eilanden, categorieën, highlights en SEO-instellingen voor de hele site."
+              : "Manage islands, categories, highlights and global SEO settings."
           }
         />
-        <GodmodeTile
+
+        {/* 4. AI / Travel assistant */}
+        <GodCard
           href={`/${lang}/godmode/ai`}
-          title={isNl ? "AI & premium" : "AI & premium"}
+          accent="from-purple-700 via-purple-600 to-fuchsia-500"
+          label={isNl ? "AI & Travel Assistant" : "AI & Travel Assistant"}
+          badge="AI"
+          icon={<Sparkles className="h-6 w-6" />}
           description={
             isNl
-              ? "Instellingen voor AI-concierge, limieten en premium features."
-              : "Settings for the AI concierge, limits and premium features."
+              ? "Configureer AI-antwoordregels, premiumvragen en toegang voor ingelogde gebruikers."
+              : "Configure AI behaviour, premium questions and access for logged-in users."
           }
         />
-        <GodmodeTile
+
+        {/* 5. Platform & settings */}
+        <GodCard
+          href={`/${lang}/godmode/settings`}
+          accent="from-slate-800 via-slate-700 to-slate-500"
+          label={isNl ? "Platform & instellingen" : "Platform & settings"}
+          badge={isNl ? "Systeem" : "System"}
+          icon={<Settings className="h-6 w-6" />}
+          description={
+            isNl
+              ? "Beheer abonnementen, limieten, beta-features en onderhoudsmodus."
+              : "Manage subscriptions, limits, beta features and maintenance mode."
+          }
+        />
+
+        {/* 6. Logs & monitoring */}
+        <GodCard
+          href={`/${lang}/godmode/logs`}
+          accent="from-amber-700 via-amber-600 to-orange-500"
+          label={isNl ? "Activiteit & logs" : "Activity & logs"}
+          badge={isNl ? "Monitoring" : "Monitoring"}
+          icon={<Activity className="h-6 w-6" />}
+          description={
+            isNl
+              ? "Bekijk belangrijke acties, moderatiegeschiedenis en foutmeldingen."
+              : "Review important actions, moderation history and error events."
+          }
+        />
+
+        {/* 7. Preview as tourist */}
+        <GodCard
+          href={`/${lang}`}
+          accent="from-cyan-700 via-sky-600 to-sky-400"
+          label={isNl ? "Bekijk als toerist" : "View as tourist"}
+          badge={isNl ? "Preview" : "Preview"}
+          icon={<Eye className="h-6 w-6" />}
+          description={
+            isNl
+              ? "Open de publieke site zoals een toerist of local die ziet."
+              : "Open the public site exactly as tourists and locals see it."
+          }
+        />
+
+        {/* 8. Your own account */}
+        <GodCard
           href={`/${lang}/account`}
-          title={isNl ? "Terug naar mijn account" : "Back to my account"}
+          accent="from-pink-700 via-rose-600 to-rose-500"
+          label={isNl ? "Eigen account" : "Your account"}
+          badge={isNl ? "Persoonlijk" : "Personal"}
+          icon={<UserCog className="h-6 w-6" />}
           description={
             isNl
-              ? "Naar je persoonlijke account- en profielpagina."
-              : "Go to your personal account and profile page."
+              ? "Pas je naam en gegevens aan of log uit als Super Admin."
+              : "Update your own details or sign out as Super Admin."
           }
         />
-      </div>
+      </section>
     </main>
   );
 }
 
-function GodmodeTile(props: { href: string; title: string; description: string }) {
+// ---------- Reusable card component ----------
+type CardProps = {
+  href: string;
+  accent: string; // tailwind gradient classes
+  label: string;
+  badge: string;
+  icon: React.ReactNode;
+  description: string;
+};
+
+function GodCard({ href, accent, label, badge, icon, description }: CardProps) {
   return (
-    <a
-      href={props.href}
-      className="block rounded-2xl border border-border bg-card/80 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-    >
-      <h2 className="font-semibold text-lg mb-1">{props.title}</h2>
-      <p className="text-sm text-muted-foreground">{props.description}</p>
-    </a>
+    <Link href={href} className="group">
+      <article className="relative h-full overflow-hidden rounded-3xl border border-white/30 bg-gradient-to-br from-background/90 to-background/70 shadow-xl backdrop-blur-xl transition-transform duration-150 group-hover:-translate-y-1 group-hover:shadow-2xl">
+        {/* Accent strip */}
+        <div
+          className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${accent}`}
+        />
+
+        <div className="p-6 sm:p-7 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {badge}
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              {icon}
+            </div>
+          </div>
+
+          <h2 className="text-lg font-semibold tracking-tight mt-1">
+            {label}
+          </h2>
+
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {description}
+          </p>
+
+          <div className="mt-3 text-sm font-medium text-primary group-hover:underline">
+            → open
+          </div>
+        </div>
+      </article>
+    </Link>
   );
 }
