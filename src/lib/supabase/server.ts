@@ -1,3 +1,4 @@
+// src/lib/supabase/server.ts
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
@@ -6,51 +7,47 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
  * Te gebruiken in server components, server actions en route handlers.
  */
 export function createClient() {
-  const cookieStore = cookies();
-
-  const getCookie = (name: string): string | undefined => {
-    try {
-        // @ts-expect-error: cookies().get bestaat runtime wel, maar TS types
-      return cookieStore.get(name)?.value;
-    } catch {
-      return undefined;
-    }
-  };
-
-  const setCookie = (
-    name: string,
-    value: string,
-    options: CookieOptions = {},
-  ) => {
-    try {
-      // In server components is cookies() read-only, in actions/handlers schrijfbaar.
-      // TypeScript kent hier alleen de read-only variant, daarom onderdrukken we de error.
-      // @ts-expect-error cookies().set bestaat wél in de context waarin Supabase 'm nodig heeft.
-      cookieStore.set({
-        name,
-        value,
-        path: "/",
-        ...options,
-      });
-    } catch {
-      // In een read-only context (pure RSC) negeren we het gewoon.
-    }
-  };
-
-  const removeCookie = (name: string, options: CookieOptions = {}) => {
-    setCookie(name, "", { ...options, maxAge: 0 });
-  };
-
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: getCookie,
-        set: setCookie,
-        remove: removeCookie,
+        get(name: string) {
+          // TS vindt .get soms niet leuk, daarom casten we naar any
+          const cookieStore = cookies() as any;
+          const cookie = cookieStore.get?.(name);
+          // Supabase verwacht een string of undefined
+          return cookie?.value ?? cookie ?? undefined;
+        },
+        set(name: string, value: string, options: CookieOptions = {}) {
+          try {
+            const cookieStore = cookies() as any;
+            cookieStore.set({
+              name,
+              value,
+              path: "/",
+              ...options,
+            });
+          } catch {
+            // In een read-only context (pure RSC) negeren we het gewoon.
+          }
+        },
+        remove(name: string, options: CookieOptions = {}) {
+          try {
+            const cookieStore = cookies() as any;
+            cookieStore.set({
+              name,
+              value: "",
+              path: "/",
+              maxAge: 0,
+              ...options,
+            });
+          } catch {
+            // idem: read-only -> negeren
+          }
+        },
       },
-    },
+    }
   );
 }
 

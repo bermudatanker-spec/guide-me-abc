@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/accordion";
 
 type Params = { lang: Locale };
+type QA = { q: string; a: string };
+
 const dict = (l: Locale) => DICTS[l] ?? DICTS.en;
 
 /* ---------- helper: FAQ per taal ---------- */
-type QA = { q: string; a: string };
-
 function getFaqs(lang: Locale): QA[] {
   // NL
   if (lang === "nl") {
@@ -45,7 +45,7 @@ function getFaqs(lang: Locale): QA[] {
       },
       {
         q: "Wat kost een vermelding?",
-        a: "We bieden gratis en betaalde pakketten. Bekijk ‘For Business’ voor actuele opties en prijzen.",
+        a: "We bieden gratis en betaalde pakketten aan. Bekijk ‘For Business’ voor actuele opties en prijzen.",
       },
       {
         q: "Hoe neem ik contact op?",
@@ -57,23 +57,56 @@ function getFaqs(lang: Locale): QA[] {
   // Papiamentu (korte placeholder-vertaling)
   if (lang === "pap") {
     return [
-      { q: "Ki ta Guide Me ABC?", a: "Un guia digital pa Aruba, Boneiru i Kòrsou ku aktividad, restoran i negoshinan lokal konfiá." },
-      { q: "Kiko manera mi por hanja negoshinan pa isla?", a: "Bai na ‘Islands’ den e menunan i skohe Aruba, Boneiru òf Kòrsou, despues skohe kategoria." },
-      { q: "Mi por kambia idioma sin sali di e mesun página?", a: "Si, uza e selektor di idioma riba e header." },
-      { q: "Kon mi por agrega mi negoshi?", a: "Bisa ‘For Business’ pa plananan i pa submiti bo listing." },
-      { q: "Bosonan ta kontrolá listing i review?", a: "Si, nos ta revisá pa keda konfiá i eliminá spam." },
-      { q: "Mi por reservá direktamente?", a: "Aworaki nos ta dirigí bo na partnernan konfiá." },
+      {
+        q: "Ki ta Guide Me ABC?",
+        a: "Un guia digital pa Aruba, Boneiru i Kòrsou ku aktividad, restoran i negoshinan lokal konfiá.",
+      },
+      {
+        q: "Kon mi por hanja negoshinan pa kada isla?",
+        a: "Bai na ‘Islands’ den e menunan i skohe Aruba, Boneiru òf Kòrsou, despues skohe kategoria.",
+      },
+      {
+        q: "Mi por kambia di idioma anto keda riba mesun página?",
+        a: "Si, usa e selektor di idioma riba e header.",
+      },
+      {
+        q: "Kon mi por agrega mi negoshi?",
+        a: "Bai ‘For Business’ pa plananan i pa submiti bo listing.",
+      },
+      {
+        q: "Bosnan ta kontrolá listing i review?",
+        a: "Si, bo por konfia ku nos ta revisá tur review i eliminá spam.",
+      },
+      {
+        q: "Mi por reservá direktamente?",
+        a: "Aworaki nos ta dirigí bo na partnernan konfiabel.",
+      },
     ];
   }
 
-  // Español (corto)
+  // Español (kort)
   if (lang === "es") {
     return [
-      { q: "¿Qué es Guide Me ABC?", a: "Una guía digital para Aruba, Bonaire y Curazao con actividades, restaurantes y negocios locales confiables." },
-      { q: "¿Cómo exploro por isla?", a: "Ve a ‘Islands’ y elige Aruba, Bonaire o Curazao; luego filtra por categoría." },
-      { q: "¿Puedo cambiar el idioma y quedarme en la misma página?", a: "Sí, usa el selector de idioma del encabezado." },
-      { q: "Soy empresa, ¿cómo me doy de alta?", a: "Visita ‘For Business’ para planes y enviar tu ficha." },
-      { q: "¿Verifican los listados?", a: "Sí, revisamos envíos y moderamos reseñas contra el spam." },
+      {
+        q: "¿Qué es Guide Me ABC?",
+        a: "Una guía digital para Aruba, Bonaire y Curazao con actividades, restaurantes y negocios locales confiables.",
+      },
+      {
+        q: "¿Cómo exploro por isla?",
+        a: "Ve a ‘Islands’ y elige Aruba, Bonaire o Curazao; luego filtra por categoría.",
+      },
+      {
+        q: "¿Puedo cambiar el idioma y quedarme en la misma página?",
+        a: "Sí, usa el selector de idioma del encabezado.",
+      },
+      {
+        q: "Soy empresa, ¿cómo me doy de alta?",
+        a: "Visita ‘For Business’ para planes y enviar tu ficha.",
+      },
+      {
+        q: "¿Verifican los listados?",
+        a: "Sí, revisamos envíos y moderamos reseñas contra el spam.",
+      },
     ];
   }
 
@@ -115,10 +148,13 @@ function getFaqs(lang: Locale): QA[] {
 }
 
 /* ---------- Metadata ---------- */
-export async function generateMetadata(
-  { params }: { params: Params }
-): Promise<Metadata> {
-  const lang = isLocale(params.lang) ? params.lang : "en";
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>;
+}): Promise<Metadata> {
+  const { lang: raw } = await params;
+  const lang = isLocale(raw) ? raw : "en";
   const t = dict(lang);
 
   const languages: Record<string, string> = {
@@ -129,21 +165,26 @@ export async function generateMetadata(
   };
 
   return {
-    title: `FAQ | Guide Me ABC`,
+    title: "FAQ | Guide Me ABC",
     description:
       t.faqSubtitle ??
       "Answers about islands, listings, bookings and businesses.",
     alternates: {
       canonical: `/${lang}/faq`,
       languages,
-    } as Metadata["alternates"], // voorkomt 'pap' type warning
+    } as Metadata["alternates"],
     openGraph: { title: "FAQ | Guide Me ABC", url: `/${lang}/faq` },
   };
 }
 
 /* ---------- Page ---------- */
-export default async function FaqPage({ params }: { params: Params }) {
-  const lang = isLocale(params.lang) ? params.lang : "en";
+export default async function FaqPage({
+  params,
+}: {
+  params: Promise<Params>;
+}) {
+  const { lang: raw } = await params;
+  const lang = isLocale(raw) ? raw : "en";
   const t = dict(lang);
   const faqs = getFaqs(lang);
 

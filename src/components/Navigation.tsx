@@ -40,6 +40,9 @@ export default function Navigation({ lang }: NavigationProps) {
     faq: t.faq ?? "FAQ",
     contact: (t as any).contact ?? "Contact",
     forBusiness: t.forBusiness ?? "For Business",
+    account:
+      (t as any).account ??
+      (activeLang === "nl" ? "Mijn account" : "My account"),
   };
 
   const links = [
@@ -55,7 +58,12 @@ export default function Navigation({ lang }: NavigationProps) {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
 
-  const LANG_LABEL: Record<L, string> = { en: "EN", nl: "NL", pap: "PAP", es: "ES" };
+  const LANG_LABEL: Record<L, string> = {
+    en: "EN",
+    nl: "NL",
+    pap: "PAP",
+    es: "ES",
+  };
 
   const replaceLangInPath = (next: L) => {
     const parts = pathname.split("/").filter(Boolean);
@@ -90,7 +98,9 @@ export default function Navigation({ lang }: NavigationProps) {
                 key={l.href}
                 href={l.href}
                 className={`relative flex h-10 items-center transition-colors ${
-                  isActive(l.href) ? "text-primary" : "text-muted-foreground hover:text-primary"
+                  isActive(l.href)
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-primary"
                 }`}
               >
                 {l.label}
@@ -103,20 +113,37 @@ export default function Navigation({ lang }: NavigationProps) {
 
           <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-3 text-muted-foreground">
-              <Link href="https://wa.me/59996763535" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+              <Link
+                href="https://wa.me/59996763535"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-primary transition-colors"
+              >
                 <MessageCircle className="h-5 w-5" />
               </Link>
-              <Link href="mailto:info@guide-me-abc.com" className="hover:text-primary transition-colors">
+              <Link
+                href="mailto:info@guide-me-abc.com"
+                className="hover:text-primary transition-colors"
+              >
                 <Mail className="h-5 w-5" />
               </Link>
             </div>
 
-            <div className="rounded-full shadow-glow">
+            {/* Account link (desktop) */}
+            <Link
+              href={`/${activeLang}/account`}
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              {Lbl.account}
+            </Link>
+
+            <div className="relative rounded-full shadow-glow">
               <button
-                onClick={() => setLangOpen(v => !v)}
+                onClick={() => setLangOpen((v) => !v)}
                 className="inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:scale-[1.02]"
                 style={{
-                  background: "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
+                  background:
+                    "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
                   boxShadow: "0 3px 8px rgba(0,191,211,0.25)",
                 }}
               >
@@ -130,7 +157,11 @@ export default function Navigation({ lang }: NavigationProps) {
                     <Link
                       key={code}
                       href={replaceLangInPath(code)}
-                      className={`block px-4 py-2 text-sm hover:bg-muted ${code === activeLang ? "text-primary font-semibold" : "text-foreground"}`}
+                      className={`block px-4 py-2 text-sm hover:bg-muted ${
+                        code === activeLang
+                          ? "text-primary font-semibold"
+                          : "text-foreground"
+                      }`}
                     >
                       {LANG_LABEL[code]}
                     </Link>
@@ -143,16 +174,19 @@ export default function Navigation({ lang }: NavigationProps) {
               asChild
               className="font-semibold text-white shadow-md transition-transform duration-150 hover:scale-[1.02]"
               style={{
-                background: "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)",
+                background:
+                  "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)",
                 boxShadow: "0 3px 10px rgba(255,122,79,0.3)",
               }}
             >
-              <Link href={`/${activeLang}/business/auth`}>{Lbl.forBusiness}</Link>
+              <Link href={`/${activeLang}/business/auth`}>
+                {Lbl.forBusiness}
+              </Link>
             </Button>
           </div>
 
           <button
-            onClick={() => setOpen(v => !v)}
+            onClick={() => setOpen((v) => !v)}
             className="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent md:hidden"
             aria-label="Toggle menu"
           >
@@ -185,19 +219,33 @@ export default function Navigation({ lang }: NavigationProps) {
                 </Link>
               ))}
 
+              {/* Account link (mobile) */}
+              <Link
+                href={`/${activeLang}/account`}
+                onClick={() => setOpen(false)}
+                className="py-5 text-lg font-semibold text-primary border-b border-border/20"
+              >
+                {Lbl.account}
+              </Link>
+
               <div className="mt-auto space-y-4 pt-10">
                 {/* Taalselector – nu volledig werkend op mobiel */}
                 <div className="relative">
                   <button
-                    onClick={() => setLangOpen(v => !v)}
+                    onClick={() => setLangOpen((v) => !v)}
                     className="w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-white font-semibold transition hover:scale-[1.02]"
                     style={{
-                      background: "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
+                      background:
+                        "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
                       boxShadow: "0 3px 8px rgba(0,191,211,0.25)",
                     }}
                   >
                     {LANG_LABEL[activeLang]}
-                    <ChevronDown className={`h-5 w-5 transition-transform ${langOpen ? "rotate-180" : ""}`} />
+                    <ChevronDown
+                      className={`h-5 w-5 transition-transform ${
+                        langOpen ? "rotate-180" : ""
+                      }`}
+                    />
                   </button>
 
                   {langOpen && (
@@ -211,7 +259,9 @@ export default function Navigation({ lang }: NavigationProps) {
                             setOpen(false);
                           }}
                           className={`block px-6 py-4 text-center font-medium transition hover:bg-muted ${
-                            code === activeLang ? "text-primary" : "text-foreground"
+                            code === activeLang
+                              ? "text-primary"
+                              : "text-foreground"
                           }`}
                         >
                           {LANG_LABEL[code]}
@@ -225,11 +275,15 @@ export default function Navigation({ lang }: NavigationProps) {
                   asChild
                   className="w-full text-white font-semibold transition hover:scale-[1.02]"
                   style={{
-                    background: "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)",
+                    background:
+                      "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)",
                     boxShadow: "0 3px 10px rgba(255,122,79,0.3)",
                   }}
                 >
-                  <Link href={`/${activeLang}/business/auth`} onClick={() => setOpen(false)}>
+                  <Link
+                    href={`/${activeLang}/business/auth`}
+                    onClick={() => setOpen(false)}
+                  >
                     {Lbl.forBusiness}
                   </Link>
                 </Button>

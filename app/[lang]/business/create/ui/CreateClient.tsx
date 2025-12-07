@@ -1,11 +1,12 @@
 // app/[lang]/business/create/ui/CreateClient.tsx
 "use client";
 
+import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/client"; // laat dit zo als jouw project 'client.ts' gebruikt
 import { useToast } from "@/hooks/use-toast";
 
 import { langHref } from "@/lib/lang-href";
@@ -42,9 +43,9 @@ export default function CreateClient({
   categories = [],
 }: CreateClientProps) {
   const router = useRouter();
+  const { toast } = useToast();
 
   const supabase = useMemo(() => supabaseBrowser(), []);
-  const { toast } = useToast();
 
   const [authLoading, setAuthLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export default function CreateClient({
   }, [lang, router, supabase]);
 
   /* ---------- Submit ---------- */
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!userId) {
@@ -135,7 +136,7 @@ export default function CreateClient({
         email: form.email || null,
         website: form.website || null,
         whatsapp: form.whatsapp || null,
-        opening_hours: form.opening_hours || null, // JSON string
+        opening_hours: form.opening_hours || null,
         temporarily_closed: form.temporarily_closed,
         status: "pending",
         subscription_plan: "starter",
@@ -271,7 +272,8 @@ export default function CreateClient({
                   setForm((s) => ({ ...s, description: e.target.value }))
                 }
                 placeholder={
-                  t.descriptionPlaceholder ?? "Vertel iets over je bedrijf…"
+                  t.descriptionPlaceholder ??
+                  "Vertel iets over je bedrijf…"
                 }
               />
             </div>
@@ -317,7 +319,9 @@ export default function CreateClient({
             {/* email & website */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="email">{t.email ?? "E-mailadres"}</Label>
+                <Label htmlFor="email">
+                  {t.email ?? "E-mailadres"}
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -328,7 +332,9 @@ export default function CreateClient({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="website">{t.website ?? "Website"}</Label>
+                <Label htmlFor="website">
+                  {t.website ?? "Website"}
+                </Label>
                 <Input
                   id="website"
                   type="url"
@@ -350,7 +356,7 @@ export default function CreateClient({
               <OpeningHoursField
                 lang={lang}
                 value={form.opening_hours}
-                onChange={(v) =>
+                onChange={(v: string) =>
                   setForm((s) => ({ ...s, opening_hours: v }))
                 }
               />

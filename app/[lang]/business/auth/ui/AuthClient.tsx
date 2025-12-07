@@ -1,3 +1,4 @@
+// app/[lang]/business/auth/ui/AuthClient.tsx
 "use client";
 
 import {
@@ -17,15 +18,20 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { langHref } from "@/lib/lang-href";
 import { getLangFromPath } from "@/lib/locale-path";
 import type { Locale } from "@/i18n/config";
 import { useToast } from "@/hooks/use-toast";
 
 type Lang = Locale;
+
+/* ---------- Validatie ---------- */
 
 const signUpSchema = z.object({
   fullName: z.string().trim().min(2, "Voer je volledige naam in").max(100),
@@ -41,17 +47,34 @@ const signInSchema = z.object({
 
 type LoadingState = false | "signin" | "signup";
 
+/* ---------- Helpers ---------- */
+
 function getRolesFromUser(user: any): string[] {
   const raw = user?.app_metadata?.roles;
   if (!raw) return [];
-  if (Array.isArray(raw)) {
-    return raw.map((r) => String(r).toLowerCase());
-  }
-  if (typeof raw === "string") {
-    return [raw.toLowerCase()];
-  }
+  if (Array.isArray(raw)) return raw.map((r) => String(r).toLowerCase());
+  if (typeof raw === "string") return [raw.toLowerCase()];
   return [];
 }
+
+function getRedirectForRoles(lang: Lang, roles: string[]): string {
+  const lower = roles.map((r) => r.toLowerCase());
+
+  const hasSuperAdmin =
+    lower.includes("super_admin") || lower.includes("superadmin");
+  const hasAdmin =
+    lower.includes("admin") || lower.includes("moderator");
+  const hasBusinessOwner = lower.includes("business_owner");
+
+  if (hasSuperAdmin) return `/${lang}/godmode`;            // GOD MODE
+  if (hasAdmin) return `/${lang}/admin`;
+  if (hasBusinessOwner) return `/${lang}/business/dashboard`;
+
+  // gewone ingelogde user
+  return `/${lang}/account`;
+}
+
+/* ================== Component ================== */
 
 export default function AuthClient({ lang }: { lang: Lang }) {
   const router = useRouter();
@@ -73,7 +96,10 @@ export default function AuthClient({ lang }: { lang: Lang }) {
     tabFromSearch === "signup" ? "signup" : "signin"
   );
 
-  const [signInState, setSignInState] = useState({ email: "", password: "" });
+  const [signInState, setSignInState] = useState({
+    email: "",
+    password: "",
+  });
   const [signUpState, setSignUpState] = useState({
     fullName: "",
     companyName: "",
@@ -99,7 +125,8 @@ export default function AuthClient({ lang }: { lang: Lang }) {
       description: message,
     });
 
-  /* ---------------- Al ingelogd? ---------------- */
+  /* ---------- 1. Al ingelogd? ---------- */
+
   useEffect(() => {
     if (mountedRef.current) return;
     mountedRef.current = true;
@@ -108,76 +135,46 @@ export default function AuthClient({ lang }: { lang: Lang }) {
       const { data } = await supabase.auth.getUser();
       const user = data?.user;
 
-      if (user) {
-        const roles = getRolesFromUser(user);
-        const isSuperAdmin =
-          roles.includes("superadmin") || roles.includes("super_admin");
-
-        const defaultTarget = isSuperAdmin
-          ? "/admin"
-          : langHref(resolvedLang, "/business/dashboard");
-
-        router.replace(redirectedFrom || defaultTarget);
-      } else {
+      if (!user) {
         setAuthLoading(false);
+        return;
       }
+
+      const roles = getRolesFromUser(user);
+      const target = redirectedFrom || getRedirectForRoles(resolvedLang, roles);
+
+      console.log("[AUTH] user roles:", roles, "→ target", target);
+      router.replace(target);
     })();
   }, [redirectedFrom, resolvedLang, router, supabase]);
 
-  /* ---------------- SIGN IN ---------------- */
+  /* ---------- 2. SIGN IN ---------- */
+
   const handleSignIn = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const v = signInSchema.parse(signInState);
       setLoading("signin");
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: v.email,
         password: v.password,
       });
 
-      if (error) {
+      if (error || !data.user) {
         flashError(
-          error.message === "Invalid login credentials"
+          error?.message === "Invalid login credentials"
             ? "Onjuist e-mailadres of wachtwoord."
-            : error.message
+            : error?.message || "Login mislukt. Probeer het opnieuw."
         );
         return;
       }
 
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
+      const roles = getRolesFromUser(data.user);
+      const target = redirectedFrom || getRedirectForRoles(resolvedLang, roles);
 
-      if (!user) {
-        flashError("Kon je account niet ophalen na inloggen.");
-        return;
-      }
-
-      const roles = getRolesFromUser(user);
-      const isSuperAdmin =
-        roles.includes("superadmin") || roles.includes("super_admin");
-
-      // Niet-super_admins blokkeren bij pending/afgewezen
-      if (!isSuperAdmin) {
-        const status =
-          (user.user_metadata as any)?.business_status ?? "pending";
-
-        if (status !== "approved") {
-          await supabase.auth.signOut();
-          flashError(
-            resolvedLang === "nl"
-              ? "Je aanmelding is ontvangen. We controleren eerst of je bedrijf bestaat. Na goedkeuring ontvang je een e-mail en kun je inloggen."
-              : "Your application has been received. We first verify your business. After approval you'll get an email and can log in."
-          );
-          return;
-        }
-      }
-
-      const defaultTarget = isSuperAdmin
-        ? "/admin"
-        : langHref(resolvedLang, "/business/dashboard");
-
-      router.replace(redirectedFrom || defaultTarget);
+      console.log("[AUTH] login roles:", roles, "→ target", target);
+      router.replace(target);
     } catch (err: any) {
       const zodMsg = err?.issues?.[0]?.message;
       flashError(zodMsg ?? "Controleer je invoer en probeer opnieuw.");
@@ -186,7 +183,8 @@ export default function AuthClient({ lang }: { lang: Lang }) {
     }
   };
 
-  /* ---------------- SIGN UP ---------------- */
+  /* ---------- 3. SIGN UP ---------- */
+
   const handleSignUp = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -216,8 +214,8 @@ export default function AuthClient({ lang }: { lang: Lang }) {
 
       flashOk(
         isNl
-          ? "Account aangemaakt! We controleren je bedrijfsgegevens. Na goedkeuring ontvang je een e-mail."
-          : "Account created! We will review your business details. After approval you’ll receive an email."
+          ? "Account aangemaakt! Je kunt inloggen zodra je je e-mail hebt bevestigd."
+          : "Account created! You can sign in once you’ve confirmed your email."
       );
       setTab("signin");
     } catch (err: any) {
@@ -228,7 +226,8 @@ export default function AuthClient({ lang }: { lang: Lang }) {
     }
   };
 
-  /* ---------------- UI ---------------- */
+  /* ---------- 4. UI ---------- */
+
   if (authLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -302,6 +301,7 @@ export default function AuthClient({ lang }: { lang: Lang }) {
                     <Input
                       id="signin-email"
                       type="email"
+                      autoComplete="email"
                       className="h-12 bg-white/50 dark:bg-black/40 border-white/20"
                       value={signInState.email}
                       onChange={(e) =>
@@ -319,6 +319,7 @@ export default function AuthClient({ lang }: { lang: Lang }) {
                       <Input
                         id="signin-password"
                         type={showPwSignIn ? "text" : "password"}
+                        autoComplete="current-password"
                         className="h-12 pe-12 bg-white/50 dark:bg-black/40 border-white/20"
                         value={signInState.password}
                         onChange={(e) =>
@@ -357,6 +358,7 @@ export default function AuthClient({ lang }: { lang: Lang }) {
                     <Input
                       id="signup-fullname"
                       type="text"
+                      autoComplete="name"
                       className="h-12 bg-white/50 dark:bg-black/40 border-white/20"
                       value={signUpState.fullName}
                       onChange={(e) =>
@@ -389,6 +391,7 @@ export default function AuthClient({ lang }: { lang: Lang }) {
                     <Input
                       id="signup-email"
                       type="email"
+                      autoComplete="email"
                       className="h-12 bg-white/50 dark:bg-black/40 border-white/20"
                       value={signUpState.email}
                       onChange={(e) =>
@@ -406,6 +409,7 @@ export default function AuthClient({ lang }: { lang: Lang }) {
                       <Input
                         id="signup-password"
                         type={showPwSignUp ? "text" : "password"}
+                        autoComplete="new-password"
                         className="h-12 pe-12 bg-white/50 dark:bg-black/40 border-white/20"
                         value={signUpState.password}
                         onChange={(e) =>
@@ -453,24 +457,24 @@ export default function AuthClient({ lang }: { lang: Lang }) {
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>
                 {isNl
-                  ? "Na het aanmaken van een account kunnen we je bedrijfsgegevens controleren. Je hebt ondertussen gewoon toegang tot het ondernemersdashboard zodra je bent goedgekeurd."
-                  : "After creating an account we may review your business details. Once approved you can access the business dashboard."}
+                  ? "Na het aanmaken van een account kun je meteen inloggen. Je bedrijf wordt pas zichtbaar voor toeristen als het is goedgekeurd."
+                  : "After creating an account you can sign in immediately. Your business only becomes visible to tourists after approval."}
               </p>
               <ul className="list-disc pl-4 space-y-1">
                 <li>
                   {isNl
-                    ? "Voordeel voor lokale bedrijven: meer zichtbaarheid naast de grote namen"
-                    : "Advantage for local companies: more visibility next to big brands"}
+                    ? "Meer zichtbaarheid voor lokale bedrijven naast de grote namen."
+                    : "More visibility for local companies next to big brands."}
                 </li>
                 <li>
                   {isNl
-                    ? "Beheer je bedrijfsgegevens, foto’s en contactinformatie"
-                    : "Manage your business details, photos and contact info"}
+                    ? "Beheer je bedrijfsgegevens, foto’s en contactinformatie."
+                    : "Manage your business details, photos and contact info."}
                 </li>
                 <li>
                   {isNl
-                    ? "Je kunt later altijd extra informatie aanleveren als dat nodig is"
-                    : "You can always provide extra information later if needed"}
+                    ? "Je kunt altijd later extra informatie toevoegen."
+                    : "You can always add extra information later if needed."}
                 </li>
               </ul>
             </CardContent>

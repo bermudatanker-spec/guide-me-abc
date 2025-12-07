@@ -1,6 +1,7 @@
 // app/[lang]/blog/page.tsx
 import type { Metadata } from "next";
 import Link from "next/link";
+
 import ResponsiveImage from "@/components/ResponsiveImage";
 import { isLocale, type Locale } from "@/i18n/config";
 import { formatDate } from "@/lib/formatDate";
@@ -39,12 +40,12 @@ const POSTS = [
   },
 ] as const;
 
-/* SEO */
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ lang: Locale }>;
-}): Promise<Metadata> {
+type Params = { lang: Locale };
+
+/* ---------- SEO ---------- */
+export async function generateMetadata(
+  { params }: { params: Promise<Params> }
+): Promise<Metadata> {
   const { lang: raw } = await params;
   const lang = isLocale(raw) ? raw : "en";
 
@@ -52,6 +53,7 @@ export async function generateMetadata({
   const description =
     "Latest travel guides, island tips, and local insights from Aruba, Bonaire & Curaçao.";
 
+  // Losse variable zodat TS niet zeurt over 'pap'
   const languages: Record<string, string> = {
     en: "/en/blog",
     nl: "/nl/blog",
@@ -62,7 +64,9 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { languages },
+    alternates: {
+      languages,
+    },
     openGraph: {
       title,
       description,
@@ -71,13 +75,13 @@ export async function generateMetadata({
   };
 }
 
-/* Page */
-type PageProps = {
-  params: { lang: Locale };
-};
-
-export default function BlogIndex({ params }: PageProps) {
-  const raw = params.lang;
+/* ---------- Page ---------- */
+export default async function BlogIndex({
+  params,
+}: {
+  params: Promise<Params>;
+}) {
+  const { lang: raw } = await params;
   const lang = isLocale(raw) ? raw : "en";
 
   return (

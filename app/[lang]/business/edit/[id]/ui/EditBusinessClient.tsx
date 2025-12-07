@@ -1,6 +1,7 @@
 // app/[lang]/business/edit/[id]/ui/EditBusinessClient.tsx
 "use client";
 
+import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { z } from "zod";
@@ -46,7 +47,7 @@ type ListingRow = {
   email: string | null;
   website: string | null;
   whatsapp: string | null;
-  opening_hours: string | null;        // JSON-string uit OpeningHoursField
+  opening_hours: string | null; // JSON-string uit OpeningHoursField
   temporarily_closed: boolean | null;
   status: "pending" | "active" | "inactive";
   subscription_plan: "starter" | "growth" | "pro";
@@ -134,7 +135,7 @@ export default function EditBusinessClient({ lang }: Props) {
     email: string;
     website: string;
     whatsapp: string;
-    opening_hours: string;        // JSON-string of ""
+    opening_hours: string; // JSON-string of ""
     temporarily_closed: boolean;
   }>({
     business_name: "",
@@ -210,7 +211,7 @@ export default function EditBusinessClient({ lang }: Props) {
           email: row.email ?? "",
           website: row.website ?? "",
           whatsapp: row.whatsapp ?? "",
-          opening_hours: row.opening_hours ?? "",   // JSON-string uit DB
+          opening_hours: row.opening_hours ?? "", // JSON-string uit DB
           temporarily_closed: !!row.temporarily_closed,
         });
       } catch (e: any) {
@@ -234,7 +235,7 @@ export default function EditBusinessClient({ lang }: Props) {
      Submit
   ----------------------------------------------------------------- */
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const parsed = FormSchema.safeParse(form);
@@ -266,9 +267,12 @@ export default function EditBusinessClient({ lang }: Props) {
           email: data.email || null,
           website: data.website || null,
           whatsapp: data.whatsapp || null,
-          // hier gewoon de JSON-string opslaan
-          opening_hours: form.opening_hours || null,
-          temporarily_closed: form.temporarily_closed,
+          // JSON-string uit het formulier, maar via gevalideerde data
+          opening_hours: data.opening_hours || null,
+          temporarily_closed:
+            typeof data.temporarily_closed === "boolean"
+              ? data.temporarily_closed
+              : form.temporarily_closed,
         })
         .eq("id", id);
 
@@ -314,7 +318,9 @@ export default function EditBusinessClient({ lang }: Props) {
       <Button
         variant="ghost"
         className="mb-6"
-        onClick={() => router.push(langHref(lang, "/business/dashboard"))}
+        onClick={() =>
+          router.push(langHref(lang, "/business/dashboard"))
+        }
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Terug naar Dashboard
@@ -336,7 +342,10 @@ export default function EditBusinessClient({ lang }: Props) {
                 id="business_name"
                 value={form.business_name}
                 onChange={(e) =>
-                  setForm((s) => ({ ...s, business_name: e.target.value }))
+                  setForm((s) => ({
+                    ...s,
+                    business_name: e.target.value,
+                  }))
                 }
                 required
               />
@@ -378,7 +387,10 @@ export default function EditBusinessClient({ lang }: Props) {
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                   value={form.category_id}
                   onChange={(e) =>
-                    setForm((s) => ({ ...s, category_id: e.target.value }))
+                    setForm((s) => ({
+                      ...s,
+                      category_id: e.target.value,
+                    }))
                   }
                 >
                   <option value="">— Geen —</option>
@@ -399,7 +411,10 @@ export default function EditBusinessClient({ lang }: Props) {
                 rows={4}
                 value={form.description}
                 onChange={(e) =>
-                  setForm((s) => ({ ...s, description: e.target.value }))
+                  setForm((s) => ({
+                    ...s,
+                    description: e.target.value,
+                  }))
                 }
                 placeholder="Vertel iets over je bedrijf..."
               />
@@ -412,7 +427,10 @@ export default function EditBusinessClient({ lang }: Props) {
                 id="address"
                 value={form.address}
                 onChange={(e) =>
-                  setForm((s) => ({ ...s, address: e.target.value }))
+                  setForm((s) => ({
+                    ...s,
+                    address: e.target.value,
+                  }))
                 }
               />
             </div>
@@ -426,7 +444,10 @@ export default function EditBusinessClient({ lang }: Props) {
                   type="tel"
                   value={form.phone}
                   onChange={(e) =>
-                    setForm((s) => ({ ...s, phone: e.target.value }))
+                    setForm((s) => ({
+                      ...s,
+                      phone: e.target.value,
+                    }))
                   }
                 />
               </div>
@@ -437,7 +458,10 @@ export default function EditBusinessClient({ lang }: Props) {
                   inputMode="numeric"
                   value={form.whatsapp}
                   onChange={(e) =>
-                    setForm((s) => ({ ...s, whatsapp: e.target.value }))
+                    setForm((s) => ({
+                      ...s,
+                      whatsapp: e.target.value,
+                    }))
                   }
                 />
               </div>
@@ -452,7 +476,10 @@ export default function EditBusinessClient({ lang }: Props) {
                   type="email"
                   value={form.email}
                   onChange={(e) =>
-                    setForm((s) => ({ ...s, email: e.target.value }))
+                    setForm((s) => ({
+                      ...s,
+                      email: e.target.value,
+                    }))
                   }
                 />
               </div>
@@ -464,7 +491,10 @@ export default function EditBusinessClient({ lang }: Props) {
                   placeholder="https://..."
                   value={form.website}
                   onChange={(e) =>
-                    setForm((s) => ({ ...s, website: e.target.value }))
+                    setForm((s) => ({
+                      ...s,
+                      website: e.target.value,
+                    }))
                   }
                 />
               </div>
@@ -478,7 +508,7 @@ export default function EditBusinessClient({ lang }: Props) {
 
               <OpeningHoursField
                 lang={lang}
-                value={form.opening_hours}      // JSON-string
+                value={form.opening_hours} // JSON-string
                 onChange={(v) =>
                   setForm((s) => ({ ...s, opening_hours: v }))
                 }
@@ -508,7 +538,9 @@ export default function EditBusinessClient({ lang }: Props) {
               variant="primaryGrad"
               disabled={saving}
             >
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {saving && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Wijzigingen opslaan
             </Button>
           </form>
