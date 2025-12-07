@@ -133,31 +133,17 @@ export async function middleware(req: NextRequest) {
   // 2) Werk verder met path zonder taal
   const pathNoLang = stripLang(pathname) || "/";
 
-  // 2a) Altijd publieke stukken
-  if (pathStartsWithAny(pathNoLang, ALWAYS_PUBLIC_PREFIXES)) {
-    return NextResponse.next();
-  }
-  if (pathStartsWithAny(pathNoLang, PUBLIC_AUTH_PAGES)) {
-    return NextResponse.next();
-  }
+  const isMaintenancePage =
+    pathNoLang === "/maintenance" ||
+    pathNoLang.startsWith("/maintenance/");
 
-  // 2b) Speciale prefixes
-  const wantsAdmin =
-    pathNoLang === ADMIN_PREFIX || pathNoLang.startsWith(ADMIN_PREFIX + "/");
-  const wantsSuper =
-    pathNoLang === SUPER_PREFIX || pathNoLang.startsWith(SUPER_PREFIX + "/");
+  // 2a) Publieke stukken: mini-sites, auth, maintenance-page zelf
+  const isPublicPath =
+    pathStartsWithAny(pathNoLang, ALWAYS_PUBLIC_PREFIXES) ||
+    pathStartsWithAny(pathNoLang, PUBLIC_AUTH_PAGES) ||
+    isMaintenancePage;
 
-  // 3) Moet deze route ingelogd zijn?
-  const needsAuth =
-    wantsAdmin ||
-    wantsSuper ||
-    pathStartsWithAny(pathNoLang, PROTECTED_PREFIXES);
-
-  if (!needsAuth) {
-    return NextResponse.next();
-  }
-
-  // 4) Supabase SSR client met cookie bridge
+  // 3) Supabase SSR client met cookie bridge
   const res = NextResponse.next();
   type CookieSetOptions = Parameters<typeof res.cookies.set>[2];
 
@@ -179,23 +165,97 @@ export async function middleware(req: NextRequest) {
     },
   );
 
-  // 5) User ophalen
+  // 4) User + rollen
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 6) Niet ingelogd → naar business/auth + redirect terug
-  if (!user) {
+  const roles = getRolesFromUser(user);
+  const isSuper = isSuperAdminUser(roles);
+  const isAdmin = isAdminUser(roles);
+
+  // 5) Maintenance-mode uit platform_settings
+  let maintenanceOn = false;
+  try {
+    const { data, error } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "maintenance_mode")
+      .maybeSingle();
+
+    if (!error) {
+      const raw = (data as any)?.value;
+      maintenanceOn =
+        raw === true ||
+        raw === "true" ||
+        raw === 1 ||
+        raw === "1";
+    }
+  } catch (err) {
+    console.error("[middleware] error loading platform_settings", err);
+    maintenanceOn = false;
+  }
+
+  // 6) Maintenance guard:
+  //    - super_admin mag ALTIJD door (ook naar frontend)
+  //    - maintenance-page zelf mag altijd
+    // 6) Maintenance guard:
+  //    - super_admin mag ALTIJD door (ook naar frontend)
+  //    - maintenance-page zelf mag altijd
+  //    - optionele geheime bypass via query + cookie
+  const bypassToken = process.env.MAINTENANCE_BYPASS_TOKEN;
+  const urlToken = req.nextUrl.searchParams.get("bypass_maint");
+  const hasQueryBypass = !!bypassToken && urlToken === bypassToken;
+  const hasCookieBypass =
+    !!bypassToken &&
+    req.cookies.get("gmabc_maint_bypass")?.value === bypassToken;
+
+  // Als we via query een geldig token zien, zet een cookie zodat je
+  // niet bij elke klik ?bypass_maint=... hoeft mee te sturen
+  if (hasQueryBypass && bypassToken) {
+    res.cookies.set("gmabc_maint_bypass", bypassToken, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+    });
+  }
+
+  const bypassMaintenance = hasQueryBypass || hasCookieBypass;
+
+  if (maintenanceOn && !isSuper && !isMaintenancePage && !bypassMaintenance) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/${lang}/maintenance`;
+    url.searchParams.delete("forbidden");
+    url.searchParams.delete("redirectedFrom");
+    return NextResponse.redirect(url);
+  }
+
+  // 7) Als route echt publiek is: laat door
+  if (isPublicPath) {
+    return res;
+  }
+
+  // 8) Speciale prefixes (admin / godmode)
+  const wantsAdmin =
+    pathNoLang === ADMIN_PREFIX || pathNoLang.startsWith(ADMIN_PREFIX + "/");
+  const wantsSuper =
+    pathNoLang === SUPER_PREFIX || pathNoLang.startsWith(SUPER_PREFIX + "/");
+
+  // 9) Moet ingelogd zijn?
+  const needsAuth =
+    wantsAdmin ||
+    wantsSuper ||
+    pathStartsWithAny(pathNoLang, PROTECTED_PREFIXES);
+
+  // 10) Niet ingelogd → naar business/auth + redirect
+  if (needsAuth && !user) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}/business/auth`;
     url.searchParams.set("redirectedFrom", `${pathname}${search}`);
     return NextResponse.redirect(url);
   }
 
-  const roles = getRolesFromUser(user);
-  const isSuper = isSuperAdminUser(roles);
-
-  // 7) God Mode guard (/[lang]/godmode)
+  // 11) God Mode guard – alleen super_admin
   if (wantsSuper && !isSuper) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}`;
@@ -203,23 +263,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 8) Admin guard (/[lang]/admin) – admin + super_admin
-  if (wantsAdmin) {
-    const isAdmin = isAdminUser(roles);
-    if (!isAdmin) {
-      const url = req.nextUrl.clone();
-      url.pathname = `/${lang}`;
-      url.searchParams.set("forbidden", "admin");
-      return NextResponse.redirect(url);
-    }
+  // 12) Admin guard – admin + super_admin
+  if (wantsAdmin && !isAdmin) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/${lang}`;
+    url.searchParams.set("forbidden", "admin");
+    return NextResponse.redirect(url);
   }
 
-  // 9) Alles OK → request + cookies doorgeven
+  // 13) Alles ok
   return res;
 }
 
-/* ───────── Matcher ─────────
-   Exclude statics, API, auth-callbacks en /biz (taalloos & public). */
+/* ───────── Matcher ───────── */
 export const config = {
   matcher: [
     "/((?!_next|api|auth/callback|auth/confirm|auth/oauth/callback|biz|.*\\..*).*)",
