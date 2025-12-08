@@ -206,7 +206,7 @@
     box-shadow: var(--shadow-card);
   }
 
-  /* Glass card – o.a. hero searchbar */
+  /* Glass card – oude variant, nog bruikbaar voor bepaalde secties */
   .glass-card {
     background-color: rgba(255, 255, 255, 0.7);
     border-radius: 1rem;
@@ -346,6 +346,81 @@
 
   .animate-soft-pulse {
     animation: soft-pulse 2.4s ease-in-out infinite;
+  }
+
+  /* === iOS-style glass panels (auth / hero) === */
+
+  .gm-glass {
+    position: relative;
+    overflow: hidden;
+    border-radius: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    background:
+      radial-gradient(
+        circle at 0 0,
+        rgba(255, 255, 255, 0.95),
+        rgba(255, 255, 255, 0.4) 55%,
+        transparent 70%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.96),
+        rgba(255, 255, 255, 0.7)
+      );
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.4);
+  }
+
+  .dark .gm-glass {
+    border-color: rgba(148, 163, 184, 0.75);
+    background:
+      radial-gradient(
+        circle at 0 0,
+        rgba(255, 255, 255, 0.15),
+        transparent 60%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(15, 23, 42, 0.96),
+        rgba(15, 23, 42, 0.8)
+      );
+    box-shadow: 0 22px 55px rgba(0, 0, 0, 0.85);
+  }
+
+  .gm-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0.65),
+      transparent 60%
+    );
+    opacity: 0.85;
+    mix-blend-mode: screen;
+  }
+
+  .gm-glass-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .gm-glass-input {
+    background-color: rgba(255, 255, 255, 0.82);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
+  }
+
+  .gm-glass-input::placeholder {
+    color: rgba(100, 116, 139, 0.9);
+  }
+
+  .dark .gm-glass-input {
+    background-color: rgba(15, 23, 42, 0.88);
+    border-color: rgba(148, 163, 184, 0.75);
   }
 }
 

@@ -1,35 +1,32 @@
 // app/[lang]/layout.tsx
 import type { ReactNode } from "react";
 import { Suspense } from "react";
+
 import ClientRoot from "../ClientRoot";
 import { isLocale, type Locale } from "@/i18n/config";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
-type LayoutParams = {
-  lang: string;
-};
-
-type LayoutProps = {
+export default async function LangLayout({
+  children,
+  params,
+}: {
   children: ReactNode;
-  params: Promise<LayoutParams>;
-};
-
-export default async function LangLayout({ children, params }: LayoutProps) {
+  params: Promise<{ lang: string }>;
+}) {
+  // ✅ nieuwe Next.js manier: params eerst awaiten
   const { lang: raw } = await params;
   const lang: Locale = isLocale(raw) ? raw : "en";
 
-  // 1) Haal settings + user parallel op
-  const [settings, userResult] = await Promise.all([
+  // 1) Settings + user parallel ophalen
+  const [settings, user] = await Promise.all([
     getPlatformSettings(),
     (async () => {
-      const supabase = supabaseServer();
+      const supabase = await supabaseServer(); // ✅ supabaseServer is async
       const { data } = await supabase.auth.getUser();
-      return data.user;
+      return data.user ?? null;
     })(),
   ]);
-
-  const user = userResult;
 
   // 2) Rollen normaliseren
   let roles: string[] = [];
@@ -46,7 +43,7 @@ export default async function LangLayout({ children, params }: LayoutProps) {
 
   const maintenanceOn = settings?.maintenance_mode;
 
-  // 3) Maintenance-lock: iedereen behalve super_admin krijgt een lockscreen
+  // 3) Maintenance-lock voor iedereen behalve super_admin
   if (maintenanceOn && !isSuperAdmin) {
     const isNl = lang === "nl";
 

@@ -1,58 +1,60 @@
 // src/lib/supabase/server.ts
+"use server";
+
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 /**
- * Server-side Supabase client (Next.js App Router compatible).
+ * Server-side Supabase client voor Next.js App Router (Next 16, async cookies()).
  * Te gebruiken in server components, server actions en route handlers.
  */
-export function createClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          // TS vindt .get soms niet leuk, daarom casten we naar any
-          const cookieStore = cookies() as any;
-          const cookie = cookieStore.get?.(name);
-          // Supabase verwacht een string of undefined
-          return cookie?.value ?? cookie ?? undefined;
-        },
-        set(name: string, value: string, options: CookieOptions = {}) {
-          try {
-            const cookieStore = cookies() as any;
-            cookieStore.set({
-              name,
-              value,
-              path: "/",
-              ...options,
-            });
-          } catch {
-            // In een read-only context (pure RSC) negeren we het gewoon.
-          }
-        },
-        remove(name: string, options: CookieOptions = {}) {
-          try {
-            const cookieStore = cookies() as any;
-            cookieStore.set({
-              name,
-              value: "",
-              path: "/",
-              maxAge: 0,
-              ...options,
-            });
-          } catch {
-            // idem: read-only -> negeren
-          }
-        },
+export async function supabaseServer() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    console.error("[supabaseServer] Missing NEXT_PUBLIC_SUPABASE_URL or ANON_KEY");
+    throw new Error("Supabase is not configured correctly");
+  }
+
+  // In Next 16 is cookies() async → eerst awaiten
+  const cookieStore = await cookies();
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      get(name: string) {
+        // Supabase verwacht string | undefined
+        const cookie = cookieStore.get(name);
+        return cookie?.value;
       },
-    }
-  );
+      set(name: string, value: string, options: CookieOptions = {}) {
+        try {
+          cookieStore.set({
+            name,
+            value,
+            path: "/",
+            ...options,
+          });
+        } catch {
+          // In pure RSC context kan set() read-only zijn – fout mag je negeren
+        }
+      },
+      remove(name: string, options: CookieOptions = {}) {
+        try {
+          cookieStore.set({
+            name,
+            value: "",
+            path: "/",
+            maxAge: 0,
+            ...options,
+          });
+        } catch {
+          // idem als set()
+        }
+      },
+    },
+  });
 }
 
-/**
- * Backwards compatible alias:
- * oude code die { supabaseServer } importeert blijft zo gewoon werken.
- */
-export const supabaseServer = createClient;
+// Optionele alias als je ergens { supabaseServer as createSupabaseServer } doet
+export const createServerSupabaseClient = supabaseServer;
