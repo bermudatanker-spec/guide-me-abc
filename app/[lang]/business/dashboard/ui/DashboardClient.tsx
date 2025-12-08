@@ -1,6 +1,7 @@
 // app/[lang]/business/dashboard/ui/DashboardClient.tsx
 "use client";
 
+import type { Locale } from "@/i18n/config";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -46,7 +47,7 @@ type ListingRow = {
 };
 
 type Props = {
-  lang: string;
+  lang: Locale;
   t: Record<string, string>;
 };
 
