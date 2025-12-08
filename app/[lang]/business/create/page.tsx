@@ -177,7 +177,7 @@ export default async function BusinessCreatePage({
   const t = COPY[lang] ?? COPY.en;
 
   // Supabase server-client
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const { data: categoriesData, error } = await supabase
     .from("categories") // <— als jouw tabel anders heet, hier aanpassen

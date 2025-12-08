@@ -1,86 +1,112 @@
 "use server";
 
 import { authenticator } from "otplib";
-import * as QRCode from "qrcode";
-import { createClient } from "@/lib/supabase/server";
+import QRCode from "qrcode";
+import { supabaseServer } from "@/lib/supabase/server";
+
+type ProfileRow = {
+  mfa_totp_secret: string | null;
+  is_mfa_enabled: boolean | null;
+};
 
 /**
- * 1️⃣ Start MFA setup (secret + QR-code genereren)
- */
-export async function startMfaSetup() {
-  const supabase = createClient();
+ * Helper: haal Supabase + ingelogde user op.
+ * Werkt ook als supabaseServer() async is.
+ */
+async function getSupabaseAndUser() {
+  // supabaseServer kan sync of async zijn → met await werkt beide
+  const supabase = (await (supabaseServer as any)()) as any;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
 
-  if (!user) throw new Error("Niet ingelogd");
+  if (error) {
+    console.error("[mfa] getUser error", error);
+    throw new Error("Kon gebruiker niet ophalen");
+  }
 
-  // Geheim genereren
-  const secret = authenticator.generateSecret();
+  const user = data?.user;
+  if (!user) {
+    throw new Error("Niet ingelogd");
+  }
 
-  // otpauth URI voor Google Authenticator / Authy
-  const otpauth = authenticator.keyuri(
-    user.email!,
-    "Guide Me ABC",
-    secret
-  );
-
-  // 👇 Hier gebruiken we qrcode echt
-  const qrDataUrl = await QRCode.toDataURL(otpauth);
-
-  // Secret opslaan in profiles
-  await supabase
-    .from("profiles")
-    .update({ mfa_totp_secret: secret })
-    .eq("id", user.id);
-
-  return { qrDataUrl };
+  return { supabase, user };
 }
 
 /**
- * 2️⃣ Bevestig MFA setup (user voert 6-cijferige code in)
- */
+ * 1️⃣ Start MFA setup (secret + QR-code genereren)
+ */
+export async function startMfaSetup() {
+  const { supabase, user } = await getSupabaseAndUser();
+
+  // Geheim genereren
+  const secret = authenticator.generateSecret();
+
+  // otpauth URI voor Google Authenticator / Authy
+  const otpauth = authenticator.keyuri(
+    user.email ?? "",
+    "Guide Me ABC",
+    secret,
+  );
+
+  // QR-code als Data URL
+  const qrDataUrl = await QRCode.toDataURL(otpauth);
+
+  // Secret opslaan in profiles
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      mfa_totp_secret: secret,
+      is_mfa_enabled: false,
+    })
+    .eq("id", user.id);
+
+  if (error) {
+    console.error("[mfa] kon secret niet opslaan", error);
+    throw new Error("Kon MFA-secret niet opslaan");
+  }
+
+  return { qrDataUrl };
+}
+
+/**
+ * 2️⃣ Bevestig MFA setup (user voert 6-cijferige code in)
+ */
 export async function confirmMfaSetup(token: string) {
-  const supabase = createClient();
+  const { supabase, user } = await getSupabaseAndUser();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("mfa_totp_secret")
+    .eq("id", user.id)
+    .single();
 
-  if (!user) throw new Error("Niet ingelogd");
+  if (error) {
+    console.error("[mfa] profiel ophalen failed", error);
+    throw new Error("Kon MFA-profiel niet ophalen");
+  }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("mfa_totp_secret")
-    .eq("id", user.id)
-    .single();
+  const profile = data as ProfileRow | null;
+  const secret = profile?.mfa_totp_secret;
 
-  if (error) {
-    console.error("MFA profiel ophalen failed:", error);
-    throw new Error("Kon MFA-profiel niet ophalen");
-  }
+  if (!secret) {
+    throw new Error("Geen MFA-secret gevonden");
+  }
 
-  const profile = data as { mfa_totp_secret: string | null } | null;
-  const secret = profile?.mfa_totp_secret;
+  const isValid = authenticator.verify({ token, secret });
 
-  if (!secret) {
-    throw new Error("Geen MFA secret gevonden");
-  }
+  if (!isValid) {
+    throw new Error("Ongeldige code");
+  }
 
-  const isValid = authenticator.verify({
-    token,
-    secret,
-  });
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ is_mfa_enabled: true })
+    .eq("id", user.id);
 
-  if (!isValid) {
-    throw new Error("Ongeldige code");
-  }
+  if (updateError) {
+    console.error("[mfa] status updaten failed", updateError);
+    throw new Error("Kon MFA-status niet bijwerken");
+  }
 
-  await supabase
-    .from("profiles")
-    .update({ is_mfa_enabled: true })
-    .eq("id", user.id);
-
-  return { success: true };
+  return { success: true };
 }
