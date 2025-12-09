@@ -1,16 +1,34 @@
 // app/[lang]/godmode/page.tsx
 import type { Metadata } from "next";
-import { isLocale, type Locale } from "@/i18n/config";
-import Link from "next/link";
-import { Settings, Users, Briefcase, Globe2, Sparkles, Activity, Eye, UserCog } from "lucide-react";
+import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
-type Params = { lang: Locale };
+import { isLocale, type Locale } from "@/i18n/config";
+import { supabaseServer } from "@/lib/supabase/server";
+import { langHref } from "@/lib/lang-href";
+
+import Link from "next/link";
+import {
+  Settings,
+  Users,
+  Briefcase,
+  Globe2,
+  Sparkles,
+  Activity,
+  Eye,
+  UserCog,
+} from "lucide-react";
+
+// 👉 Deze route is altijd dynamisch (mag cookies/heades gebruiken)
+export const dynamic = "force-dynamic";
+
+type Params = { lang: string };
 type Props = { params: Promise<Params> };
 
 // ---------- SEO ----------
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang: raw } = await params;
-  const lang = isLocale(raw) ? raw : "en";
+  const lang = isLocale(raw) ? (raw as Locale) : "en";
   const isNl = lang === "nl";
 
   return {
@@ -24,9 +42,55 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 // ---------- PAGE ----------
 export default async function GodmodePage({ params }: Props) {
   const { lang: raw } = await params;
-  const lang = isLocale(raw) ? raw : "en";
+  const lang: Locale = isLocale(raw) ? (raw as Locale) : "en";
   const isNl = lang === "nl";
 
+  // 1) Ingelogde user ophalen
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error("[godmode] auth error", error);
+  }
+
+  // 2) Niet ingelogd -> naar login
+  if (!user) {
+    console.log("[godmode] geen user → redirect naar business/auth");
+    redirect(langHref(lang, "/business/auth"));
+  }
+
+  // 3) Rollen uit app_metadata halen (zowel `roles` als `role` ondersteunen)
+  const meta = (user!.app_metadata ?? {}) as any;
+
+  let rawRoles = meta.roles ?? meta.role ?? [];
+  if (!Array.isArray(rawRoles) && rawRoles != null) {
+    rawRoles = [rawRoles];
+  }
+
+  const rolesArr = Array.isArray(rawRoles)
+    ? rawRoles
+        .filter((r: any) => r != null)
+        .map((r: any) => String(r).toLowerCase())
+    : [];
+
+  const isSuperAdmin =
+    rolesArr.includes("super_admin") || rolesArr.includes("superadmin");
+
+  console.log("[godmode] user id:", user!.id);
+  console.log("[godmode] app_metadata:", meta);
+  console.log("[godmode] rolesArr:", rolesArr);
+  console.log("[godmode] isSuperAdmin:", isSuperAdmin);
+
+  // 4) Geen super_admin? Wegsturen
+  if (!isSuperAdmin) {
+    console.log("[godmode] user is GEEN super_admin → redirect naar dashboard");
+    redirect(langHref(lang, "/business/dashboard"));
+  }
+
+  // 5) Echte God Mode UI
   return (
     <main className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-24 pb-16">
       {/* Header */}
@@ -168,7 +232,7 @@ type CardProps = {
   accent: string; // tailwind gradient classes
   label: string;
   badge: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   description: string;
 };
 

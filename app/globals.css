@@ -213,6 +213,7 @@
     border: 1px solid rgba(255, 255, 255, 0.55);
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22);
     backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
   }
 
   .dark .glass-card {
@@ -220,6 +221,32 @@
     border: 1px solid rgba(148, 163, 184, 0.5);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
   }
+
+  /* Volledig scherm achter het mobiele menu */
+  .gm-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: radial-gradient(
+        circle at 10% 0,
+        rgba(255, 255, 255, 0.12),
+        transparent 60%
+      ),
+      rgba(15, 23, 42, 0.50);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  /* Paneel voor het menu zelf (rechts inschuiven) */
+  .gm-nav-panel {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 50;
+    width: min(320px, 80vw);
+    border-radius: 24px 0 0 24px;
+    overflow: hidden;
+  }
+}
 
   /* === ABC islands custom utilities === */
 
@@ -313,6 +340,140 @@
   }
 
   /* =========================
+     iOS-style glass panels
+     ========================= */
+
+  /* Groot “mapje” / kaart zoals op je screenshot */
+  .gm-glass {
+    position: relative;
+    overflow: hidden;
+    border-radius: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    background:
+      radial-gradient(
+        circle at 10% 0,
+        rgba(255, 255, 255, 0.92),
+        rgba(255, 255, 255, 0.6) 55%,
+        rgba(255, 255, 255, 0.3) 85%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.9),
+        rgba(255, 255, 255, 0.55)
+      );
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    box-shadow:
+      0 18px 45px rgba(15, 23, 42, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.35);
+  }
+
+  .dark .gm-glass {
+    border-color: rgba(148, 163, 184, 0.75);
+    background:
+      radial-gradient(
+        circle at 10% 0,
+        rgba(255, 255, 255, 0.16),
+        rgba(15, 23, 42, 0.92) 55%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(15, 23, 42, 0.96),
+        rgba(15, 23, 42, 0.8)
+      );
+    box-shadow:
+      0 22px 55px rgba(0, 0, 0, 0.85),
+      0 0 0 1px rgba(148, 163, 184, 0.45);
+  }
+
+  .gm-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0.7),
+      transparent 60%
+    );
+    opacity: 0.9;
+    mix-blend-mode: screen;
+  }
+
+  .gm-glass-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Kleine glazen balk (bv. bovenkant of toolbar) */
+  .gm-glass-toolbar {
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(255, 255, 255, 0.6)
+    );
+    backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  }
+
+  .dark .gm-glass-toolbar {
+    border-color: rgba(148, 163, 184, 0.7);
+    background: linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.96),
+      rgba(15, 23, 42, 0.8)
+    );
+  }
+
+  /* Glazen input / search bar */
+  .gm-glass-input {
+    background-color: rgba(255, 255, 255, 0.82);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.04);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .gm-glass-input::placeholder {
+    color: rgba(100, 116, 139, 0.9);
+  }
+
+  .dark .gm-glass-input {
+    background-color: rgba(15, 23, 42, 0.9);
+    border-color: rgba(148, 163, 184, 0.85);
+  }
+
+  /* Kleine glaspillen (tags / filters) */
+  .gm-glass-pill {
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(255, 255, 255, 0.6)
+    );
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .dark .gm-glass-pill {
+    border-color: rgba(148, 163, 184, 0.75);
+    background: linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.95),
+      rgba(15, 23, 42, 0.8)
+    );
+  }
+
+  .gm-glass-pill-strong {
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.45);
+  }
+
+  /* =========================
      Animations – exclusive touch
      ========================= */
 
@@ -347,82 +508,6 @@
   .animate-soft-pulse {
     animation: soft-pulse 2.4s ease-in-out infinite;
   }
-
-  /* === iOS-style glass panels (auth / hero) === */
-
-  .gm-glass {
-    position: relative;
-    overflow: hidden;
-    border-radius: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.75);
-    background:
-      radial-gradient(
-        circle at 0 0,
-        rgba(255, 255, 255, 0.95),
-        rgba(255, 255, 255, 0.4) 55%,
-        transparent 70%
-      ),
-      linear-gradient(
-        145deg,
-        rgba(255, 255, 255, 0.96),
-        rgba(255, 255, 255, 0.7)
-      );
-    backdrop-filter: blur(26px);
-    -webkit-backdrop-filter: blur(26px);
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.4);
-  }
-
-  .dark .gm-glass {
-    border-color: rgba(148, 163, 184, 0.75);
-    background:
-      radial-gradient(
-        circle at 0 0,
-        rgba(255, 255, 255, 0.15),
-        transparent 60%
-      ),
-      linear-gradient(
-        145deg,
-        rgba(15, 23, 42, 0.96),
-        rgba(15, 23, 42, 0.8)
-      );
-    box-shadow: 0 22px 55px rgba(0, 0, 0, 0.85);
-  }
-
-  .gm-glass::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(
-      120deg,
-      rgba(255, 255, 255, 0.65),
-      transparent 60%
-    );
-    opacity: 0.85;
-    mix-blend-mode: screen;
-  }
-
-  .gm-glass-inner {
-    position: relative;
-    z-index: 1;
-  }
-
-  .gm-glass-input {
-    background-color: rgba(255, 255, 255, 0.82);
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.75);
-    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
-  }
-
-  .gm-glass-input::placeholder {
-    color: rgba(100, 116, 139, 0.9);
-  }
-
-  .dark .gm-glass-input {
-    background-color: rgba(15, 23, 42, 0.88);
-    border-color: rgba(148, 163, 184, 0.75);
-  }
-}
 
 /* =========================
    Keyframes voor animaties

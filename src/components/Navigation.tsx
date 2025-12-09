@@ -185,6 +185,7 @@ export default function Navigation({ lang }: NavigationProps) {
             </Button>
           </div>
 
+          {/* Hamburger (mobile) */}
           <button
             onClick={() => setOpen((v) => !v)}
             className="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent md:hidden"
@@ -198,14 +199,51 @@ export default function Navigation({ lang }: NavigationProps) {
       {/* ===================== MOBIEL MENU ===================== */}
       {open && (
         <>
+          {/* Glassy backdrop – klik sluit menu */}
           <div
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-md"
+            onClick={() => {
+              setOpen(false);
+              setLangOpen(false);
+            }}
             aria-hidden="true"
           />
 
-          <nav className="fixed inset-0 z-50 flex flex-col bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex flex-col h-full px-6 pt-28 pb-10 overflow-y-auto">
+          <nav
+            className="fixed inset-0 z-50 flex flex-col bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60"
+            aria-label="Mobile navigation"
+          >
+            {/* kleine mobiele “header” in het menu zelf */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-3">
+              <Link
+                href={`/${activeLang}`}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2"
+              >
+                <div className="relative h-8 w-12">
+                  <ResponsiveImage
+                    src="/images/logo_guide_me_abc.png"
+                    alt="Guide Me ABC"
+                    sizes="48px"
+                    className="object-contain"
+                  />
+                </div>
+              </Link>
+
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setLangOpen(false);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/10 text-foreground"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* eigenlijke menu-items */}
+            <div className="flex flex-col h-full px-6 pb-10 pt-4 overflow-y-auto">
               {links.map((l) => (
                 <Link
                   key={l.href}
@@ -229,7 +267,7 @@ export default function Navigation({ lang }: NavigationProps) {
               </Link>
 
               <div className="mt-auto space-y-4 pt-10">
-                {/* Taalselector – nu volledig werkend op mobiel */}
+                {/* Taalselector – mobiel */}
                 <div className="relative">
                   <button
                     onClick={() => setLangOpen((v) => !v)}

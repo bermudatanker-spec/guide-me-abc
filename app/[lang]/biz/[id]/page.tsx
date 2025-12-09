@@ -1,9 +1,10 @@
 // app/[lang]/biz/[id]/page.tsx
 
 import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
+import { createServerClient } from "@supabase/ssr";
 
-import { supabaseServer } from "@/lib/supabase/server";
 import { isLocale, type Locale } from "@/i18n/config";
 import {
   DAY_ORDER,
@@ -12,10 +13,59 @@ import {
   parseOpeningHours,
 } from "@/lib/opening-hours";
 
+/* ------------------------ Supabase helper (alleen voor deze pagina) ------------------------ */
+
+function createSupabaseClient() {
+  // In Next 15/16 kan cookies() als "async" getype-checked zijn.
+  // Runtime is gewoon synchroon; we casten naar any om TS-gezeur te omzeilen.
+  const cookieStore = cookies() as any;
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          try {
+            return cookieStore.get(name)?.value;
+          } catch {
+            return undefined;
+          }
+        },
+        set(name: string, value: string, options: any = {}) {
+          try {
+            cookieStore.set({
+              name,
+              value,
+              path: "/",
+              ...options,
+            });
+          } catch {
+            // mag falen in RSC-context
+          }
+        },
+        remove(name: string, options: any = {}) {
+          try {
+            cookieStore.set({
+              name,
+              value: "",
+              path: "/",
+              maxAge: 0,
+              ...options,
+            });
+          } catch {
+            // idem
+          }
+        },
+      },
+    }
+  );
+}
+
 /* ------------------------ Types ------------------------ */
 
 type PageProps = {
-  // Next 16: params is een Promise
+  // Next 15/16: params is een Promise
   params: Promise<{ lang: string; id: string }>;
 };
 
@@ -42,6 +92,12 @@ type BizRow = {
   opening_hours: string | null;
   temporarily_closed: boolean | null;
   offers: OfferRow[] | null;
+  highlight_1: string | null;
+  highlight_2: string | null;
+  highlight_3: string | null;
+  social_instagram: string | null;
+  social_facebook: string | null;
+  social_tiktok: string | null;
 };
 
 /* ------------------------ Teksten per taal ------------------------ */
@@ -62,6 +118,10 @@ const TEXTS: Record<Locale, Record<string, string>> = {
     offers: "Special offers",
     no_offers: "No current offers.",
     valid_until_prefix: "Valid until",
+    highlights: "Highlights",
+    no_highlights: "No highlights added yet.",
+    socials: "Socials",
+    socials_missing: "No socials added yet.",
   },
   nl: {
     opening_hours: "Openingstijden",
@@ -79,6 +139,10 @@ const TEXTS: Record<Locale, Record<string, string>> = {
     offers: "Aanbiedingen",
     no_offers: "Geen actuele aanbiedingen.",
     valid_until_prefix: "Geldig t/m",
+    highlights: "Highlights",
+    no_highlights: "Nog geen highlights toegevoegd.",
+    socials: "Socials",
+    socials_missing: "Nog geen socials toegevoegd.",
   },
   es: {
     opening_hours: "Horario",
@@ -96,6 +160,10 @@ const TEXTS: Record<Locale, Record<string, string>> = {
     offers: "Ofertas",
     no_offers: "No hay ofertas activas.",
     valid_until_prefix: "Válido hasta",
+    highlights: "Highlights",
+    no_highlights: "Todavía no hay highlights.",
+    socials: "Redes sociales",
+    socials_missing: "Todavía no hay redes sociales.",
   },
   pap: {
     opening_hours: "Ora di habri",
@@ -113,6 +181,10 @@ const TEXTS: Record<Locale, Record<string, string>> = {
     offers: "Oferta speshal",
     no_offers: "No tin oferta aktuál.",
     valid_until_prefix: "Válido te",
+    highlights: "Highlights",
+    no_highlights: "Ainda no tin highlights.",
+    socials: "Socials",
+    socials_missing: "Ainda no tin socials.",
   },
 };
 
@@ -151,23 +223,18 @@ const ISLAND_THEME: Record<
 /* ------------------------ Opening hours helper ------------------------ */
 
 type OpeningLine = {
-  day: string; // label (Maandag / Monday)
+  day: string;
   closed: boolean;
   from: string;
   to: string;
 };
 
-/**
- * Leest opening_hours:
- * - als JSON (nieuw formaat OpeningHoursField)
- * - of valt terug op oude tekstnotatie ("Maandag: 09:00 - 18:00")
- */
 function getOpeningLines(raw: string | null, locale: Locale): OpeningLine[] {
   if (!raw || !raw.trim()) return [];
 
   const trimmed = raw.trim();
 
-  // 1) Probeer JSON (nieuw formaat)
+  // 1) Nieuw JSON-formaat proberen
   if (trimmed.startsWith("{")) {
     try {
       const json = JSON.parse(trimmed) as OpeningHoursJSON;
@@ -187,17 +254,14 @@ function getOpeningLines(raw: string | null, locale: Locale): OpeningLine[] {
 
       if (lines.length > 0) return lines;
     } catch {
-      // JSON stuk → fallback naar legacy
+      // JSON stuk → terugvallen op legacy
     }
   }
 
-  // 2) Fallback: oude tekstformaat
+  // 2) Legacy tekst formaat
   return parseLegacyOpeningText(trimmed);
 }
 
-/**
- * Oude parser: "Maandag: 09:00 - 18:00" of "Zondag: Gesloten"
- */
 function parseLegacyOpeningText(raw: string): OpeningLine[] {
   if (!raw.trim()) return [];
 
@@ -250,21 +314,26 @@ export async function generateMetadata(
   { params }: PageProps
 ): Promise<Metadata | null> {
   const { id } = await params;
-  const supabase = await supabaseServer();
+  const supabase = createSupabaseClient();
 
-  const { data: biz } = await supabase
+  const { data, error } = await supabase
     .from("business_listings")
     .select("business_name, description")
     .eq("id", id)
     .eq("status", "active")
     .eq("subscription_plan", "pro")
-    .maybeSingle<Pick<BizRow, "business_name" | "description">>();
+    .maybeSingle();
 
-  if (!biz) return null;
+  if (error) {
+    console.error("[biz metadata] Supabase error", error);
+    return null;
+  }
+
+  if (!data) return null;
 
   return {
-    title: biz.business_name,
-    description: biz.description ?? "",
+    title: (data.business_name as string) ?? "",
+    description: ((data.description as string | null) ?? "") || "",
   };
 }
 
@@ -275,7 +344,7 @@ export default async function BizDetailPage({ params }: PageProps) {
   const locale: Locale = isLocale(lang) ? (lang as Locale) : "en";
   const t = TEXTS[locale];
 
-  const supabase = await supabaseServer();
+  const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
     .from("business_listings")
@@ -300,7 +369,13 @@ export default async function BizDetailPage({ params }: PageProps) {
         price,
         valid_until,
         image_url
-      )
+      ),
+      highlight_1,
+      highlight_2,
+      highlight_3,
+      social_instagram,
+      social_facebook,
+      social_tiktok
     `
     )
     .eq("id", id)
@@ -320,15 +395,19 @@ export default async function BizDetailPage({ params }: PageProps) {
       temporarily_closed: boolean | null;
       category_name: { name: string } | null;
       offers: OfferRow[] | null;
+      highlight_1: string | null;
+      highlight_2: string | null;
+      highlight_3: string | null;
+      social_instagram: string | null;
+      social_facebook: string | null;
+      social_tiktok: string | null;
     }>();
 
-  // 1) echte Supabase-fout → 404
   if (error) {
     console.error("[biz page] Supabase error", error);
     notFound();
   }
 
-  // 2) geen data = geen PRO + ACTIVE listing → terug naar dashboard
   if (!data) {
     return redirect(`/${locale}/business/dashboard?mini=locked`);
   }
@@ -336,7 +415,7 @@ export default async function BizDetailPage({ params }: PageProps) {
   const biz: BizRow = {
     id: data.id,
     business_name: data.business_name,
-    island: data.island,
+    island: (data.island as string) ?? "",
     category_name: data.category_name?.name ?? null,
     description: data.description,
     address: data.address,
@@ -347,13 +426,18 @@ export default async function BizDetailPage({ params }: PageProps) {
     opening_hours: data.opening_hours,
     temporarily_closed: data.temporarily_closed,
     offers: data.offers ?? [],
+    highlight_1: data.highlight_1,
+    highlight_2: data.highlight_2,
+    highlight_3: data.highlight_3,
+    social_instagram: data.social_instagram,
+    social_facebook: data.social_facebook,
+    social_tiktok: data.social_tiktok,
   };
 
   const openingLines = getOpeningLines(biz.opening_hours, locale);
-  const openingJson: OpeningHoursJSON | null =
-  biz.opening_hours
-  ? parseOpeningHours(biz.opening_hours)
-  : null; 
+  const openingJson: OpeningHoursJSON | null = biz.opening_hours
+    ? parseOpeningHours(biz.opening_hours)
+    : null;
 
   const islandKey =
     biz.island === "aruba" ||
@@ -374,6 +458,16 @@ export default async function BizDetailPage({ params }: PageProps) {
       : biz.island;
 
   const hasOffers = biz.offers && biz.offers.length > 0;
+
+  const highlights = [biz.highlight_1, biz.highlight_2, biz.highlight_3].filter(
+    Boolean
+  ) as string[];
+
+  const hasSocials = !!(
+    biz.social_instagram ||
+    biz.social_facebook ||
+    biz.social_tiktok
+  );
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -420,6 +514,19 @@ export default async function BizDetailPage({ params }: PageProps) {
                 {biz.description}
               </p>
             )}
+
+            {highlights.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {highlights.map((h, i) => (
+                  <span
+                    key={i}
+                    className="rounded-full bg-black/25 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur"
+                  >
+                    {h}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* CTAs */}
@@ -461,7 +568,7 @@ export default async function BizDetailPage({ params }: PageProps) {
       {/* BODY */}
       <section className="bg-slate-950 pb-20 pt-8">
         <div className="container mx-auto grid gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] lg:px-8">
-          {/* LEFT: about / hours / offers */}
+          {/* LEFT: about / hours / offers / highlights */}
           <div className="space-y-6">
             {/* Over */}
             <div className="rounded-2xl border border-white/5 bg-white/5 p-6 shadow-card">
@@ -500,7 +607,7 @@ export default async function BizDetailPage({ params }: PageProps) {
               ) : (
                 <ul className="space-y-1 text-sm text-white/90">
                   {openingLines.map((line, i) => (
-                    <li key={i} className="flex items-center justify-between">
+                    <li key={i} className="flex items-center justify_between">
                       <span className="w-32 text-white/80 font-medium">
                         {line.day}
                       </span>
@@ -601,10 +708,33 @@ export default async function BizDetailPage({ params }: PageProps) {
                 </div>
               )}
             </div>
+
+            {/* Highlights */}
+            <div className="rounded-2xl border border-white/5 bg-white/5 p-6 shadow-card">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-white/70">
+                {t.highlights}
+              </h2>
+
+              {highlights.length === 0 ? (
+                <p className="text-sm text_white/80">{t.no_highlights}</p>
+              ) : (
+                <ul className="flex flex-wrap gap-2 text-sm text-white/90">
+                  {highlights.map((h, i) => (
+                    <li
+                      key={i}
+                      className="rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium"
+                    >
+                      {h}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
 
-          {/* RIGHT: contact card */}
+          {/* RIGHT: contact + socials */}
           <aside className="space-y-4">
+            {/* Contact */}
             <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-6 shadow-card">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-white/70">
                 {t.contact}
@@ -676,6 +806,67 @@ export default async function BizDetailPage({ params }: PageProps) {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Socials */}
+            <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-6 shadow-card">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-white/70">
+                {t.socials}
+              </h2>
+
+              {!hasSocials && (
+                <p className="text-sm text-white/80">{t.socials_missing}</p>
+              )}
+
+              {hasSocials && (
+                <div className="space-y-3 text-sm text-white/90">
+                  {biz.social_instagram && (
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-white/60">
+                        Instagram
+                      </div>
+                      <a
+                        href={biz.social_instagram}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="break-all underline-offset-2 hover:underline"
+                      >
+                        {biz.social_instagram}
+                      </a>
+                    </div>
+                  )}
+                  {biz.social_facebook && (
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-white/60">
+                        Facebook
+                      </div>
+                      <a
+                        href={biz.social_facebook}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="break-all underline-offset-2 hover:underline"
+                      >
+                        {biz.social_facebook}
+                      </a>
+                    </div>
+                  )}
+                  {biz.social_tiktok && (
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-white/60">
+                        TikTok
+                      </div>
+                      <a
+                        href={biz.social_tiktok}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="break-all underline-offset-2 hover:underline"
+                      >
+                        {biz.social_tiktok}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </aside>
         </div>

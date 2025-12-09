@@ -566,6 +566,23 @@ export default function DashboardClient({ lang, t }: Props) {
                             </Button>
                           )}
 
+                          {/* Mini-site instellingen (alleen voor PRO) */}
+                          {isPro && (
+                            <Button
+                             variant="outlineSoft"
+                             size="sm"
+                             disabled={isBusy}
+                             onClick={() =>
+                              router.push(
+                                langHref(resolvedLang, `/business/mini-site/${r.id}`)
+                                 )
+                               }
+                             >
+                              {resolvedLang === "nl" ? "Mini-site instellingen" : "Mini-site settings"}
+                              </Button>
+                           )}
+
+
                           {/* Bewerken */}
                           <Button
                             variant="outline"
