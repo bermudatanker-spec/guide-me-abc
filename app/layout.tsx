@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://guide-me-abc.com"),
   title: {
     default: "Guide Me ABC",
     template: "%s | Guide Me ABC",
