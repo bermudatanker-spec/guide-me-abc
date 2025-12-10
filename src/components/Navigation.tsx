@@ -21,23 +21,30 @@ export default function Navigation({ lang }: NavigationProps) {
   const pathname = usePathname() ?? "/";
   const { t } = useLanguage();
 
-// menu open → body scroll lock + ESC om te sluiten
-useEffect(() => {
-  if (!open) return;
+  // ✨ Menu sluiten bij route-change
+  useEffect(() => {
+    setOpen(false);
+    setLangOpen(false);
+  }, [pathname]);
 
-  const prevOverflow = document.body.style.overflow;
-  document.body.style.overflow = "hidden";
+  // ✨ Scroll lock + ESC om menu te sluiten
+  useEffect(() => {
+    if (!open) return;
 
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") setOpen(false);
-  };
-  window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-  return () => {
-    document.body.style.overflow = prevOverflow;
-    window.removeEventListener("keydown", onKey);
-  };
-}, [open]);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   const activeLang: L = useMemo(() => {
     const raw = (lang ?? getLangFromPath(pathname) ?? "en").toLowerCase();
@@ -105,6 +112,7 @@ useEffect(() => {
             </div>
           </Link>
 
+          {/* DESKTOP NAV */}
           <nav className="hidden md:flex flex-1 items-center justify-center gap-6 text-sm font-medium">
             {links.map((l) => (
               <Link
@@ -124,6 +132,7 @@ useEffect(() => {
             ))}
           </nav>
 
+          {/* DESKTOP RIGHT SIDE */}
           <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-3 text-muted-foreground">
               <Link
@@ -150,6 +159,7 @@ useEffect(() => {
               {Lbl.account}
             </Link>
 
+            {/* Language switcher (desktop) */}
             <div className="relative rounded-full shadow-glow">
               <button
                 onClick={() => setLangOpen((v) => !v)}
@@ -183,6 +193,7 @@ useEffect(() => {
               )}
             </div>
 
+            {/* Voor bedrijven (desktop) */}
             <Button
               asChild
               className="font-semibold text-white shadow-md transition-transform duration-150 hover:scale-[1.02]"
@@ -198,7 +209,7 @@ useEffect(() => {
             </Button>
           </div>
 
-          {/* Hamburger (mobile) */}
+          {/* MOBILE TOGGLE BUTTON */}
           <button
             onClick={() => setOpen((v) => !v)}
             className="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent md:hidden"
@@ -209,23 +220,33 @@ useEffect(() => {
         </div>
       </header>
 
-      {/* ===================== MOBILE MENU ===================== */}
+      {/* ===================== MOBIEL MENU ===================== */}
       {open && (
         <>
-          {/* Backdrop → klik sluit menu */}
+          {/* backdrop (bij klik sluit menu) */}
           <div
             className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
             onClick={() => setOpen(false)}
+            aria-hidden="true"
           />
 
-          <nav className="fixed inset-0 z-50 flex flex-col bg-background/80 backdrop-blur">
+          <nav className="fixed inset-0 z-50 flex flex-col bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+            {/* Close button in het menu zelf */}
+            <button
+              onClick={() => setOpen(false)}
+              className="absolute right-4 top-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background/90 shadow-card"
+              aria-label="Sluit menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
             <div className="flex flex-col h-full px-6 pt-28 pb-10 overflow-y-auto">
               {links.map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
                   onClick={() => setOpen(false)}
-                  className={`py-5 text-lg font-medium border-b border-border/20 ${
+                  className={`py-5 text-lg font-medium border-b border-border/20 last:border-0 ${
                     isActive(l.href) ? "text-primary" : "text-foreground"
                   }`}
                 >
@@ -233,7 +254,7 @@ useEffect(() => {
                 </Link>
               ))}
 
-              {/* Account */}
+              {/* Account link (mobile) */}
               <Link
                 href={`/${activeLang}/account`}
                 onClick={() => setOpen(false)}
@@ -242,12 +263,12 @@ useEffect(() => {
                 {Lbl.account}
               </Link>
 
-              {/* Language picker */}
               <div className="mt-auto space-y-4 pt-10">
+                {/* Taalselector – mobiel */}
                 <div className="relative">
                   <button
                     onClick={() => setLangOpen((v) => !v)}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-white font-semibold hover:scale-[1.02]"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-white font-semibold transition hover:scale-[1.02]"
                     style={{
                       background:
                         "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
@@ -272,7 +293,7 @@ useEffect(() => {
                             setLangOpen(false);
                             setOpen(false);
                           }}
-                          className={`block px-6 py-4 text-center font-medium hover:bg-muted ${
+                          className={`block px-6 py-4 text-center font-medium transition hover:bg-muted ${
                             code === activeLang
                               ? "text-primary"
                               : "text-foreground"
@@ -285,9 +306,10 @@ useEffect(() => {
                   )}
                 </div>
 
+                {/* Voor bedrijven (mobile) */}
                 <Button
                   asChild
-                  className="w-full text-white font-semibold hover:scale-[1.02]"
+                  className="w-full text-white font-semibold transition hover:scale-[1.02]"
                   style={{
                     background:
                       "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)",
