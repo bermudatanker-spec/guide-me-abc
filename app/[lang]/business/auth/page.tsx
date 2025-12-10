@@ -12,7 +12,7 @@ type PageParams = {
 };
 
 type PageProps = {
-  params: PageParams;
+  params: Promise<PageParams>;
 };
 
 type SettingRow = {
@@ -22,11 +22,24 @@ type SettingRow = {
 
 /* ---------- Helpers ---------- */
 
-function asBool(value: string | null, fallback: boolean): boolean {
-  if (value == null) return fallback;
+function asBool(value: unknown): boolean {
+  // als het al een boolean is
+  if (typeof value === "boolean") return value;
 
-  const v = value.toLowerCase().trim();
-  return v === "1" || v === "true" || v === "yes" || v === "on";
+  // null / undefined → false
+  if (value == null) return false;
+
+  // numbers → 0 = false, andere = true
+  if (typeof value === "number") return value !== 0;
+
+  // strings → even normaliseren
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    return v === "true" || v === "1" || v === "yes" || v === "on";
+  }
+
+  // alles anders (object, array, etc.) → gewoon false
+  return false;
 }
 
 /* ---------- Metadata ---------- */
@@ -34,8 +47,9 @@ function asBool(value: string | null, fallback: boolean): boolean {
 export async function generateMetadata(
   { params }: PageProps
 ): Promise<Metadata> {
-  const { lang } = params;
-  const isNl = isLocale(lang) ? lang === "nl" : true;
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? (raw as Locale): "en";
+  const isNl = lang === "nl";
 
   return {
     title: isNl
@@ -50,7 +64,7 @@ export async function generateMetadata(
 /* ---------- Page ---------- */
 
 export default async function BusinessAuthPage({ params }: PageProps) {
-  const { lang: raw } = params;
+  const { lang: raw } = await params;
   const lang: Locale = isLocale(raw) ? raw : "en";
 
   // LET OP: supabaseServer is async, dus we wachten erop
@@ -68,10 +82,10 @@ export default async function BusinessAuthPage({ params }: PageProps) {
     if (!error && data) {
       for (const row of data as SettingRow[]) {
         if (row.key === "allow_registrations") {
-          allowRegistrations = asBool(row.value, true);
+          allowRegistrations = asBool(row.value);
         }
         if (row.key === "force_email_verification") {
-          forceEmailVerification = asBool(row.value, true);
+          forceEmailVerification = asBool(row.value);
         }
       }
     }
