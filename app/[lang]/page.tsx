@@ -5,9 +5,10 @@ import type { Locale } from "@/i18n/config";
 import Hero from "@/components/home/Hero";
 import QuickFilters from "@/components/home/QuickFilters";
 import FeaturedExperiences from "@/components/home/FeaturedExperiences";
-import ExploreIslands from "@/components/home/ExploreIslands";
+import IslandsOverview from "@/components/home/IslandsOverview"; 
 import LocalTips from "@/components/home/LocalTips";
 import SearchBar from "@/components/home/SearchBar";
+
 
 type PageProps = {
   params: Promise<{ lang: Locale }>;
@@ -49,8 +50,9 @@ export default async function HomePage({ params }: PageProps) {
       <div className="px-4 sm:px-6 lg:px-10 max-w-6xl mx-auto pb-16 space-y-10">
         <QuickFilters lang={lang} />
         <FeaturedExperiences />
-        <ExploreIslands lang={lang} />
+        <IslandsOverview lang={lang} />
         <LocalTips lang={lang} />
+        
       </div>
     </main>
   );
