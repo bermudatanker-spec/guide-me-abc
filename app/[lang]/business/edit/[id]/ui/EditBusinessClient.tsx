@@ -22,24 +22,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import type { Locale } from "@/i18n/config";
 import OpeningHoursField from "@/components/business/OpeningHoursField";
 
 /* ----------------------------------------------------------------
-   Types — sluiten aan op je DB schema
+   Helpers
 ----------------------------------------------------------------- */
+const s = (v: string | null | undefined) => (v ?? "");
+const toId = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+/* ----------------------------------------------------------------
+   Types (null-safe)
+----------------------------------------------------------------- */
 type CategoryRow = {
   id: string;
   name: string;
   slug: string;
 };
 
-type ListingRow = {
+type Island = "aruba" | "bonaire" | "curacao";
+
+type ListingDbRow = {
   id: string;
-  owner_id: string;
-  business_name: string;
-  island: "aruba" | "bonaire" | "curacao";
+  owner_id: string | null;
+  business_name: string | null;
+  island: Island | null;
   category_id: string | null;
   description: string | null;
   address: string | null;
@@ -47,15 +55,33 @@ type ListingRow = {
   email: string | null;
   website: string | null;
   whatsapp: string | null;
-  opening_hours: string | null; // JSON-string uit OpeningHoursField
+  opening_hours: string | null;
   temporarily_closed: boolean | null;
-  status: "pending" | "active" | "inactive";
-  subscription_plan: "starter" | "growth" | "pro";
+  status: "pending" | "active" | "inactive" | null;
+  subscription_plan: "starter" | "growth" | "pro" | null;
 };
 
 /* ----------------------------------------------------------------
-   Zod schema voor validatie
+   Zod schema (fix: lege strings moeten toegestaan zijn vóór email/url)
 ----------------------------------------------------------------- */
+const EmailSchema = z.union([
+  z.literal(""),
+  z.string().trim().email("Ongeldig e-mailadres").max(255),
+]);
+
+const UrlSchema = z.union([
+  z.literal(""),
+  z
+    .string()
+    .trim()
+    .url("Ongeldige URL (moet met http/https beginnen)")
+    .max(255),
+]);
+
+const DigitsSchema = z.union([
+  z.literal(""),
+  z.string().trim().regex(/^[0-9]*$/, "Alleen cijfers"),
+]);
 
 const FormSchema = z.object({
   business_name: z.string().trim().min(2, "Bedrijfsnaam is verplicht"),
@@ -63,50 +89,21 @@ const FormSchema = z.object({
     required_error: "Kies een eiland",
   }),
   category_id: z
-    .string()
-    .uuid()
-    .optional()
-    .or(z.literal(""))
+    .union([z.literal(""), z.string().uuid()])
     .transform((val) => (val === "" ? null : val)),
-  description: z
-    .string()
-    .trim()
-    .max(1000, "Maximaal 1000 tekens")
-    .optional()
-    .or(z.literal("")),
-  address: z
-    .string()
-    .trim()
-    .max(200, "Maximaal 200 tekens")
-    .optional()
-    .or(z.literal("")),
-  phone: z
-    .string()
-    .trim()
-    .max(50, "Maximaal 50 tekens")
-    .optional()
-    .or(z.literal("")),
-  email: z
-    .string()
-    .trim()
-    .email("Ongeldig e-mailadres")
-    .max(255)
-    .optional()
-    .or(z.literal("")),
-  website: z
-    .string()
-    .trim()
-    .url("Ongeldige URL (moet met http/https beginnen)")
-    .max(255)
-    .optional()
-    .or(z.literal("")),
-  whatsapp: z
-    .string()
-    .trim()
-    .regex(/^[0-9]*$/, "Alleen cijfers")
-    .optional()
-    .or(z.literal("")),
-  opening_hours: z.string().trim().optional().or(z.literal("")), // JSON-string
+  description: z.union([
+    z.literal(""),
+    z.string().trim().max(1000, "Maximaal 1000 tekens"),
+  ]),
+  address: z.union([
+    z.literal(""),
+    z.string().trim().max(200, "Maximaal 200 tekens"),
+  ]),
+  phone: z.union([z.literal(""), z.string().trim().max(50, "Maximaal 50 tekens")]),
+  email: EmailSchema,
+  website: UrlSchema,
+  whatsapp: DigitsSchema,
+  opening_hours: z.union([z.literal(""), z.string().trim()]), // JSON-string
   temporarily_closed: z.boolean().optional(),
 });
 
@@ -114,10 +111,24 @@ type Props = {
   lang: Locale;
 };
 
+type FormState = {
+  business_name: string;
+  island: Island | "";
+  category_id: string; // "" of uuid (we transformen naar null bij submit)
+  description: string;
+  address: string;
+  phone: string;
+  email: string;
+  website: string;
+  whatsapp: string;
+  opening_hours: string;
+  temporarily_closed: boolean;
+};
+
 export default function EditBusinessClient({ lang }: Props) {
   const router = useRouter();
-  const params = useParams() as { id: string };
-  const id = params.id;
+  const params = useParams() as { id?: string | string[] };
+  const id = toId(params.id) ?? "";
 
   const supabase = useMemo(() => supabaseBrowser(), []);
   const { toast } = useToast();
@@ -125,19 +136,7 @@ export default function EditBusinessClient({ lang }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [form, setForm] = useState<{
-    business_name: string;
-    island: "aruba" | "bonaire" | "curacao" | "";
-    category_id: string | "";
-    description: string;
-    address: string;
-    phone: string;
-    email: string;
-    website: string;
-    whatsapp: string;
-    opening_hours: string; // JSON-string of ""
-    temporarily_closed: boolean;
-  }>({
+  const [form, setForm] = useState<FormState>({
     business_name: "",
     island: "",
     category_id: "",
@@ -154,45 +153,51 @@ export default function EditBusinessClient({ lang }: Props) {
   const [categories, setCategories] = useState<CategoryRow[]>([]);
 
   /* ----------------------------------------------------------------
-     Ophalen categorieën + bestaande listing
+     Load categories + listing
   ----------------------------------------------------------------- */
-
   useEffect(() => {
     let alive = true;
 
     (async () => {
       try {
+        if (!id) {
+          router.replace(langHref(lang, "/business/dashboard"));
+          return;
+        }
+
         // 1) Auth check
         const { data: userResult } = await supabase.auth.getUser();
-        if (!userResult?.user) {
+        const user = userResult?.user;
+
+        if (!user) {
           router.replace(langHref(lang, "/business/auth"));
           return;
         }
 
-        // 2) Categorieën
+        // 2) Categories (null-safe mapping)
         const { data: cats, error: catError } = await supabase
           .from("categories")
-          .select("id, name, slug")
+          .select("id,name,slug")
           .order("name", { ascending: true });
 
         if (catError) throw new Error(catError.message);
         if (!alive) return;
-        setCategories(
-         (cats ?? []).map((c) => ({
-         ...c,
-         name: c.name ?? "",
-         slug: c.slug ?? "",
-          }))
-          );
 
-        // 3) Bestaande listing
+        const mappedCats: CategoryRow[] = (cats ?? []).map((c: any) => ({
+          id: String(c.id),
+          name: s(c.name),
+          slug: s(c.slug),
+        }));
+        setCategories(mappedCats);
+
+        // 3) Listing
         const { data: row, error: rowError } = await supabase
           .from("business_listings")
           .select(
             "id, owner_id, business_name, island, category_id, description, address, phone, email, website, whatsapp, opening_hours, temporarily_closed, status, subscription_plan"
           )
           .eq("id", id)
-          .single<ListingRow>();
+          .maybeSingle();
 
         if (rowError || !row) {
           toast({
@@ -205,20 +210,34 @@ export default function EditBusinessClient({ lang }: Props) {
           return;
         }
 
+        const r = row as unknown as ListingDbRow;
+
+        // Optioneel extra guard (handig bij debugging):
+        // Als RLS goed staat, is dit niet nodig — maar het voorkomt verwarring in UI.
+        if (r.owner_id && r.owner_id !== user.id) {
+          toast({
+            title: "Geen toegang",
+            description: "Je hebt geen rechten om dit bedrijf te bewerken.",
+            variant: "destructive",
+          });
+          router.replace(langHref(lang, "/business/dashboard"));
+          return;
+        }
+
         if (!alive) return;
 
         setForm({
-          business_name: row.business_name ?? "",
-          island: (row.island as "aruba" | "bonaire" | "curacao") ?? "",
-          category_id: row.category_id ?? "",
-          description: row.description ?? "",
-          address: row.address ?? "",
-          phone: row.phone ?? "",
-          email: row.email ?? "",
-          website: row.website ?? "",
-          whatsapp: row.whatsapp ?? "",
-          opening_hours: row.opening_hours ?? "", // JSON-string uit DB
-          temporarily_closed: !!row.temporarily_closed,
+          business_name: s(r.business_name),
+          island: (r.island ?? "") as Island | "",
+          category_id: r.category_id ?? "",
+          description: s(r.description),
+          address: s(r.address),
+          phone: s(r.phone),
+          email: s(r.email),
+          website: s(r.website),
+          whatsapp: s(r.whatsapp),
+          opening_hours: s(r.opening_hours),
+          temporarily_closed: !!r.temporarily_closed,
         });
       } catch (e: any) {
         toast({
@@ -240,14 +259,13 @@ export default function EditBusinessClient({ lang }: Props) {
   /* ----------------------------------------------------------------
      Submit
   ----------------------------------------------------------------- */
-
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (saving) return;
 
     const parsed = FormSchema.safeParse(form);
     if (!parsed.success) {
-      const firstError =
-        parsed.error.issues[0]?.message ?? "Ongeldige invoer.";
+      const firstError = parsed.error.issues[0]?.message ?? "Ongeldige invoer.";
       toast({
         title: "Controleer je invoer",
         description: firstError,
@@ -261,25 +279,27 @@ export default function EditBusinessClient({ lang }: Props) {
     try {
       setSaving(true);
 
+      const payload = {
+        business_name: data.business_name,
+        island: data.island,
+        category_id: data.category_id,
+        description: data.description || null,
+        address: data.address || null,
+        phone: data.phone || null,
+        email: data.email || null,
+        website: data.website || null,
+        whatsapp: data.whatsapp || null,
+        opening_hours: data.opening_hours || null,
+        temporarily_closed:
+          typeof data.temporarily_closed === "boolean"
+            ? data.temporarily_closed
+            : form.temporarily_closed,
+        updated_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase
         .from("business_listings")
-        .update({
-          business_name: data.business_name,
-          island: data.island,
-          category_id: data.category_id,
-          description: data.description || null,
-          address: data.address || null,
-          phone: data.phone || null,
-          email: data.email || null,
-          website: data.website || null,
-          whatsapp: data.whatsapp || null,
-          // JSON-string uit het formulier, maar via gevalideerde data
-          opening_hours: data.opening_hours || null,
-          temporarily_closed:
-            typeof data.temporarily_closed === "boolean"
-              ? data.temporarily_closed
-              : form.temporarily_closed,
-        })
+        .update(payload)
         .eq("id", id);
 
       if (error) throw new Error(error.message);
@@ -306,7 +326,6 @@ export default function EditBusinessClient({ lang }: Props) {
   /* ----------------------------------------------------------------
      Loading state
   ----------------------------------------------------------------- */
-
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -316,17 +335,14 @@ export default function EditBusinessClient({ lang }: Props) {
   }
 
   /* ----------------------------------------------------------------
-     UI
+     UI (ongewijzigd)
   ----------------------------------------------------------------- */
-
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <Button
         variant="ghost"
         className="mb-6"
-        onClick={() =>
-          router.push(langHref(lang, "/business/dashboard"))
-        }
+        onClick={() => router.push(langHref(lang, "/business/dashboard"))}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Terug naar Dashboard
@@ -335,10 +351,9 @@ export default function EditBusinessClient({ lang }: Props) {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Bedrijf bewerken</CardTitle>
-          <CardDescription>
-            Pas hier de gegevens van je bedrijf aan.
-          </CardDescription>
+          <CardDescription>Pas hier de gegevens van je bedrijf aan.</CardDescription>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Bedrijfsnaam */}
@@ -348,10 +363,7 @@ export default function EditBusinessClient({ lang }: Props) {
                 id="business_name"
                 value={form.business_name}
                 onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    business_name: e.target.value,
-                  }))
+                  setForm((s) => ({ ...s, business_name: e.target.value }))
                 }
                 required
               />
@@ -368,11 +380,7 @@ export default function EditBusinessClient({ lang }: Props) {
                   onChange={(e) =>
                     setForm((s) => ({
                       ...s,
-                      island: e.target.value as
-                        | "aruba"
-                        | "bonaire"
-                        | "curacao"
-                        | "",
+                      island: e.target.value as Island | "",
                     }))
                   }
                   required
@@ -393,10 +401,7 @@ export default function EditBusinessClient({ lang }: Props) {
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                   value={form.category_id}
                   onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      category_id: e.target.value,
-                    }))
+                    setForm((s) => ({ ...s, category_id: e.target.value }))
                   }
                 >
                   <option value="">— Geen —</option>
@@ -417,10 +422,7 @@ export default function EditBusinessClient({ lang }: Props) {
                 rows={4}
                 value={form.description}
                 onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    description: e.target.value,
-                  }))
+                  setForm((s) => ({ ...s, description: e.target.value }))
                 }
                 placeholder="Vertel iets over je bedrijf..."
               />
@@ -432,12 +434,7 @@ export default function EditBusinessClient({ lang }: Props) {
               <Input
                 id="address"
                 value={form.address}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    address: e.target.value,
-                  }))
-                }
+                onChange={(e) => setForm((s) => ({ ...s, address: e.target.value }))}
               />
             </div>
 
@@ -449,12 +446,7 @@ export default function EditBusinessClient({ lang }: Props) {
                   id="phone"
                   type="tel"
                   value={form.phone}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      phone: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
@@ -464,10 +456,7 @@ export default function EditBusinessClient({ lang }: Props) {
                   inputMode="numeric"
                   value={form.whatsapp}
                   onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      whatsapp: e.target.value,
-                    }))
+                    setForm((s) => ({ ...s, whatsapp: e.target.value }))
                   }
                 />
               </div>
@@ -481,12 +470,7 @@ export default function EditBusinessClient({ lang }: Props) {
                   id="email"
                   type="email"
                   value={form.email}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      email: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
@@ -497,10 +481,7 @@ export default function EditBusinessClient({ lang }: Props) {
                   placeholder="https://..."
                   value={form.website}
                   onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      website: e.target.value,
-                    }))
+                    setForm((s) => ({ ...s, website: e.target.value }))
                   }
                 />
               </div>
@@ -514,10 +495,8 @@ export default function EditBusinessClient({ lang }: Props) {
 
               <OpeningHoursField
                 lang={lang}
-                value={form.opening_hours} // JSON-string
-                onChange={(v) =>
-                  setForm((s) => ({ ...s, opening_hours: v }))
-                }
+                value={form.opening_hours}
+                onChange={(v) => setForm((s) => ({ ...s, opening_hours: v }))}
               />
 
               <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
@@ -544,9 +523,7 @@ export default function EditBusinessClient({ lang }: Props) {
               variant="primaryGrad"
               disabled={saving}
             >
-              {saving && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Wijzigingen opslaan
             </Button>
           </form>
