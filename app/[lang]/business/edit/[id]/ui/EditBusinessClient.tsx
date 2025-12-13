@@ -7,7 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { z } from "zod";
 import { Loader2, ArrowLeft } from "lucide-react";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { useToast } from "@/hooks/use-toast";
 import { langHref } from "@/lib/lang-href";
 
@@ -177,7 +177,13 @@ export default function EditBusinessClient({ lang }: Props) {
 
         if (catError) throw new Error(catError.message);
         if (!alive) return;
-        setCategories(cats ?? []);
+        setCategories(
+         (cats ?? []).map((c) => ({
+         ...c,
+         name: c.name ?? "",
+         slug: c.slug ?? "",
+          }))
+          );
 
         // 3) Bestaande listing
         const { data: row, error: rowError } = await supabase

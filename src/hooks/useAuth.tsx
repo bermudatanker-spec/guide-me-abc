@@ -15,7 +15,7 @@ import type {
   AuthChangeEvent,
 } from "@supabase/supabase-js";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 
 /* --------------------------------------------------------------------------
    TYPES

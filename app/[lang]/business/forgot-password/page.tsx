@@ -4,7 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { useRouter, usePathname } from "next/navigation";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

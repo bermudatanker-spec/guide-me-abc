@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { z } from "zod";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useToast } from "@/hooks/use-toast";
 import { getLangFromPath } from "@/lib/locale-path";

@@ -15,7 +15,7 @@ import {
 import { z } from "zod";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

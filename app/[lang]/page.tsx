@@ -49,7 +49,7 @@ export default async function HomePage({ params }: PageProps) {
 
       <div className="px-4 sm:px-6 lg:px-10 max-w-6xl mx-auto pb-16 space-y-10">
         <QuickFilters lang={lang} />
-        <FeaturedExperiences />
+        <FeaturedExperiences lang={lang}/>
         <IslandsOverview lang={lang} />
         <LocalTips lang={lang} />
         

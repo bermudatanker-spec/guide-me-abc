@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { authService } from "@/lib/supabase/client";
+import { authService } from "@/lib/supabase/browser";
 import type {
   User,
   Session,

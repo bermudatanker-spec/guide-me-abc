@@ -1,12 +1,13 @@
 // app/[lang]/business/offers/[id]/ui/OffersClient.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { z } from "zod";
 import { Plus, Loader2, Trash2, Pencil, ArrowLeft } from "lucide-react";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/database.types";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { useToast } from "@/hooks/use-toast";
 import { langHref } from "@/lib/lang-href";
 import { getLangFromPath } from "@/lib/locale-path";
@@ -18,16 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Locale } from "@/i18n/config";
 
-type OfferRow = {
-  id: string;
-  business_id: string;
-  title: string | null;
-  description: string | null;
-  price: string | null;
-  valid_until: string | null; // ISO date string
-  image_url: string | null;
-  created_at: string;
-};
+type OfferRow = Database["public"]["Tables"]["business_offers"]["Row"];
 
 type Props = {
   lang: Locale;
@@ -38,18 +30,9 @@ type Props = {
 
 const offerSchema = z.object({
   title: z.string().trim().min(2, "Titel is verplicht"),
-  description: z
-    .string()
-    .trim()
-    .max(1000, "Maximaal 1000 tekens")
-    .optional()
-    .or(z.literal("")),
+  description: z.string().trim().max(1000, "Maximaal 1000 tekens").optional().or(z.literal("")),
   price: z.string().trim().max(100, "Te lang").optional().or(z.literal("")),
-  valid_until: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("")),
+  valid_until: z.string().trim().optional().or(z.literal("")),
   image_url: z
     .string()
     .trim()
@@ -60,7 +43,7 @@ const offerSchema = z.object({
 });
 
 type FormState = {
-  id?: string; // bij edit
+  id?: string;
   title: string;
   description: string;
   price: string;
@@ -68,14 +51,11 @@ type FormState = {
   image_url: string;
 };
 
-export default function OffersClient({
-  lang,
-  businessId,
-  businessName,
-}: Props) {
+export default function OffersClient({ lang, businessId, businessName }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const resolvedLang = (getLangFromPath(pathname) || lang) as Locale;
+  const isNL = resolvedLang === "nl";
 
   const supabase = useMemo(() => supabaseBrowser(), []);
   const { toast } = useToast();
@@ -92,8 +72,6 @@ export default function OffersClient({
     valid_until: "",
     image_url: "",
   });
-
-  const isNL = resolvedLang === "nl";
 
   const labels = {
     pageTitle: isNL ? "Aanbiedingen beheren" : "Manage offers",
@@ -113,17 +91,12 @@ export default function OffersClient({
     imageHelp: isNL
       ? "Optioneel. Een afbeelding (bijv. van Supabase Storage of je website)."
       : "Optional. Image URL (e.g. from Supabase Storage or your site).",
-    noOffers: isNL
-      ? "Nog geen aanbiedingen toegevoegd."
-      : "No offers yet.",
+    noOffers: isNL ? "Nog geen aanbiedingen toegevoegd." : "No offers yet.",
     deleteConfirm: isNL
       ? "Weet je zeker dat je deze aanbieding wilt verwijderen?"
       : "Are you sure you want to delete this offer?",
   };
 
-  /* ---------------------------------------
-   * Load offers (alleen voor deze business)
-   * ------------------------------------- */
   useEffect(() => {
     let alive = true;
 
@@ -140,12 +113,12 @@ export default function OffersClient({
         if (!alive) return;
         if (error) throw new Error(error.message);
 
-        setOffers(data ?? []);
+        setOffers((data ?? []) as OfferRow[]);
       } catch (err: any) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: err?.message ?? "Kon aanbiedingen niet laden.",
+          description: err?.message ?? (isNL ? "Kon aanbiedingen niet laden." : "Failed to load offers."),
         });
       } finally {
         if (alive) setLoading(false);
@@ -155,11 +128,8 @@ export default function OffersClient({
     return () => {
       alive = false;
     };
-  }, [businessId, supabase, toast]);
+  }, [businessId, supabase, toast, isNL]);
 
-  /* ------------------------
-   * Helpers
-   * ---------------------- */
   function resetForm() {
     setEditingId(null);
     setForm({
@@ -172,33 +142,26 @@ export default function OffersClient({
   }
 
   function startEdit(o: OfferRow) {
-    setEditingId(o.id);
+    setEditingId(String(o.id));
     setForm({
-      id: o.id,
-      title: o.title ?? "",
-      description: o.description ?? "",
-      price: o.price ?? "",
-      valid_until: o.valid_until?.slice(0, 10) ?? "",
-      image_url: o.image_url ?? "",
+      id: String(o.id),
+      title: (o.title ?? "") as string,
+      description: (o.description ?? "") as string,
+      // price kan string of number zijn afhankelijk van je DB; we tonen altijd als string:
+      price: o.price == null ? "" : String(o.price),
+      valid_until: o.valid_until ? String(o.valid_until).slice(0, 10) : "",
+      image_url: (o.image_url ?? "") as string,
     });
   }
 
-  /* ------------------------
-   * Save (create / update)
-   * ---------------------- */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const parsed = offerSchema.safeParse(form);
     if (!parsed.success) {
       const msg =
-        parsed.error.issues[0]?.message ??
-        (isNL ? "Controleer je invoer." : "Please check your input.");
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: msg,
-      });
+        parsed.error.issues[0]?.message ?? (isNL ? "Controleer je invoer." : "Please check your input.");
+      toast({ variant: "destructive", title: "Error", description: msg });
       return;
     }
 
@@ -207,63 +170,43 @@ export default function OffersClient({
     try {
       setSaving(true);
 
-      if (editingId) {
-        // UPDATE
-        const { error } = await supabase
-          .from("business_offers")
-          .update({
-            title: values.title,
-            description: values.description || null,
-            price: values.price || null,
-            valid_until: values.valid_until || null,
-            image_url: values.image_url || null,
-          })
-          .eq("id", editingId);
+      const payload = {
+        business_id: businessId,
+        title: values.title,
+        description: values.description || null,
+        price: values.price || null,
+        valid_until: values.valid_until || null,
+        image_url: values.image_url || null,
+      };
 
+      if (editingId) {
+        const { error } = await supabase.from("business_offers").update(payload).eq("id", editingId);
         if (error) throw new Error(error.message);
 
         setOffers((prev) =>
           prev.map((o) =>
-            o.id === editingId
-              ? {
+            String(o.id) === editingId
+              ? ({
                   ...o,
-                  title: values.title,
-                  description: values.description || null,
-                  price: values.price || null,
-                  valid_until: values.valid_until || null,
-                  image_url: values.image_url || null,
-                }
+                  ...payload,
+                } as OfferRow)
               : o
           )
         );
 
-        toast({
-          title: isNL ? "Aanbieding bijgewerkt" : "Offer updated",
-        });
+        toast({ title: isNL ? "Aanbieding bijgewerkt" : "Offer updated" });
       } else {
-        // INSERT
         const { data, error } = await supabase
           .from("business_offers")
-          .insert({
-            business_id: businessId,
-            title: values.title,
-            description: values.description || null,
-            price: values.price || null,
-            valid_until: values.valid_until || null,
-            image_url: values.image_url || null,
-          })
+          .insert(payload)
           .select("*")
-          .single<OfferRow>();
+          .single();
 
         if (error) throw new Error(error.message);
 
-        if (data) {
-          setOffers((prev) => [data, ...prev]);
-        }
+        if (data) setOffers((prev) => [data as OfferRow, ...prev]);
 
-        toast({
-          title: isNL ? "Aanbieding aangemaakt" : "Offer created",
-        });
+        toast({ title: isNL ? "Aanbieding aangemaakt" : "Offer created" });
       }
 
       resetForm();
@@ -272,51 +215,31 @@ export default function OffersClient({
         variant: "destructive",
         title: "Error",
         description:
-          err?.message ??
-          (isNL
-            ? "Er ging iets mis bij het opslaan."
-            : "Something went wrong while saving."),
+          err?.message ?? (isNL ? "Er ging iets mis bij het opslaan." : "Something went wrong while saving."),
       });
     } finally {
       setSaving(false);
     }
   }
 
-  /* ------------------------
-   * Delete
-   * ---------------------- */
   async function handleDelete(id: string) {
     if (!confirm(labels.deleteConfirm)) return;
 
     try {
-      const { error } = await supabase
-        .from("business_offers")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await supabase.from("business_offers").delete().eq("id", id);
       if (error) throw new Error(error.message);
 
-      setOffers((prev) => prev.filter((o) => o.id !== id));
-
-      toast({
-        title: isNL ? "Verwijderd" : "Deleted",
-      });
+      setOffers((prev) => prev.filter((o) => String(o.id) !== id));
+      toast({ title: isNL ? "Verwijderd" : "Deleted" });
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Error",
         description:
-          err?.message ??
-          (isNL
-            ? "Kon de aanbieding niet verwijderen."
-            : "Could not delete the offer."),
+          err?.message ?? (isNL ? "Kon de aanbieding niet verwijderen." : "Could not delete the offer."),
       });
     }
   }
-
-  /* ------------------------
-   * UI
-   * ---------------------- */
 
   if (loading) {
     return (
@@ -331,26 +254,19 @@ export default function OffersClient({
       <div className="mb-6 flex items-center justify-between gap-3">
         <Button
           variant="ghost"
-          onClick={() =>
-            router.push(langHref(resolvedLang, "/business/dashboard"))
-          }
+          onClick={() => router.push(langHref(resolvedLang, "/business/dashboard"))}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           {labels.backToDashboard}
         </Button>
 
         <div className="text-right">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            {isNL ? "Voor" : "For"}
-          </p>
-          <p className="font-semibold text-sm text-foreground">
-            {businessName}
-          </p>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">{isNL ? "Voor" : "For"}</p>
+          <p className="font-semibold text-sm text-foreground">{businessName}</p>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        {/* Formulier */}
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">
@@ -364,9 +280,7 @@ export default function OffersClient({
                 <Input
                   id="title"
                   value={form.title}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, title: e.target.value }))
-                  }
+                  onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))}
                   required
                 />
               </div>
@@ -377,9 +291,7 @@ export default function OffersClient({
                   id="description"
                   rows={4}
                   value={form.description}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, description: e.target.value }))
-                  }
+                  onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
                 />
               </div>
 
@@ -390,9 +302,7 @@ export default function OffersClient({
                     id="price"
                     value={form.price}
                     placeholder={labels.pricePlaceholder}
-                    onChange={(e) =>
-                      setForm((s) => ({ ...s, price: e.target.value }))
-                    }
+                    onChange={(e) => setForm((s) => ({ ...s, price: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -401,9 +311,7 @@ export default function OffersClient({
                     id="valid_until"
                     type="date"
                     value={form.valid_until}
-                    onChange={(e) =>
-                      setForm((s) => ({ ...s, valid_until: e.target.value }))
-                    }
+                    onChange={(e) => setForm((s) => ({ ...s, valid_until: e.target.value }))}
                   />
                 </div>
               </div>
@@ -414,20 +322,18 @@ export default function OffersClient({
                   id="image_url"
                   placeholder="https://..."
                   value={form.image_url}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, image_url: e.target.value }))
-                  }
+                  onChange={(e) => setForm((s) => ({ ...s, image_url: e.target.value }))}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {labels.imageHelp}
-                </p>
+                <p className="text-xs text-muted-foreground">{labels.imageHelp}</p>
               </div>
 
               <div className="flex items-center gap-3 pt-2">
                 <Button type="submit" disabled={saving}>
-                  {saving && <Loader2 className="mr-2 h-4 w-4
-                  animate-spin" />}
-                  {!saving && <Plus className="mr-2 h-4 w-4"/>}
+                  {saving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
                   {editingId ? labels.updateOffer : labels.saveOffer}
                 </Button>
 
@@ -445,70 +351,50 @@ export default function OffersClient({
           </CardContent>
         </Card>
 
-        {/* Lijst met aanbiedingen */}
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">
-              {labels.pageTitle}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {labels.pageSubtitle}
-            </p>
+            <CardTitle className="text-lg font-semibold">{labels.pageTitle}</CardTitle>
+            <p className="text-sm text-muted-foreground">{labels.pageSubtitle}</p>
           </CardHeader>
           <CardContent>
             {offers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {labels.noOffers}
-              </p>
+              <p className="text-sm text-muted-foreground">{labels.noOffers}</p>
             ) : (
               <div className="space-y-4">
                 {offers.map((o) => (
                   <div
-                    key={o.id}
+                    key={String(o.id)}
                     className="rounded-xl border border-border/70 bg-background/70 px-4 py-3 flex items-start justify-between gap-4"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">
-                          {o.title ?? "—"}
-                        </h3>
-                        {o.price && (
+                        <h3 className="font-semibold text-sm">{(o.title as string) ?? "—"}</h3>
+                        {o.price != null && String(o.price).length > 0 && (
                           <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-medium text-emerald-900">
-                            {o.price}
+                            {String(o.price)}
                           </span>
                         )}
                       </div>
 
                       {o.description && (
-                        <p className="text-xs text-muted-foreground">
-                          {o.description}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{String(o.description)}</p>
                       )}
 
                       <div className="flex flex-wrap gap-2 mt-1">
                         {o.valid_until && (
                           <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">
-                            {isNL ? "Geldig t/m" : "Valid until"}{" "}
-                            {o.valid_until.slice(0, 10)}
+                            {isNL ? "Geldig t/m" : "Valid until"} {String(o.valid_until).slice(0, 10)}
                           </span>
                         )}
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => startEdit(o)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => startEdit(o)}>
                         <Pencil className="h-3 w-3 mr-1" />
                         {isNL ? "Bewerken" : "Edit"}
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outlineSoft"
-                        onClick={() => handleDelete(o.id)}
-                      >
+                      <Button size="sm" variant="outlineSoft" onClick={() => handleDelete(String(o.id))}>
                         <Trash2 className="h-3 w-3 mr-1" />
                         {isNL ? "Verwijderen" : "Delete"}
                       </Button>

@@ -3,20 +3,14 @@
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { Locale } from "@/i18n/config";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { useToast } from "@/hooks/use-toast";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Loader2,
-  Shield,
-  UserCircle2,
-  BriefcaseBusiness,
-  Ban,
-} from "lucide-react";
+import { Loader2, Shield, UserCircle2, BriefcaseBusiness, Ban } from "lucide-react";
 
 type Props = {
   lang: Locale;
@@ -26,9 +20,11 @@ type DbUserRow = {
   id: string;
   email: string | null;
   full_name: string | null;
-  roles: string[];
-  is_blocked: boolean;
+  roles: string[]; // UI altijd array
+  is_blocked: boolean; // UI altijd boolean
   created_at: string | null;
+
+  // optioneel in UI (als je later je RPC uitbreidt)
   last_sign_in_at: string | null;
   business_name: string | null;
 };
@@ -39,33 +35,26 @@ const ROLE_BUSINESS = "business_owner";
 
 /* -------- helpers voor rollen -------- */
 
-function normalizeRoles(raw: any): string[] {
+function normalizeRoles(raw: unknown): string[] {
   if (!raw) return [];
-  if (Array.isArray(raw)) return raw.map((r) => String(r).toLowerCase());
+  if (Array.isArray(raw)) return raw.map((r) => String(r).toLowerCase()).filter(Boolean);
   if (typeof raw === "string") return [raw.toLowerCase()];
   return [];
 }
 
-function hasRole(u: DbUserRow, role: string): boolean {
-  return normalizeRoles(u.roles).includes(role);
-}
-
-function isSuperAdmin(u: DbUserRow): boolean {
+function isSuperAdmin(u: Pick<DbUserRow, "roles">): boolean {
   const r = normalizeRoles(u.roles);
   return r.includes(ROLE_SUPER) || r.includes("superadmin");
 }
 
-function isAdmin(u: DbUserRow): boolean {
+function isAdmin(u: Pick<DbUserRow, "roles">): boolean {
   const r = normalizeRoles(u.roles);
-  return (
-    r.includes(ROLE_ADMIN) ||
-    r.includes("moderator") ||
-    r.includes(ROLE_SUPER)
-  );
+  return r.includes(ROLE_ADMIN) || r.includes("moderator") || r.includes(ROLE_SUPER);
 }
 
-function isBusinessOwner(u: DbUserRow): boolean {
-  return normalizeRoles(u.roles).includes(ROLE_BUSINESS);
+function isBusinessOwner(u: Pick<DbUserRow, "roles">): boolean {
+  const r = normalizeRoles(u.roles);
+  return r.includes(ROLE_BUSINESS);
 }
 
 /* -------- UI helpers (badges) -------- */
@@ -112,11 +101,7 @@ const roleBadges = (u: DbUserRow, isNl: boolean) => {
 
   if (u.is_blocked) {
     list.push(
-      <Badge
-        key="blocked"
-        variant="destructive"
-        className="bg-red-600 text-white"
-      >
+      <Badge key="blocked" variant="destructive" className="bg-red-600 text-white">
         <Ban className="mr-1 h-3 w-3" />
         {isNl ? "Geblokkeerd" : "Blocked"}
       </Badge>,
@@ -138,8 +123,6 @@ const roleBadges = (u: DbUserRow, isNl: boolean) => {
 
   return <div className="mt-1 flex flex-wrap gap-1.5">{list}</div>;
 };
-
-/* ================= Component ================= */
 
 export default function SuperUsersClient({ lang }: Props) {
   const isNl = lang === "nl";
@@ -167,9 +150,7 @@ export default function SuperUsersClient({ lang }: Props) {
 
       const meta: any = data.user.app_metadata ?? {};
       const roles = normalizeRoles(meta.roles);
-      setCurrentIsSuper(
-        roles.includes(ROLE_SUPER) || roles.includes("superadmin"),
-      );
+      setCurrentIsSuper(roles.includes(ROLE_SUPER) || roles.includes("superadmin"));
     }
 
     void loadCurrentUser();
@@ -178,12 +159,13 @@ export default function SuperUsersClient({ lang }: Props) {
     };
   }, [supabase]);
 
-  // 2) Haal alle users op
+  // 2) Haal alle users op (RPC)
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoading(true);
+
       const { data, error } = await supabase.rpc("get_all_users_with_roles");
 
       if (cancelled) return;
@@ -194,16 +176,28 @@ export default function SuperUsersClient({ lang }: Props) {
           title: isNl ? "Fout bij laden" : "Failed to load users",
           description:
             error.message ??
-            (isNl
-              ? "Kon gebruikerslijst niet ophalen."
-              : "Could not fetch user list."),
+            (isNl ? "Kon gebruikerslijst niet ophalen." : "Could not fetch user list."),
           variant: "destructive",
         });
         setLoading(false);
         return;
       }
 
-      setRows((data ?? []) as DbUserRow[]);
+      // ✅ MAPPING: RPC return → UI type (voorkomt TS errors + null issues)
+      const mapped: DbUserRow[] = (data ?? []).map((u: any) => ({
+        id: u.id,
+        email: u.email ?? null,
+        full_name: u.full_name ?? null,
+        roles: normalizeRoles(u.roles),
+        is_blocked: !!u.is_blocked,
+        created_at: u.created_at ?? null,
+
+        // (nog niet in je RPC return, dus default)
+        last_sign_in_at: u.last_sign_in_at ?? null,
+        business_name: u.business_name ?? null,
+      }));
+
+      setRows(mapped);
       setLoading(false);
     }
 
@@ -222,46 +216,46 @@ export default function SuperUsersClient({ lang }: Props) {
       const name = (u.full_name ?? "").toLowerCase();
       const mail = (u.email ?? "").toLowerCase();
       const biz = (u.business_name ?? "").toLowerCase();
-      return (
-        name.includes(term) ||
-        mail.includes(term) ||
-        biz.includes(term)
-      );
+      return name.includes(term) || mail.includes(term) || biz.includes(term);
     });
   }, [rows, search]);
 
+  function patchRolesLocal(userId: string, role: string) {
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== userId) return row;
+
+        // super_admin “veilig”: voorkom dat je per ongeluk super_admin verwijdert als je dat wil locken
+        // (Wil je wél kunnen verwijderen? haal deze if weg.)
+        if (isSuperAdmin(row) && role === ROLE_SUPER) return row;
+
+        const has = row.roles.includes(role);
+        return {
+          ...row,
+          roles: has ? row.roles.filter((r) => r !== role) : [...row.roles, role],
+        };
+      }),
+    );
+  }
+
   async function toggleRole(u: DbUserRow, role: string) {
     if (!u.id) return;
-    setLoadingId(u.id);
 
+    // ✅ extra safety: super_admin rol nooit op jezelf togglen
+    const isSelf = currentUserId === u.id;
+    if (role === ROLE_SUPER && isSelf) return;
+
+    setLoadingId(u.id);
     try {
       const { error } = await supabase.rpc("toggle_user_role", {
         p_user_id: u.id,
         p_role: role,
       });
-
       if (error) throw error;
 
-      setRows((prev) =>
-        prev.map((row) =>
-          row.id === u.id
-            ? {
-                ...row,
-                // Super admin mag nooit "per ongeluk" kwijtraken
-                roles:
-                  isSuperAdmin(row) && role === ROLE_SUPER
-                    ? row.roles
-                    : row.roles.includes(role)
-                      ? row.roles.filter((r) => r !== role)
-                      : [...row.roles, role],
-              }
-            : row,
-        ),
-      );
+      patchRolesLocal(u.id, role);
 
-      toast({
-        title: isNl ? "Rol bijgewerkt" : "Role updated",
-      });
+      toast({ title: isNl ? "Rol bijgewerkt" : "Role updated" });
     } catch (err: any) {
       console.error("[GodMode/users] toggleRole error", err);
       toast({
@@ -276,8 +270,8 @@ export default function SuperUsersClient({ lang }: Props) {
 
   async function toggleBlocked(u: DbUserRow) {
     if (!u.id) return;
-    setLoadingId(u.id);
 
+    setLoadingId(u.id);
     try {
       const { error } = await supabase.rpc("toggle_user_blocked", {
         p_user_id: u.id,
@@ -285,14 +279,10 @@ export default function SuperUsersClient({ lang }: Props) {
       if (error) throw error;
 
       setRows((prev) =>
-        prev.map((row) =>
-          row.id === u.id ? { ...row, is_blocked: !row.is_blocked } : row,
-        ),
+        prev.map((row) => (row.id === u.id ? { ...row, is_blocked: !row.is_blocked } : row)),
       );
 
-      toast({
-        title: isNl ? "Status bijgewerkt" : "Status updated",
-      });
+      toast({ title: isNl ? "Status bijgewerkt" : "Status updated" });
     } catch (err: any) {
       console.error("[GodMode/users] toggleBlocked error", err);
       toast({
@@ -329,11 +319,7 @@ export default function SuperUsersClient({ lang }: Props) {
 
         <div className="w-full md:w-72">
           <Input
-            placeholder={
-              isNl
-                ? "Zoek op naam, e-mail of bedrijf…"
-                : "Search by name, email or business…"
-            }
+            placeholder={isNl ? "Zoek op naam, e-mail of bedrijf…" : "Search by name, email or business…"}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-10"
@@ -343,10 +329,9 @@ export default function SuperUsersClient({ lang }: Props) {
 
       <Card className="border border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">
-            {isNl ? "Alle gebruikers" : "All users"}
-          </CardTitle>
+          <CardTitle className="text-base">{isNl ? "Alle gebruikers" : "All users"}</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-2">
           {!filtered.length ? (
             <p className="text-sm text-muted-foreground">
@@ -373,20 +358,16 @@ export default function SuperUsersClient({ lang }: Props) {
                   >
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">
-                          {u.full_name || u.email || "—"}
-                        </span>
+                        <span className="font-medium">{u.full_name || u.email || "—"}</span>
                         {u.email && (
-                          <span className="text-xs text-muted-foreground">
-                            · {u.email}
-                          </span>
+                          <span className="text-xs text-muted-foreground">· {u.email}</span>
                         )}
                       </div>
+
                       {u.business_name && (
-                        <p className="text-xs text-muted-foreground">
-                          {u.business_name}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{u.business_name}</p>
                       )}
+
                       {roleBadges(u, isNl)}
                     </div>
 
@@ -396,17 +377,16 @@ export default function SuperUsersClient({ lang }: Props) {
                         size="sm"
                         variant={superHere ? "default" : "outline"}
                         disabled={isLoadingRow || !canToggleSuper}
-                        onClick={
-                          canToggleSuper
-                            ? () => toggleRole(u, ROLE_SUPER)
-                            : undefined
+                        onClick={canToggleSuper ? () => toggleRole(u, ROLE_SUPER) : undefined}
+                        title={
+                          !currentIsSuper
+                            ? (isNl ? "Alleen super_admin kan dit" : "Only super_admin can do this")
+                            : isSelf
+                              ? (isNl ? "Je kan dit niet op jezelf" : "You can't do this to yourself")
+                              : undefined
                         }
                       >
-                        {isLoadingRow ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          "super_admin"
-                        )}
+                        {isLoadingRow ? <Loader2 className="h-3 w-3 animate-spin" /> : "super_admin"}
                       </Button>
 
                       {/* admin toggle */}
@@ -415,12 +395,9 @@ export default function SuperUsersClient({ lang }: Props) {
                         variant={adminHere ? "default" : "outline"}
                         disabled={isLoadingRow || superHere}
                         onClick={() => toggleRole(u, ROLE_ADMIN)}
+                        title={superHere ? (isNl ? "Super admin is altijd admin" : "Super admin is always admin") : undefined}
                       >
-                        {isLoadingRow ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          "admin"
-                        )}
+                        {isLoadingRow ? <Loader2 className="h-3 w-3 animate-spin" /> : "admin"}
                       </Button>
 
                       {/* business_owner toggle */}
@@ -430,11 +407,7 @@ export default function SuperUsersClient({ lang }: Props) {
                         disabled={isLoadingRow}
                         onClick={() => toggleRole(u, ROLE_BUSINESS)}
                       >
-                        {isLoadingRow ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          "business_owner"
-                        )}
+                        {isLoadingRow ? <Loader2 className="h-3 w-3 animate-spin" /> : "business_owner"}
                       </Button>
 
                       {/* block / unblock */}
@@ -444,6 +417,7 @@ export default function SuperUsersClient({ lang }: Props) {
                         disabled={isLoadingRow || superHere}
                         onClick={() => toggleBlocked(u)}
                         className="mt-0.5"
+                        title={superHere ? (isNl ? "Super admin kun je niet blokkeren" : "You can't block a super admin") : undefined}
                       >
                         {isLoadingRow ? (
                           <Loader2 className="h-3 w-3 animate-spin" />

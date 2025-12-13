@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-import { supabaseBrowser } from "@/lib/supabase/client"; // laat dit zo als jouw project 'client.ts' gebruikt
+import { supabaseBrowser } from "@/lib/supabase/browser"; // laat dit zo als jouw project 'client.ts' gebruikt
 import { useToast } from "@/hooks/use-toast";
 
 import { langHref } from "@/lib/lang-href";

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import type { Locale } from "@/i18n/config";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { useToast } from "@/hooks/use-toast";
 import { langHref } from "@/lib/lang-href";
 
