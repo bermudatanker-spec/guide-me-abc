@@ -15,10 +15,10 @@ import {
 
 /* ------------------------ Supabase helper (alleen voor deze pagina) ------------------------ */
 
-function createSupabaseClient() {
+async function createSupabaseClient() {
   // In Next 15/16 kan cookies() als "async" getype-checked zijn.
   // Runtime is gewoon synchroon; we casten naar any om TS-gezeur te omzeilen.
-  const cookieStore = cookies() as any;
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -314,7 +314,7 @@ export async function generateMetadata(
   { params }: PageProps
 ): Promise<Metadata | null> {
   const { id } = await params;
-  const supabase = createSupabaseClient();
+  const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
     .from("business_listings")
@@ -344,7 +344,7 @@ export default async function BizDetailPage({ params }: PageProps) {
   const locale: Locale = isLocale(lang) ? (lang as Locale) : "en";
   const t = TEXTS[locale];
 
-  const supabase = createSupabaseClient();
+  const supabase = await createSupabaseClient();
 
   const { data, error } = await supabase
     .from("business_listings")
