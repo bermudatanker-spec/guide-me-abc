@@ -1,16 +1,17 @@
-// tailwind.config.js
-
-//Zorg dat TS/VS Code snapt welk type dit is
-/** @type {import('tailwindcss').Config}  */
-const config = {
-darkMode: ["class"],
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: ["class"],
   content: [
     "./app/**/*.{ts,tsx,js,jsx}",
     "./components/**/*.{ts,tsx,js,jsx}",
     "./src/**/*.{ts,tsx,js,jsx}",
   ],
   theme: {
-    container: { center: true, padding: "1rem", screens: { "2xl": "1400px" } },
+    container: {
+      center: true,
+      padding: "1rem",
+      screens: { "2xl": "1400px" },
+    },
     extend: {
       colors: {
         background: "hsl(var(--background))",
@@ -33,6 +34,7 @@ darkMode: ["class"],
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+
         "sidebar-background": "hsl(var(--sidebar-background))",
         "sidebar-foreground": "hsl(var(--sidebar-foreground))",
         "sidebar-primary": "hsl(var(--sidebar-primary))",
@@ -60,5 +62,3 @@ darkMode: ["class"],
   },
   plugins: [],
 };
-
-export default config;

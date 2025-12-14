@@ -1,6 +1,5 @@
 // middleware.ts
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 /* ───────── i18n ───────── */
@@ -25,27 +24,42 @@ const guessFromAcceptLanguage = (accept: string | null): Locale => {
   return DEFAULT_LOCALE;
 };
 
-/* ─────── Guards/paths ─────── */
+const stripLang = (pathname: string): string => {
+  const parts = pathname.split("/");
+  const first = parts[1];
+  if (isLocale(first as any)) {
+    const rest = parts.slice(2).join("/");
+    return "/" + rest.replace(/^\/+/, "");
+  }
+  return pathname;
+};
+
+/* ─────── Paths/Guards ─────── */
 
 const AUTH_CALLBACK_PATHS = [
   "/auth/callback",
   "/auth/confirm",
   "/auth/oauth/callback",
-];
+] as const;
 
 const PUBLIC_AUTH_PAGES = [
   "/business/auth",
   "/business/forgot-password",
   "/business/reset-password",
-];
+] as const;
 
-// routes die login vereisen voor elke ingelogde rol
-const PROTECTED_PREFIXES = ["/dashboard", "/business", "/account"];
+// Routes die login vereisen
+const PROTECTED_PREFIXES = ["/dashboard", "/business", "/account"] as const;
 
-const ADMIN_PREFIX = "/admin";    // admin + super_admin
-const SUPER_PREFIX = "/godmode";  // echte God Mode
+// Admin routes
+const ADMIN_PREFIX = "/admin"; // admin + super_admin
+const SUPER_PREFIX = "/godmode"; // alleen super_admin
 
-const ALWAYS_PUBLIC_PREFIXES = ["/biz"]; // mini-sites, openbaar
+// Altijd openbaar
+const ALWAYS_PUBLIC_PREFIXES = ["/biz"] as const;
+
+const pathStartsWithAny = (path: string, prefixes: readonly string[]) =>
+  prefixes.some((p) => path === p || path.startsWith(p + "/"));
 
 const isAssetOrApi = (p: string) =>
   p.startsWith("/_next") ||
@@ -58,23 +72,11 @@ const isAssetOrApi = (p: string) =>
   p === "/sitemap.xml" ||
   /\.[\w]+$/.test(p);
 
-const stripLang = (pathname: string) => {
-  const parts = pathname.split("/");
-  const first = parts[1];
-  if (isLocale(first as any)) {
-    const rest = parts.slice(2).join("/");
-    return "/" + rest.replace(/^\/+/, "");
-  }
-  return pathname;
-};
-
-const pathStartsWithAny = (path: string, prefixes: string[]) =>
-  prefixes.some((p) => path === p || path.startsWith(p + "/"));
-
 /* ─────── Role helpers ─────── */
 
-function getRolesFromUser(user: any): string[] {
-  const raw = (user?.app_metadata as any)?.roles;
+function getRolesFromUser(user: unknown): string[] {
+  const u = user as any;
+  const raw = u?.app_metadata?.roles;
   if (!raw) return [];
   if (Array.isArray(raw)) return raw.map((r) => String(r).toLowerCase());
   if (typeof raw === "string") return [raw.toLowerCase()];
@@ -88,7 +90,6 @@ function isSuperAdminUser(roles: string[]): boolean {
 
 function isAdminUser(roles: string[]): boolean {
   const lower = roles.map((r) => r.toLowerCase());
-  // super_admin mag automatisch ook admin-routes zien
   return (
     lower.includes("admin") ||
     lower.includes("moderator") ||
@@ -103,20 +104,8 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const search = req.nextUrl.search || "";
 
-  // 0) Altijd doorlaten: auth callbacks, preflight, static assets/API
-  if (
-    AUTH_CALLBACK_PATHS.some(
-      (p) => pathname === p || pathname.startsWith(p + "/"),
-    )
-  ) {
-    return NextResponse.next();
-  }
-
-  if (
-    req.method === "OPTIONS" ||
-    req.method === "HEAD" ||
-    isAssetOrApi(pathname)
-  ) {
+  // 0) Altijd doorlaten: preflight/head + static assets/API
+  if (req.method === "OPTIONS" || req.method === "HEAD" || isAssetOrApi(pathname)) {
     return NextResponse.next();
   }
 
@@ -133,121 +122,120 @@ export async function middleware(req: NextRequest) {
   // 2) Werk verder met path zonder taal
   const pathNoLang = stripLang(pathname) || "/";
 
-  const isMaintenancePage =
-    pathNoLang === "/maintenance" ||
-    pathNoLang.startsWith("/maintenance/");
+  // 3) Auth callback routes altijd doorlaten (OOK met /{lang} prefix)
+  if (
+    AUTH_CALLBACK_PATHS.some(
+      (p) => pathNoLang === p || pathNoLang.startsWith(p + "/"),
+    )
+  ) {
+    return NextResponse.next();
+  }
 
-  // 2a) Publieke stukken: mini-sites, auth, maintenance-page zelf
+  // 4) Maintenance page herkennen
+  const isMaintenancePage =
+    pathNoLang === "/maintenance" || pathNoLang.startsWith("/maintenance/");
+
+  // 5) Bepaal public routes (maar let op: maintenance kan alsnog blokkeren)
   const isPublicPath =
     pathStartsWithAny(pathNoLang, ALWAYS_PUBLIC_PREFIXES) ||
     pathStartsWithAny(pathNoLang, PUBLIC_AUTH_PAGES) ||
     isMaintenancePage;
 
-  // 3) Supabase SSR client met cookie bridge
+  // 6) Maak response + Supabase SSR client (cookie bridge)
   const res = NextResponse.next();
   type CookieSetOptions = Parameters<typeof res.cookies.set>[2];
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string): string | undefined {
-          return req.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options?: CookieSetOptions): void {
-          res.cookies.set(name, value, options);
-        },
-        remove(name: string, options?: CookieSetOptions): void {
-          res.cookies.set(name, "", { ...options, maxAge: 0 });
-        },
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnon) {
+    // Zonder env vars: geen auth/maintenance checks mogelijk → laat door (maar log wel)
+    console.error("[middleware] Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    return res;
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnon, {
+    cookies: {
+      get(name: string): string | undefined {
+        return req.cookies.get(name)?.value;
+      },
+      set(name: string, value: string, options?: CookieSetOptions): void {
+        res.cookies.set(name, value, options);
+      },
+      remove(name: string, options?: CookieSetOptions): void {
+        res.cookies.set(name, "", { ...options, maxAge: 0 });
       },
     },
-  );
+  });
 
-  // 4) User + rollen
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // 7) Maintenance-mode + user/roles parallel ophalen
+  const [userResult, maintResult] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "maintenance_mode")
+      .maybeSingle(),
+  ]);
 
+  const user = userResult.data.user ?? null;
   const roles = getRolesFromUser(user);
   const isSuper = isSuperAdminUser(roles);
   const isAdmin = isAdminUser(roles);
 
-  // 5) Maintenance-mode uit platform_settings
   let maintenanceOn = false;
-  try {
-    const { data, error } = await supabase
-      .from("platform_settings")
-      .select("value")
-      .eq("key", "maintenance_mode")
-      .maybeSingle();
-
-    if (!error) {
-      const raw = (data as any)?.value;
-      maintenanceOn =
-        raw === true ||
-        raw === "true" ||
-        raw === 1 ||
-        raw === "1";
-    }
-  } catch (err) {
-    console.error("[middleware] error loading platform_settings", err);
-    maintenanceOn = false;
+  if (!maintResult.error) {
+    const raw = (maintResult.data as any)?.value;
+    maintenanceOn = raw === true || raw === "true" || raw === 1 || raw === "1";
   }
 
-  // 6) Maintenance guard:
-  //    - super_admin mag ALTIJD door (ook naar frontend)
-  //    - maintenance-page zelf mag altijd
-    // 6) Maintenance guard:
-  //    - super_admin mag ALTIJD door (ook naar frontend)
-  //    - maintenance-page zelf mag altijd
-  //    - optionele geheime bypass via query + cookie
+  // 8) Maintenance bypass (query + cookie)
   const bypassToken = process.env.MAINTENANCE_BYPASS_TOKEN;
   const urlToken = req.nextUrl.searchParams.get("bypass_maint");
   const hasQueryBypass = !!bypassToken && urlToken === bypassToken;
   const hasCookieBypass =
-    !!bypassToken &&
-    req.cookies.get("gmabc_maint_bypass")?.value === bypassToken;
+    !!bypassToken && req.cookies.get("gmabc_maint_bypass")?.value === bypassToken;
 
-  // Als we via query een geldig token zien, zet een cookie zodat je
-  // niet bij elke klik ?bypass_maint=... hoeft mee te sturen
   if (hasQueryBypass && bypassToken) {
     res.cookies.set("gmabc_maint_bypass", bypassToken, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
+      // optional: secure: true, // Vercel is https; kan aan als je wil
     });
   }
 
   const bypassMaintenance = hasQueryBypass || hasCookieBypass;
 
+  // 9) Maintenance guard:
+  // - super_admin mag altijd door
+  // - maintenance page zelf mag altijd
+  // - bypass token mag door
   if (maintenanceOn && !isSuper && !isMaintenancePage && !bypassMaintenance) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}/maintenance`;
+    // cleanup eventuele oude flags
     url.searchParams.delete("forbidden");
     url.searchParams.delete("redirectedFrom");
     return NextResponse.redirect(url);
   }
 
-  // 7) Als route echt publiek is: laat door
+  // 10) Als route publiek is (en maintenance is ok): laat door
   if (isPublicPath) {
     return res;
   }
 
-  // 8) Speciale prefixes (admin / godmode)
+  // 11) Admin/Godmode wensen
   const wantsAdmin =
     pathNoLang === ADMIN_PREFIX || pathNoLang.startsWith(ADMIN_PREFIX + "/");
   const wantsSuper =
     pathNoLang === SUPER_PREFIX || pathNoLang.startsWith(SUPER_PREFIX + "/");
 
-  // 9) Moet ingelogd zijn?
+  // 12) Moet ingelogd zijn?
   const needsAuth =
-    wantsAdmin ||
-    wantsSuper ||
-    pathStartsWithAny(pathNoLang, PROTECTED_PREFIXES);
+    wantsAdmin || wantsSuper || pathStartsWithAny(pathNoLang, PROTECTED_PREFIXES);
 
-  // 10) Niet ingelogd → naar business/auth + redirect
+  // 13) Niet ingelogd → naar business/auth met redirect terug
   if (needsAuth && !user) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}/business/auth`;
@@ -255,7 +243,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 11) God Mode guard – alleen super_admin
+  // 14) Godmode: alleen super_admin
   if (wantsSuper && !isSuper) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}`;
@@ -263,7 +251,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 12) Admin guard – admin + super_admin
+  // 15) Admin: admin + super_admin
   if (wantsAdmin && !isAdmin) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}`;
@@ -271,13 +259,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 13) Alles ok
   return res;
 }
 
-/* ───────── Matcher ───────── */
+/* ───────── Matcher ─────────
+   Belangrijk: we matchen alles behalve _next/api/static files.
+   Auth callbacks worden in middleware zelf vrijgelaten (ook met locale prefix).
+*/
 export const config = {
-  matcher: [
-    "/((?!_next|api|auth/callback|auth/confirm|auth/oauth/callback|biz|.*\\..*).*)",
-  ],
+  matcher: ["/((?!_next|api|.*\\..*).*)"],
 };
