@@ -23,7 +23,7 @@ export default async function DashboardPage({ params }: PageProps) {
   const lang: Locale = isLocale(rawLang) ? (rawLang as Locale) : "en";
 
   // ---- SERVER-SIDE AUTH GUARD ----
-  const supabase = await (supabaseServer as any)();
+  const supabase = await (supabaseServer)();
   const {
     data: { user },
   } = await supabase.auth.getUser();

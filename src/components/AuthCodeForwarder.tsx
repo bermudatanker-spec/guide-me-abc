@@ -1,52 +1,37 @@
-// components/AuthCodeForwarder.tsx
+// src/components/AuthCodeForwarder.tsx
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { isLocale, type Locale } from "@/i18n/config";
+import { usePathname, useSearchParams } from "next/navigation";
 
-/**
- * Vangt Supabase auth callbacks op voor:
- * - magic links / OAuth / PKCE (?code=..., etc.)
- *
- * ❌ NIET voor password recovery (type=recovery → /[lang]/business/reset-password)
- *    Die flow handelen we direct af op de reset-password pagina.
- */
 export default function AuthCodeForwarder() {
-  const router = useRouter();
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 1) Nooit op /auth/callback zelf ingrijpen (anders loop)
+    // nooit op callback zelf (loop voorkomen)
     if (pathname.startsWith("/auth/callback")) return;
 
-    // 2) Nooit ingrijpen op de reset-password pagina
+    // nooit op reset-password flow
     if (pathname.includes("/business/reset-password")) return;
 
-    const { hash } = window.location;
-
-    const segments = pathname.split("/").filter(Boolean);
-    const first = segments[0] ?? "en";
-    const langGuess: Locale = isLocale(first) ? first : "en";
+    const hash = window.location.hash ?? "";
 
     const qs = new URLSearchParams(searchParams?.toString());
     const hs = new URLSearchParams(hash.replace(/^#/, ""));
 
+    // recovery links met rust laten
     const typeInQuery = qs.get("type");
     const typeInHash = hs.get("type");
-
-    // 3) Password recovery links (type=recovery) met rust laten
-    if (typeInQuery === "recovery" || typeInHash === "recovery") {
-      return;
-    }
+    if (typeInQuery === "recovery" || typeInHash === "recovery") return;
 
     const hasAuthQuery =
       qs.has("code") ||
       qs.has("error") ||
       qs.has("error_code") ||
+      qs.has("error_description") ||
       qs.has("type");
 
     const hasAuthHash =
@@ -57,17 +42,20 @@ export default function AuthCodeForwarder() {
 
     if (!hasAuthQuery && !hasAuthHash) return;
 
+    // combine query + hash
     const out = new URLSearchParams();
-
     qs.forEach((v, k) => out.set(k, v));
     hs.forEach((v, k) => {
       if (!out.has(k)) out.set(k, v);
     });
 
-    if (!out.has("lang")) out.set("lang", langGuess);
+    // ✅ waar kwamen we vandaan?
+    const redirectedFrom = `${pathname}${qs.toString() ? `?${qs.toString()}` : ""}`;
+    out.set("redirectedFrom", redirectedFrom);
 
-    router.replace(`/auth/callback?${out.toString()}`);
-  }, [pathname, searchParams, router]);
+    // Ga naar server callback
+    window.location.replace(`/auth/callback?${out.toString()}`);
+  }, [pathname, searchParams]);
 
   return null;
 }

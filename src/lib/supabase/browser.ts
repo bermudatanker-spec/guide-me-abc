@@ -2,37 +2,58 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
-import type { SupabaseClient, Session, AuthChangeEvent } from "@supabase/supabase-js";
+import type {
+  SupabaseClient,
+  Session,
+  AuthChangeEvent,
+  Subscription,
+} from "@supabase/supabase-js";
+
 import type { Database } from "./database.types";
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 let _client: SupabaseClient<Database> | null = null;
 
 export function supabaseBrowser(): SupabaseClient<Database> {
   if (_client) return _client;
+
+  if (!URL || !ANON) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    );
+  }
+
   _client = createBrowserClient<Database>(URL, ANON);
   return _client;
 }
 
+// Optional convenience singleton (ok in client-land)
 export const supabase = supabaseBrowser();
 
-// helpers (zoals jij eerder had)
+/* ---------- Helpers ---------- */
+
 export async function getSession(): Promise<{ session: Session | null }> {
   const { data } = await supabase.auth.getSession();
   return { session: data?.session ?? null };
 }
 
-export function onAuthStateChange(cb: (event: AuthChangeEvent, session: Session | null) => void) {
+export function onAuthStateChange(
+  cb: (event: AuthChangeEvent, session: Session | null) => void,
+): { data: { subscription: Subscription } } {
   return supabase.auth.onAuthStateChange(cb);
 }
 
-export async function signUp(email: string, password: string, fullName?: string) {
+export async function signUp(
+  email: string,
+  password: string,
+  fullName?: string,
+) {
   return supabase.auth.signUp({
     email,
     password,
-    options: { data: fullName ? { full_name: fullName } : undefined },
+    options: fullName ? { data: { full_name: fullName } } : undefined,
   });
 }
 
@@ -50,6 +71,7 @@ export async function signOut() {
 
 export const authService = {
   supabase,
+  supabaseBrowser,
   getSession,
   onAuthStateChange,
   signUp,
