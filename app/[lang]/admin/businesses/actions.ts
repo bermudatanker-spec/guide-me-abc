@@ -1,45 +1,88 @@
-// app/[lang]/admin/businesses/actions.ts
 "use server";
 
 import "server-only";
+
 import { revalidatePath } from "next/cache";
 import type { Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import type { User } from "@supabase/supabase-js";
 
-type Result<T = {}> = { ok: true } & T | { ok: false; error: string };
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
 
-type ListingStatus = "pending" | "active" | "inactive";
-type Plan = "starter" | "growth" | "pro";
+type Ok<T> = { ok: true } & T;
+type Fail = { ok: false; error: string };
+export type Result<T = {}> = Ok<T> | Fail;
 
-function getRoles(user: any): string[] {
-  const meta = user?.app_metadata ?? {};
-  const raw = meta.roles ?? meta.role ?? user?.role ?? [];
+export type ListingStatus = "pending" | "active" | "inactive";
+export type Plan = "starter" | "growth" | "pro";
+export type SubscriptionStatus = "pending" | "active" | "inactive" | "expired";
+
+export type AdminBusinessRow = {
+  business_id: string;
+  listing_id: string | null;
+
+  business_name: string | null;
+  island: string | null;
+
+  listing_status: ListingStatus | null; // uit view: bl.status as listing_status
+  deleted_at: string | null; // uit view: bl.deleted_at
+
+  subscription_plan: Plan | null; // uit view: ls.plan as subscription_plan
+  subscription_status: SubscriptionStatus | null; // uit view: ls.status as subscription_status
+  paid_until: string | null; // uit view: ls.paid_until
+  subscription_created_at: string | null; // uit view: ls.created_at as subscription_created_at
+};
+
+export type AdminListFilters = {
+  q?: string; // search name / island / ids
+  island?: string; // "aruba" | "bonaire" | "curacao" | ...
+  status?: ListingStatus | "all";
+  plan?: Plan | "all";
+  includeDeleted?: boolean; // true => toon ook deleted_at != null
+  expired?: "all" | "only" | "hide"; // filter op subscription_status == "expired"
+};
+
+type AuditAction =
+  | "delete"
+  | "restore"
+  | "set_listing_status"
+  | "set_plan";
+
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function getRoles(user: User): string[] {
+  const meta: any = user?.app_metadata ?? {};
+  const raw = meta.roles ?? meta.role ?? (user as any)?.role ?? [];
   const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
   return arr.map((r) => String(r).trim().toLowerCase()).filter(Boolean);
 }
 
-function isSuperAdmin(user: any) {
+function isSuperAdmin(user: User): boolean {
   const roles = getRoles(user);
   return roles.includes("super_admin") || roles.includes("superadmin");
 }
 
-async function ensureSuperAdminOrFail(): Promise<Result<{ userId: string }>> {
+async function getAuthedUser(): Promise<Result<{ user: User }>> {
   const sb: any = await supabaseServer();
   const { data, error } = await sb.auth.getUser();
   if (error) return { ok: false, error: error.message };
-  const user = data?.user;
-  if (!user) return { ok: false, error: "Niet ingelogd." };
-  if (!isSuperAdmin(user)) return { ok: false, error: "Geen super_admin rechten." };
-  return { ok: true, userId: user.id };
+  if (!data?.user) return { ok: false, error: "Niet ingelogd." };
+  return { ok: true, user: data.user };
 }
 
-async function auditBestEffort(input: {
+/** Best-effort audit: mag je flow NOOIT breken */
+async function auditModerationBestEffort(input: {
   actorUserId: string;
   businessId: string;
-  action: "set_status" | "set_plan" | "delete" | "restore";
-  detail?: any;
+  action: AuditAction;
+  note?: string | null;
+  meta?: Record<string, unknown>;
 }) {
   try {
     const admin: any = supabaseAdmin();
@@ -47,112 +90,153 @@ async function auditBestEffort(input: {
       business_id: input.businessId,
       actor_user_id: input.actorUserId,
       action: input.action,
-      detail: input.detail ?? null,
+      note: input.note ?? null,
+      meta: input.meta ?? null,
     });
-  } catch {
-    // best effort
+  } catch (e) {
+    // table/types mogen ontbreken -> bewust stil
+    console.warn("[audit_business_moderation] best-effort failed:", e);
   }
 }
 
-/** -------------------------------------------------------
- *  LIST: business_listings + businesses + latest subscription
- * ------------------------------------------------------ */
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function norm(s: unknown) {
+  return String(s ?? "").trim().toLowerCase();
+}
+
+function isExpiredRow(r: AdminBusinessRow): boolean {
+  // primaire bron: subscription_status
+  if (r.subscription_status === "expired") return true;
+  // fallback: paid_until in verleden
+  if (!r.paid_until) return false;
+  const t = Date.parse(r.paid_until);
+  if (Number.isNaN(t)) return false;
+  return t < Date.now();
+}
+
+/* -------------------------------------------------------------------------- */
+/* Actions                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Admin: lijst businesses (via view).
+ * View naam die we gebruiken: public.admin_business_listings_view
+ */
 export async function adminListBusinessesAction(
-  lang: Locale
-): Promise<
-  Result<{
-    rows: Array<{
-      business_id: string;
-      business_name: string | null;
-      island: string | null;
-      status: ListingStatus | null;
-      plan: Plan | null;
-      deleted_at: string | null;
-      subscription_status?: string | null;
-      paid_until?: string | null; // we gebruiken subscriptions.ends_at
-    }>;
-  }>
-> {
-  const gate = await ensureSuperAdminOrFail();
-  if (!gate.ok) return gate;
+  lang: Locale,
+  filters: AdminListFilters = {}
+): Promise<Result<{ rows: AdminBusinessRow[]; counts: Record<string, number> }>> {
+  const auth = await getAuthedUser();
+  if (!auth.ok) return auth;
+  if (!isSuperAdmin(auth.user)) return { ok: false, error: "Geen toegang." };
 
   try {
     const admin: any = supabaseAdmin();
 
-    // 1) basis rows (listing + business)
-    const { data: listings, error: lErr } = await admin
-      .from("business_listings")
-      .select("business_id, status, subscription_plan, island, business_name, deleted_at")
-      .order("created_at", { ascending: false });
+    let q = admin
+      .from("admin_business_listings_view")
+      .select(
+        [
+          "business_id",
+          "listing_id",
+          "business_name",
+          "island",
+          "listing_status",
+          "deleted_at",
+          "subscription_plan",
+          "subscription_status",
+          "paid_until",
+          "subscription_created_at",
+        ].join(",")
+      );
 
-    if (lErr) return { ok: false, error: lErr.message };
-
-    const base = (listings ?? []).map((r: any) => ({
-      business_id: r.business_id,
-      business_name: r.business_name ?? null,
-      island: r.island ?? null,
-      status: (r.status ?? null) as ListingStatus | null,
-      plan: (r.subscription_plan ?? null) as Plan | null,
-      deleted_at: r.deleted_at ?? null,
-    }));
-
-    const businessIds = Array.from(
-      new Set(base.map((r: any) => r.business_id).filter(Boolean))
-    );
-
-    if (businessIds.length === 0) return { ok: true, rows: [] };
-
-    // 2) subscriptions: pak latest per business_id via order desc
-    const { data: subs, error: sErr } = await admin
-      .from("subscriptions")
-      .select("business_id, plan, status, ends_at, created_at")
-      .in("business_id", businessIds)
-      .order("created_at", { ascending: false });
-
-    // Als subscriptions niet werkt of table niet bestaat → gewoon base terug
-    if (sErr) return { ok: true, rows: base };
-
-    const latest = new Map<string, any>();
-    for (const s of subs ?? []) {
-      if (!latest.has(s.business_id)) latest.set(s.business_id, s);
+    // deleted filter
+    if (!filters.includeDeleted) {
+      q = q.is("deleted_at", null);
     }
 
-    const merged = base.map((r: any) => {
-      const s = latest.get(r.business_id);
-      return {
-        ...r,
-        // ✅ optie B: toon subscription info
-        plan: (s?.plan ?? r.plan ?? null) as Plan | null,
-        subscription_status: (s?.status ?? null) as string | null,
-        paid_until: (s?.ends_at ?? null) as string | null,
-      };
-    });
+    // island filter
+    if (filters.island && filters.island !== "all") {
+      q = q.eq("island", filters.island);
+    }
 
-    // 3) dedupe: 1 rij per business_id (React key fix)
-    const dedup = new Map<string, any>();
-    for (const r of merged) dedup.set(r.business_id, r);
+    // status filter (listing_status)
+    if (filters.status && filters.status !== "all") {
+      q = q.eq("listing_status", filters.status);
+    }
 
-    return { ok: true, rows: Array.from(dedup.values()) };
+    // plan filter (subscription_plan)
+    if (filters.plan && filters.plan !== "all") {
+      q = q.eq("subscription_plan", filters.plan);
+    }
+
+    // expired filter
+    if (filters.expired === "only") {
+      q = q.eq("subscription_status", "expired");
+    } else if (filters.expired === "hide") {
+      q = q.neq("subscription_status", "expired");
+    }
+
+    // search
+    const search = norm(filters.q);
+    if (search) {
+      // ilike op name/island + ids als tekst
+      q = q.or(
+        [
+          `business_name.ilike.%${search}%`,
+          `island.ilike.%${search}%`,
+          `business_id.ilike.%${search}%`,
+          `listing_id.ilike.%${search}%`,
+        ].join(",")
+      );
+    }
+
+    q = q.order("business_name", { ascending: true });
+
+    const { data, error } = await q;
+    if (error) return { ok: false, error: error.message };
+
+    const rows: AdminBusinessRow[] = (data ?? []) as AdminBusinessRow[];
+
+    // simpele counts voor je cards
+    const counts = {
+      total: rows.length,
+      active: rows.filter((r) => r.listing_status === "active").length,
+      inactive: rows.filter((r) => r.listing_status === "inactive").length,
+      deleted: rows.filter((r) => Boolean(r.deleted_at)).length,
+      paid: rows.filter((r) => (r.subscription_plan ?? null) !== null && !isExpiredRow(r)).length,
+      free: rows.filter((r) => (r.subscription_plan ?? null) === null || isExpiredRow(r)).length,
+      expired: rows.filter((r) => isExpiredRow(r)).length,
+    };
+
+    return { ok: true, rows, counts };
   } catch (e: any) {
     return { ok: false, error: e?.message ?? "Onbekende fout." };
+  } finally {
+    revalidatePath(langHref(lang, "/admin/businesses"));
   }
 }
 
-/** -------------------------------------------------------
- *  SET STATUS
- * ------------------------------------------------------ */
+/**
+ * Admin: listing status wijzigen (business_listings.status)
+ */
 export async function adminSetListingStatusAction(
   lang: Locale,
   businessId: string,
   status: ListingStatus
 ): Promise<Result> {
-  const gate = await ensureSuperAdminOrFail();
-  if (!gate.ok) return gate;
+  const auth = await getAuthedUser();
+  if (!auth.ok) return auth;
+  if (!isSuperAdmin(auth.user)) return { ok: false, error: "Geen toegang." };
   if (!businessId) return { ok: false, error: "businessId ontbreekt." };
 
   try {
     const admin: any = supabaseAdmin();
 
+    // update listing status op business_listings via business_id
     const { error } = await admin
       .from("business_listings")
       .update({ status })
@@ -160,11 +244,11 @@ export async function adminSetListingStatusAction(
 
     if (error) return { ok: false, error: error.message };
 
-    await auditBestEffort({
-      actorUserId: gate.userId,
+    await auditModerationBestEffort({
+      actorUserId: auth.user.id,
       businessId,
-      action: "set_status",
-      detail: { status },
+      action: "set_listing_status",
+      meta: { status },
     });
 
     revalidatePath(langHref(lang, "/admin/businesses"));
@@ -174,33 +258,63 @@ export async function adminSetListingStatusAction(
   }
 }
 
-/** -------------------------------------------------------
- *  SET PLAN (listing.subscription_plan)
- * ------------------------------------------------------ */
+/**
+ * Admin: plan zetten via subscriptions upsert (FK-safety op businesses.id)
+ * Let op: subscriptions constraints:
+ *  - plan in ('starter','growth','pro')
+ *  - status in ('pending','active','inactive','expired')
+ */
 export async function adminSetListingPlanAction(
   lang: Locale,
   businessId: string,
   plan: Plan
 ): Promise<Result> {
-  const gate = await ensureSuperAdminOrFail();
-  if (!gate.ok) return gate;
+  const auth = await getAuthedUser();
+  if (!auth.ok) return auth;
+  if (!isSuperAdmin(auth.user)) return { ok: false, error: "Geen toegang." };
   if (!businessId) return { ok: false, error: "businessId ontbreekt." };
 
   try {
     const admin: any = supabaseAdmin();
 
-    const { error } = await admin
-      .from("business_listings")
-      .update({ subscription_plan: plan })
-      .eq("business_id", businessId);
+    // 1) FK-safety: business moet bestaan
+    const { data: b, error: bErr } = await admin
+      .from("businesses")
+      .select("id")
+      .eq("id", businessId)
+      .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (bErr) return { ok: false, error: bErr.message };
+    if (!b?.id) return { ok: false, error: "Business bestaat niet (id klopt niet)." };
 
-    await auditBestEffort({
-      actorUserId: gate.userId,
+    // 2) Upsert subscription op business_id
+    // Tip: hiervoor moet je UNIQUE(business_id) hebben (of upsert faalt / dupes)
+    const payload = {
+      business_id: businessId,
+      plan,
+      status: "active" as SubscriptionStatus, // altijd allowed door constraint
+      ends_at: null,
+      paid_until: null,
+    };
+
+    const { error: upErr } = await admin
+      .from("subscriptions")
+      .upsert(payload, { onConflict: "business_id" });
+
+    if (upErr) return { ok: false, error: upErr.message };
+
+    // 3) (optioneel) probeer businesses.plan mee te syncen (best-effort)
+    try {
+      await admin.from("businesses").update({ plan }).eq("id", businessId);
+    } catch {
+      // kolom kan ontbreken -> negeren
+    }
+
+    await auditModerationBestEffort({
+      actorUserId: auth.user.id,
       businessId,
       action: "set_plan",
-      detail: { plan },
+      meta: { plan },
     });
 
     revalidatePath(langHref(lang, "/admin/businesses"));
@@ -210,20 +324,22 @@ export async function adminSetListingPlanAction(
   }
 }
 
-/** -------------------------------------------------------
- *  SOFT DELETE (deleted_at)
- * ------------------------------------------------------ */
+/**
+ * Admin: soft delete business + listings (set deleted_at)
+ */
 export async function adminSoftDeleteBusinessAction(
   lang: Locale,
-  businessId: string
+  businessId: string,
+  note?: string
 ): Promise<Result> {
-  const gate = await ensureSuperAdminOrFail();
-  if (!gate.ok) return gate;
+  const auth = await getAuthedUser();
+  if (!auth.ok) return auth;
+  if (!isSuperAdmin(auth.user)) return { ok: false, error: "Geen toegang." };
   if (!businessId) return { ok: false, error: "businessId ontbreekt." };
 
   try {
     const admin: any = supabaseAdmin();
-    const ts = new Date().toISOString();
+    const ts = nowIso();
 
     const { error: bErr } = await admin
       .from("businesses")
@@ -237,11 +353,11 @@ export async function adminSoftDeleteBusinessAction(
       .eq("business_id", businessId);
     if (lErr) return { ok: false, error: lErr.message };
 
-    await auditBestEffort({
-      actorUserId: gate.userId,
+    await auditModerationBestEffort({
+      actorUserId: auth.user.id,
       businessId,
       action: "delete",
-      detail: { deleted_at: ts },
+      note: note ?? null,
     });
 
     revalidatePath(langHref(lang, "/admin/businesses"));
@@ -251,15 +367,17 @@ export async function adminSoftDeleteBusinessAction(
   }
 }
 
-/** -------------------------------------------------------
- *  RESTORE
- * ------------------------------------------------------ */
+/**
+ * Admin: restore soft deleted business + listings (set deleted_at null)
+ */
 export async function adminRestoreBusinessAction(
   lang: Locale,
-  businessId: string
+  businessId: string,
+  note?: string
 ): Promise<Result> {
-  const gate = await ensureSuperAdminOrFail();
-  if (!gate.ok) return gate;
+  const auth = await getAuthedUser();
+  if (!auth.ok) return auth;
+  if (!isSuperAdmin(auth.user)) return { ok: false, error: "Geen toegang." };
   if (!businessId) return { ok: false, error: "businessId ontbreekt." };
 
   try {
@@ -277,11 +395,11 @@ export async function adminRestoreBusinessAction(
       .eq("business_id", businessId);
     if (lErr) return { ok: false, error: lErr.message };
 
-    await auditBestEffort({
-      actorUserId: gate.userId,
+    await auditModerationBestEffort({
+      actorUserId: auth.user.id,
       businessId,
       action: "restore",
-      detail: { deleted_at: null },
+      note: note ?? null,
     });
 
     revalidatePath(langHref(lang, "/admin/businesses"));
