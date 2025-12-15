@@ -1,41 +1,31 @@
-// app/[lang]/business/dashboard/page.tsx
 import { redirect } from "next/navigation";
-import type { Locale } from "@/i18n/config";
-import { isLocale } from "@/i18n/config";
-import { DICTS } from "@/i18n/dictionaries";
-
+import { isLocale, type Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
-import { supabaseServer } from "@/lib/supabase/server";
-
-import DashboardClient from "./ui/DashboardClient";
+import { getCapabilities } from "@/lib/plans/capabilities";
+import { getMyBusiness } from "@/lib/business/getMyBusiness";
+import DashboardHome from "./ui/DashboardHome";
 
 export const dynamic = "force-dynamic";
 
-// In Next 15/16 is params een Promise
 type Params = { lang: string };
-
-type PageProps = {
-  params: Promise<Params>;
-};
+type PageProps = { params: Promise<Params> };
 
 export default async function DashboardPage({ params }: PageProps) {
   const { lang: rawLang } = await params;
   const lang: Locale = isLocale(rawLang) ? (rawLang as Locale) : "en";
 
-  // ---- SERVER-SIDE AUTH GUARD ----
-  const supabase = await (supabaseServer)();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { userId, business } = await getMyBusiness();
 
-  if (!user) {
-    // niet ingelogd -> stuur naar business/auth
+  if (!userId) {
     redirect(langHref(lang, "/business/auth"));
   }
 
-  // vertalingen voor de client
-  const t = DICTS[lang];
+  // Nog geen business record? stuur naar create flow (maken we zo)
+  if (!business) {
+    redirect(langHref(lang, "/business/create"));
+  }
 
-  // UI + verdere data-handling doen we in de client component
-  return <DashboardClient lang={lang} t={t} />;
+  const caps = getCapabilities(business.plan);
+
+  return <DashboardHome lang={lang} business={business} caps={caps} />;
 }
