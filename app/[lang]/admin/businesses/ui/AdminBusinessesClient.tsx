@@ -57,7 +57,7 @@ type AdminBusinessRow = {
   business_name?: string | null;
   island?: string | null;
 
-  status?: ListingStatus | null; // listing status
+  listing_status?: ListingStatus | null; // listing status
   plan?: Plan | null;            // subscription plan (latest)
   subscription_status?: string | null;
   paid_until?: string | null;    // kan bij jou ends_at zijn -> gevuld in actions
@@ -142,7 +142,7 @@ export default function AdminBusinessesClient({ lang }: { lang: Locale }) {
 
       if (island !== "all" && norm(r.island) !== norm(island)) return false;
 
-      if (statusFilter !== "all" && (r.status ?? null) !== statusFilter) return false;
+      if (statusFilter !== "all" && (r.listing_status ?? null) !== statusFilter) return false;
 
       if (planFilter !== "all" && (r.plan ?? null) !== planFilter) return false;
 
@@ -165,8 +165,8 @@ export default function AdminBusinessesClient({ lang }: { lang: Locale }) {
 
   const stats = useMemo(() => {
     const total = filtered.length;
-    const active = filtered.filter((r) => r.status === "active" && !r.deleted_at).length;
-    const inactive = filtered.filter((r) => r.status === "inactive" && !r.deleted_at).length;
+    const active = filtered.filter((r) => r.listing_status === "active" && !r.deleted_at).length;
+    const inactive = filtered.filter((r) => r.listing_status === "inactive" && !r.deleted_at).length;
     const deleted = filtered.filter((r) => Boolean(r.deleted_at)).length;
     const expired = filtered.filter((r) => isExpired(r.paid_until)).length;
     const paid = filtered.filter((r) => (r.plan === "growth" || r.plan === "pro")).length;
@@ -310,9 +310,9 @@ export default function AdminBusinessesClient({ lang }: { lang: Locale }) {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {r.status === "active" ? (
+                    {r.listing_status === "active" ? (
                       <Badge>Active</Badge>
-                    ) : r.status === "inactive" ? (
+                    ) : r.listing_status === "inactive" ? (
                       <Badge variant="secondary">Inactive</Badge>
                     ) : (
                       <Badge variant="outline">Pending</Badge>
