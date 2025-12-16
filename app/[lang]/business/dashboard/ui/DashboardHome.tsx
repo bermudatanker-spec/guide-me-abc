@@ -176,7 +176,7 @@ export default function DashboardHome({ lang, business, caps }: Props) {
 
   async function doSoftDelete() {
     startTransition(async () => {
-      const res = await softDeleteBusinessAction(lang, business.id, deleteNote);
+      const res = await softDeleteBusinessAction(lang, business.id);
       if (!res.ok) {
         toast({ title: "Fout", description: res.error, variant: "destructive" });
         return;
@@ -189,7 +189,7 @@ export default function DashboardHome({ lang, business, caps }: Props) {
 
   async function doUndoDelete() {
     startTransition(async () => {
-      const res = await undoDeleteBusinessAction(lang, business.id, undoNote);
+      const res = await undoDeleteBusinessAction(lang, business.id);
       if (!res.ok) {
         toast({ title: "Fout", description: res.error, variant: "destructive" });
         return;
