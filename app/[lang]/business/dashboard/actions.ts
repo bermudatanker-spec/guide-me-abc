@@ -10,563 +10,530 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /* -------------------------------------------------------
    Types
-------------------------------------------------------- */
+-------------------------------------------------------- */
 type Ok<T = {}> = { ok: true } & T;
 type Fail = { ok: false; error: string };
-type Result<T = {}> = Ok<T> | Fail;
+export type Result<T = {}> = Ok<T> | Fail;
 
-type ListingStatus = "pending" | "active" | "inactive";
-type Plan = "starter" | "growth" | "pro";
+export type ListingStatus = "pending" | "active" | "inactive";
+export type Plan = "starter" | "growth" | "pro";
 
-type AuditAction =
-  | "delete"
-  | "undo_delete"
-  | "set_status"
-  | "set_plan"
-  | "approve"
-  | "reject";
+type AuditAction = "delete" | "undo_delete" | "set_status" | "set_plan";
 
-type AdminBusinessRow = {
-  business_id: string;
-  listing_id: string | null;
-
-  business_name: string | null;
-  island: string | null;
-  status: ListingStatus | null;
-  subscription_plan: Plan | null;
-
-  deleted_at: string | null;
-
-  // Optie B: subscriptions (jij hebt: plan, status, started_at, ends_at, external_ref, ...)
-  sub_plan: string | null;
-  sub_status: string | null;
-  paid_until: string | null; // mapped from subscriptions.ends_at
-};
+function ok<T>(data?: T): Ok<T> {
+  return { ok: true, ...(data ?? ({} as T)) };
+}
+function fail(error: unknown): Fail {
+  return { ok: false, error: error instanceof Error ? error.message : String(error) };
+}
 
 /* -------------------------------------------------------
    Role helpers
-------------------------------------------------------- */
+-------------------------------------------------------- */
 function getRoles(user: any): string[] {
   const meta = user?.app_metadata ?? {};
   const raw = meta.roles ?? meta.role ?? user?.role ?? [];
   const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
   return arr.map((r) => String(r).trim().toLowerCase()).filter(Boolean);
 }
-
 function isSuperAdmin(user: any): boolean {
   const roles = getRoles(user);
   return roles.includes("super_admin") || roles.includes("superadmin");
 }
-
 function nowIso() {
   return new Date().toISOString();
 }
 
-function cleanNote(note?: string | null) {
-  const n = (note ?? "").trim();
-  return n.length ? n : null;
+function adminBusinessesPath(lang: Locale) {
+  return langHref(lang, "/admin/businesses");
+}
+function dashboardPath(lang: Locale) {
+  return langHref(lang, "/business/dashboard");
 }
 
 /* -------------------------------------------------------
-   Admin client safe wrapper (friendly error)
-------------------------------------------------------- */
+   Auth helper
+-------------------------------------------------------- */
+async function getAuthedUser(): Promise<Result<{ user: any; supabase: any }>> {
+  const supabase: any = await supabaseServer();
+  const { data, error } = await supabase.auth.getUser();
+  if (error) return fail(error.message);
+  if (!data?.user) return fail("Niet ingelogd.");
+  return ok({ user: data.user, supabase });
+}
+
+/* -------------------------------------------------------
+   Admin client safe wrapper
+-------------------------------------------------------- */
 function getAdminClient(): Result<{ admin: any }> {
   try {
     const admin = supabaseAdmin();
-    return { ok: true, admin };
+    return ok({ admin });
   } catch (e: any) {
-    return {
-      ok: false,
-      error:
-        e?.message ??
-        "Kon admin client niet initialiseren (check env SUPABASE_SERVICE_ROLE_KEY).",
-    };
+    return fail(
+      e?.message ??
+        "Kon admin client niet initialiseren (check SUPABASE_SERVICE_ROLE_KEY)."
+    );
   }
 }
 
 /* -------------------------------------------------------
    Audit (best effort)
-------------------------------------------------------- */
+-------------------------------------------------------- */
 async function auditBestEffort(input: {
   actorUserId: string;
   businessId: string;
   action: AuditAction;
-  note?: string | null;
   detail?: Record<string, unknown> | null;
 }) {
   try {
     const gate = getAdminClient();
     if (!gate.ok) return;
 
-    const { admin } = gate;
-    await admin.from("audit_business_moderation").insert({
+    await gate.admin.from("audit_business_moderation").insert({
       business_id: input.businessId,
       actor_user_id: input.actorUserId,
       action: input.action,
-      note: cleanNote(input.note),
-      // als je deze kolom niet hebt: laat 'm weg (of zet hem op null)
       detail: input.detail ?? null,
-    } as any);
+    });
   } catch {
-    // best effort: nooit throwen
+    // nooit blocken
   }
 }
 
 /* -------------------------------------------------------
-   Access checks
-   - super_admin: existence check via admin client
-   - owner: ownership check via server client (RLS)
-------------------------------------------------------- */
-async function ensureAccess(params: {
-  businessId: string;
-  user: any;
-  requireNotDeleted: boolean;
-}): Promise<Result> {
-  const { businessId, user, requireNotDeleted } = params;
+   Resolve helpers
+-------------------------------------------------------- */
+async function resolveListingId(admin: any, idOrBusinessId: string) {
+  // 1) probeer als listing_id
+  const { data: byId, error: e1 } = await admin
+    .from("business_listings")
+    .select("id")
+    .eq("id", idOrBusinessId)
+    .maybeSingle();
 
-  if (!businessId) return { ok: false, error: "businessId ontbreekt." };
+  if (e1) throw new Error(e1.message);
+  if (byId?.id) return byId.id;
 
-  // super_admin: check existence (optioneel deleted filter)
-  if (isSuperAdmin(user)) {
+  // 2) anders als business_id -> pak nieuwste listing
+  const { data: byBiz, error: e2 } = await admin
+    .from("business_listings")
+    .select("id")
+    .eq("business_id", idOrBusinessId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (e2) throw new Error(e2.message);
+  if (!byBiz?.id) throw new Error("Listing niet gevonden voor business.");
+  return byBiz.id;
+}
+
+async function resolveBusinessIdFromListingOrBusinessId(
+  sb: any,
+  idOrBusinessId: string
+): Promise<string> {
+  // 1) als het een businessId is, bestaat er een business_listings rij?
+  const { data: byBiz, error: e0 } = await sb
+    .from("business_listings")
+    .select("business_id")
+    .eq("business_id", idOrBusinessId)
+    .limit(1)
+    .maybeSingle();
+
+  if (e0) throw new Error(e0.message);
+  if (byBiz?.business_id) return byBiz.business_id;
+
+  // 2) anders treat als listingId
+  const { data: byListing, error: e1 } = await sb
+    .from("business_listings")
+    .select("business_id")
+    .eq("id", idOrBusinessId)
+    .maybeSingle();
+
+  if (e1) throw new Error(e1.message);
+  if (!byListing?.business_id) throw new Error("Business niet gevonden voor listing.");
+  return byListing.business_id;
+}
+
+/* -------------------------------------------------------
+   Owner access check (RLS) voor business
+-------------------------------------------------------- */
+async function ensureOwnerOrAdmin(businessId: string, user: any): Promise<Result> {
+  if (!businessId) return fail("businessId ontbreekt.");
+
+  if (isSuperAdmin(user)) return ok({});
+
+  const sb: any = await supabaseServer();
+  const { data, error } = await sb
+    .from("businesses")
+    .select("id")
+    .eq("id", businessId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) return fail(error.message);
+  if (!data?.id) return fail("Geen toegang.");
+  return ok({});
+}
+
+/* -------------------------------------------------------
+   ✅ EXPORTS (Admin)
+-------------------------------------------------------- */
+
+// ADMIN: status op listing (accept listingId OR businessId)
+export async function adminSetListingStatusAction(
+  lang: Locale,
+  idOrBusinessId: string,
+  status: ListingStatus
+): Promise<Result> {
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
+    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
+
     const gate = getAdminClient();
     if (!gate.ok) return gate;
 
-    let q = gate.admin
-      .from("businesses")
-      .select("id, deleted_at")
-      .eq("id", businessId);
+    const listingId = await resolveListingId(gate.admin, idOrBusinessId);
 
-    if (requireNotDeleted) q = q.is("deleted_at", null);
+    const { error } = await gate.admin
+      .from("business_listings")
+      .update({ status } as any)
+      .eq("id", listingId);
 
-    const { data, error } = await q.maybeSingle();
-    if (error) return { ok: false, error: error.message };
-    if (!data?.id) {
-      return {
-        ok: false,
-        error: requireNotDeleted
-          ? "Business bestaat niet (of is al verwijderd)."
-          : "Business bestaat niet.",
-      };
+    if (error) return fail(error.message);
+
+    // audit best effort
+    const { data: row } = await gate.admin
+      .from("business_listings")
+      .select("business_id")
+      .eq("id", listingId)
+      .maybeSingle();
+
+    if (row?.business_id) {
+      await auditBestEffort({
+        actorUserId: auth.user.id,
+        businessId: row.business_id,
+        action: "set_status",
+        detail: { status },
+      });
     }
-    return { ok: true };
+
+    revalidatePath(adminBusinessesPath(lang));
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
   }
-
-  // owner: via RLS ownership
-  const supabase: any = await supabaseServer();
-  let q = supabase
-    .from("businesses")
-    .select("id, deleted_at")
-    .eq("id", businessId)
-    .eq("user_id", user.id);
-
-  if (requireNotDeleted) q = q.is("deleted_at", null);
-
-  const { data, error } = await q.maybeSingle();
-  if (error) return { ok: false, error: error.message };
-  if (!data?.id) {
-    return {
-      ok: false,
-      error: requireNotDeleted
-        ? "Geen toegang of business bestaat niet (of al verwijderd)."
-        : "Geen toegang of business bestaat niet.",
-    };
-  }
-  return { ok: true };
 }
 
-/* -------------------------------------------------------
-   Auth helper
-------------------------------------------------------- */
-async function getAuthedUser(): Promise<
-  Result<{ user: any; supabase: any }>
-> {
-  const supabase: any = await supabaseServer();
-  const { data, error } = await supabase.auth.getUser();
-  if (error) return { ok: false, error: error.message };
-  const user = data?.user;
-  if (!user) return { ok: false, error: "Niet ingelogd." };
-  return { ok: true, user, supabase };
-}
-
-/* -------------------------------------------------------
-   1) Admin list (Optie B: subscriptions join)
-   Haalt listing + business + latest subscription (plan/status/ends_at)
-------------------------------------------------------- */
-export async function adminListBusinessesAction(
-  lang: Locale
-): Promise<Result<{ rows: AdminBusinessRow[] }>> {
-  const auth = await getAuthedUser();
-  if (!auth.ok) return auth;
-
-  if (!isSuperAdmin(auth.user)) {
-    return { ok: false, error: "Geen toegang (super_admin vereist)." };
-  }
-
-  const gate = getAdminClient();
-  if (!gate.ok) return gate;
-
-  // We pakken data uit business_listings en joinen de "latest" subscription via lateral join in SQL
-  // Omdat PostgREST lateral join niet super fijn is, doen we het in 2 stappen:
-  //  - listings + businesses
-  //  - latest subscriptions per business in één query met order/limit (client-side map)
-  // (Later kun je dit vervangen door een VIEW.)
-
-  const { admin } = gate;
-
-  const { data: listings, error: lErr } = await admin
-    .from("business_listings")
-    .select(
-      "id, business_id, business_name, island, status, subscription_plan, deleted_at"
-    )
-    .order("created_at", { ascending: false });
-
-  if (lErr) return { ok: false, error: lErr.message };
-
-  const businessIds = Array.from(
-    new Set((listings ?? []).map((x: any) => x.business_id).filter(Boolean))
-  );
-
-  let subsByBusiness = new Map<
-    string,
-    { plan: string | null; status: string | null; ends_at: string | null }
-  >();
-
-  if (businessIds.length) {
-    const { data: subs, error: sErr } = await admin
-      .from("subscriptions")
-      .select("business_id, plan, status, ends_at, created_at")
-      .in("business_id", businessIds)
-      .order("created_at", { ascending: false });
-
-    if (!sErr && subs?.length) {
-      for (const s of subs) {
-        // eerste (latest) wint
-        if (!subsByBusiness.has(s.business_id)) {
-          subsByBusiness.set(s.business_id, {
-            plan: s.plan ?? null,
-            status: s.status ?? null,
-            ends_at: s.ends_at ?? null,
-          });
-        }
-      }
-    }
-  }
-
-  const rows: AdminBusinessRow[] = (listings ?? []).map((r: any) => {
-    const sub = subsByBusiness.get(r.business_id);
-    return {
-      business_id: r.business_id,
-      listing_id: r.id ?? null,
-      business_name: r.business_name ?? null,
-      island: r.island ?? null,
-      status: r.status ?? null,
-      subscription_plan: r.subscription_plan ?? null,
-      deleted_at: r.deleted_at ?? null,
-      sub_plan: sub?.plan ?? null,
-      sub_status: sub?.status ?? null,
-      paid_until: sub?.ends_at ?? null, // jouw schema gebruikt ends_at
-    };
-  });
-
-  revalidatePath(langHref(lang, "/admin/businesses"));
-  return { ok: true, rows };
-}
-
-/* -------------------------------------------------------
-   2) Soft delete (owner + super_admin)
-------------------------------------------------------- */
-export async function softDeleteBusinessAction(
+// ADMIN: plan per business (EN zichtbaar maken in UI)
+// ✅ schrijft naar subscriptions (jouw aanpak)
+// ✅ schrijft óók naar business_listings.subscription_plan (jouw UI leest dit!)
+export async function adminSetListingPlanAction(
   lang: Locale,
   businessId: string,
-  note?: string
+  plan: Plan
 ): Promise<Result> {
-  const auth = await getAuthedUser();
-  if (!auth.ok) return auth;
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
+    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
 
-  const access = await ensureAccess({
-    businessId,
-    user: auth.user,
-    requireNotDeleted: true,
-  });
-  if (!access.ok) return access;
-
-  const ts = nowIso();
-
-  // super_admin => admin client
-  if (isSuperAdmin(auth.user)) {
     const gate = getAdminClient();
     if (!gate.ok) return gate;
 
-    const { admin } = gate;
+    // 1) upsert subscriptions
+    const { error: sErr } = await gate.admin
+      .from("subscriptions")
+      .upsert(
+        {
+          business_id: businessId,
+          plan,
+          status: "active",
+          ends_at: null,
+          paid_until: null,
+        } as any,
+        { onConflict: "business_id" }
+      );
 
-    const { error: bErr } = await admin
+    if (sErr) return fail(sErr.message);
+
+    // 2) ✅ update business_listings.subscription_plan zodat de UI niet altijd "starter" blijft
+    const { error: lErr } = await gate.admin
+      .from("business_listings")
+      .update({ subscription_plan: plan } as any)
+      .eq("business_id", businessId)
+      .is("deleted_at", null);
+
+    if (lErr) return fail(lErr.message);
+
+    await auditBestEffort({
+      actorUserId: auth.user.id,
+      businessId,
+      action: "set_plan",
+      detail: { plan },
+    });
+
+    revalidatePath(adminBusinessesPath(lang));
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// ADMIN: soft delete business (businessId)
+export async function adminSoftDeleteBusinessAction(
+  lang: Locale,
+  businessId: string
+): Promise<Result> {
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
+    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
+
+    const gate = getAdminClient();
+    if (!gate.ok) return gate;
+
+    const ts = nowIso();
+
+    const { error: bErr } = await gate.admin
       .from("businesses")
       .update({ deleted_at: ts } as any)
       .eq("id", businessId);
+    if (bErr) return fail(bErr.message);
 
-    if (bErr) return { ok: false, error: bErr.message };
-
-    const { error: lErr } = await admin
+    const { error: lErr } = await gate.admin
       .from("business_listings")
       .update({ deleted_at: ts } as any)
       .eq("business_id", businessId);
-
-    if (lErr) return { ok: false, error: lErr.message };
+    if (lErr) return fail(lErr.message);
 
     await auditBestEffort({
       actorUserId: auth.user.id,
       businessId,
       action: "delete",
-      note,
-      detail: { via: "admin-actions" },
+      detail: { via: "adminSoftDeleteBusinessAction" },
     });
 
-    revalidatePath(langHref(lang, "/admin/businesses"));
-    revalidatePath(langHref(lang, "/business/dashboard"));
-    return { ok: true };
+    revalidatePath(adminBusinessesPath(lang));
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
   }
-
-  // owner => server client (RLS)
-  const { supabase } = auth;
-
-  const { error: bErr } = await supabase
-    .from("businesses")
-    .update({ deleted_at: ts } as any)
-    .eq("id", businessId);
-
-  if (bErr) return { ok: false, error: bErr.message };
-
-  const { error: lErr } = await supabase
-    .from("business_listings")
-    .update({ deleted_at: ts } as any)
-    .eq("business_id", businessId);
-
-  if (lErr) return { ok: false, error: lErr.message };
-
-  await auditBestEffort({
-    actorUserId: auth.user.id,
-    businessId,
-    action: "delete",
-    note,
-    detail: { via: "owner-actions" },
-  });
-
-  revalidatePath(langHref(lang, "/business/dashboard"));
-  return { ok: true };
 }
 
-/* -------------------------------------------------------
-   3) Restore (owner + super_admin)
-------------------------------------------------------- */
-export async function undoDeleteBusinessAction(
+// ADMIN: restore business (businessId)
+export async function adminRestoreBusinessAction(
   lang: Locale,
-  businessId: string,
-  note?: string
+  businessId: string
 ): Promise<Result> {
-  const auth = await getAuthedUser();
-  if (!auth.ok) return auth;
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
+    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
 
-  const access = await ensureAccess({
-    businessId,
-    user: auth.user,
-    requireNotDeleted: false,
-  });
-  if (!access.ok) return access;
-
-  if (isSuperAdmin(auth.user)) {
     const gate = getAdminClient();
     if (!gate.ok) return gate;
 
-    const { admin } = gate;
-
-    const { error: bErr } = await admin
+    const { error: bErr } = await gate.admin
       .from("businesses")
       .update({ deleted_at: null } as any)
       .eq("id", businessId);
+    if (bErr) return fail(bErr.message);
 
-    if (bErr) return { ok: false, error: bErr.message };
-
-    const { error: lErr } = await admin
+    const { error: lErr } = await gate.admin
       .from("business_listings")
       .update({ deleted_at: null } as any)
       .eq("business_id", businessId);
-
-    if (lErr) return { ok: false, error: lErr.message };
+    if (lErr) return fail(lErr.message);
 
     await auditBestEffort({
       actorUserId: auth.user.id,
       businessId,
       action: "undo_delete",
-      note,
-      detail: { via: "admin-actions" },
+      detail: { via: "adminRestoreBusinessAction" },
     });
 
-    revalidatePath(langHref(lang, "/admin/businesses"));
-    revalidatePath(langHref(lang, "/business/dashboard"));
-    return { ok: true };
+    revalidatePath(adminBusinessesPath(lang));
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
   }
-
-  const { supabase } = auth;
-
-  const { error: bErr } = await supabase
-    .from("businesses")
-    .update({ deleted_at: null } as any)
-    .eq("id", businessId);
-
-  if (bErr) return { ok: false, error: bErr.message };
-
-  const { error: lErr } = await supabase
-    .from("business_listings")
-    .update({ deleted_at: null } as any)
-    .eq("business_id", businessId);
-
-  if (lErr) return { ok: false, error: lErr.message };
-
-  await auditBestEffort({
-    actorUserId: auth.user.id,
-    businessId,
-    action: "undo_delete",
-    note,
-    detail: { via: "owner-actions" },
-  });
-
-  revalidatePath(langHref(lang, "/business/dashboard"));
-  return { ok: true };
 }
 
 /* -------------------------------------------------------
-   4) Admin: set listing status (approve/reject/inactive/active)
-   - super_admin only
-------------------------------------------------------- */
-export async function adminSetListingStatusAction(
+   ✅ EXPORTS (Owner / dashboard)
+-------------------------------------------------------- */
+
+// Owner: status (werkt alleen als RLS dit toelaat)
+export async function setListingStatusAction(
   lang: Locale,
-  businessId: string,
-  status: ListingStatus,
-  note?: string
+  listingId: string,
+  status: ListingStatus
 ): Promise<Result> {
-  const auth = await getAuthedUser();
-  if (!auth.ok) return auth;
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
 
-  if (!isSuperAdmin(auth.user)) {
-    return { ok: false, error: "Geen toegang (super_admin vereist)." };
+    const { supabase } = auth;
+
+    const { error } = await supabase
+      .from("business_listings")
+      .update({ status } as any)
+      .eq("id", listingId);
+
+    if (error) return fail(error.message);
+
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
   }
+}
 
-  const gate = getAdminClient();
-  if (!gate.ok) return gate;
+/**
+ * Owner: plan
+ * - jouw UI roept dit soms aan met listing.id (ownerUpdatePlan)
+ * - admin roept plan action apart aan (adminSetListingPlanAction)
+ * Daarom: accepteer "listingId OR businessId" en route correct.
+ */
+export async function setListingPlanAction(
+  lang: Locale,
+  idOrBusinessId: string,
+  plan: Plan
+): Promise<Result> {
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
 
-  const { admin } = gate;
+    // owners mogen meestal niet plan wijzigen -> block netjes
+    if (!isSuperAdmin(auth.user)) {
+      return fail("Alleen admin kan plan aanpassen.");
+    }
 
-  const { error } = await admin
-    .from("business_listings")
-    .update({ status } as any)
-    .eq("business_id", businessId);
+    const businessId = await resolveBusinessIdFromListingOrBusinessId(
+      auth.supabase,
+      idOrBusinessId
+    );
 
-  if (error) return { ok: false, error: error.message };
+    return await adminSetListingPlanAction(lang, businessId, plan);
+  } catch (e) {
+    return fail(e);
+  }
+}
 
-  await auditBestEffort({
-    actorUserId: auth.user.id,
-    businessId,
-    action: "set_status",
-    note,
-    detail: { status },
-  });
+// Owner: soft delete listing
+export async function softDeleteListingAction(
+  lang: Locale,
+  listingId: string
+): Promise<Result> {
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
 
-  revalidatePath(langHref(lang, "/admin/businesses"));
-  return { ok: true };
+    const { supabase } = auth;
+
+    const { error } = await supabase
+      .from("business_listings")
+      .update({ deleted_at: nowIso() } as any)
+      .eq("id", listingId);
+
+    if (error) return fail(error.message);
+
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
+  }
 }
 
 /* -------------------------------------------------------
-   5) Admin: set listing plan (starter/growth/pro)
-   - super_admin only
-   - update subscription_plan on business_listings
-------------------------------------------------------- */
-export async function adminSetListingPlanAction(
+   ✅ BUSINESS soft delete / undo delete
+   (dit gebruikt je dashboard ook)
+-------------------------------------------------------- */
+
+export async function softDeleteBusinessAction(
   lang: Locale,
-  businessId: string,
-  plan: Plan,
-  note?: string
+  businessId: string
 ): Promise<Result> {
-  const auth = await getAuthedUser();
-  if (!auth.ok) return auth;
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
 
-  if (!isSuperAdmin(auth.user)) {
-    return { ok: false, error: "Geen toegang (super_admin vereist)." };
+    const access = await ensureOwnerOrAdmin(businessId, auth.user);
+    if (!access.ok) return access;
+
+    // admin route
+    if (isSuperAdmin(auth.user)) {
+      return await adminSoftDeleteBusinessAction(lang, businessId);
+    }
+
+    const ts = nowIso();
+    const { supabase } = auth;
+
+    const { error: bErr } = await supabase
+      .from("businesses")
+      .update({ deleted_at: ts } as any)
+      .eq("id", businessId)
+      .eq("user_id", auth.user.id);
+
+    if (bErr) return fail(bErr.message);
+
+    const { error: lErr } = await supabase
+      .from("business_listings")
+      .update({ deleted_at: ts } as any)
+      .eq("business_id", businessId);
+
+    if (lErr) return fail(lErr.message);
+
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
   }
-
-  const gate = getAdminClient();
-  if (!gate.ok) return gate;
-
-  const { admin } = gate;
-
-  const { error } = await admin
-    .from("business_listings")
-    .update({ subscription_plan: plan } as any)
-    .eq("business_id", businessId);
-
-  if (error) return { ok: false, error: error.message };
-
-  await auditBestEffort({
-    actorUserId: auth.user.id,
-    businessId,
-    action: "set_plan",
-    note,
-    detail: { plan },
-  });
-
-  revalidatePath(langHref(lang, "/admin/businesses"));
-  return { ok: true };
 }
 
-/* -------------------------------------------------------
-   6) Optioneel: Admin kan ook subscriptions “latest” aanpassen
-   (Alleen als je dit echt wil; anders laat je dit weg.)
-   - super_admin only
-------------------------------------------------------- */
-export async function adminSetSubscriptionPlanAction(
+// ✅ Dit was de missende export die jouw app liet crashen
+export async function undoDeleteBusinessAction(
   lang: Locale,
-  businessId: string,
-  plan: Plan,
-  note?: string
+  businessId: string
 ): Promise<Result> {
-  const auth = await getAuthedUser();
-  if (!auth.ok) return auth;
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
 
-  if (!isSuperAdmin(auth.user)) {
-    return { ok: false, error: "Geen toegang (super_admin vereist)." };
+    const access = await ensureOwnerOrAdmin(businessId, auth.user);
+    if (!access.ok) return access;
+
+    if (isSuperAdmin(auth.user)) {
+      return await adminRestoreBusinessAction(lang, businessId);
+    }
+
+    const { supabase } = auth;
+
+    const { error: bErr } = await supabase
+      .from("businesses")
+      .update({ deleted_at: null } as any)
+      .eq("id", businessId)
+      .eq("user_id", auth.user.id);
+
+    if (bErr) return fail(bErr.message);
+
+    const { error: lErr } = await supabase
+      .from("business_listings")
+      .update({ deleted_at: null } as any)
+      .eq("business_id", businessId);
+
+    if (lErr) return fail(lErr.message);
+
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
   }
-
-  const gate = getAdminClient();
-  if (!gate.ok) return gate;
-
-  const { admin } = gate;
-
-  // Pak latest subscription en update die
-  const { data: sub, error: sErr } = await admin
-    .from("subscriptions")
-    .select("id, business_id, created_at")
-    .eq("business_id", businessId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (sErr) return { ok: false, error: sErr.message };
-  if (!sub?.id) return { ok: false, error: "Geen subscription record gevonden." };
-
-  const { error: uErr } = await admin
-    .from("subscriptions")
-    .update({ plan } as any)
-    .eq("id", sub.id);
-
-  if (uErr) return { ok: false, error: uErr.message };
-
-  await auditBestEffort({
-    actorUserId: auth.user.id,
-    businessId,
-    action: "set_plan",
-    note,
-    detail: { plan, via: "subscriptions" },
-  });
-
-  revalidatePath(langHref(lang, "/admin/businesses"));
-  return { ok: true };
 }
