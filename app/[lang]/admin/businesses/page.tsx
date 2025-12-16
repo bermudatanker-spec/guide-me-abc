@@ -2,13 +2,10 @@ import type { Locale } from "@/i18n/config";
 import AdminBusinessesClient from "./ui/AdminBusinessesClient";
 
 type PageProps = {
-  params: Promise<{
-    lang: Locale;
-  }>;
+  params: Promise<{ lang: Locale }>;
 };
 
 export default async function AdminBusinessesPage({ params }: PageProps) {
   const { lang } = await params;
-
   return <AdminBusinessesClient lang={lang} />;
 }

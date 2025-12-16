@@ -67,7 +67,10 @@ export async function adminSetListingStatusAction(
   }
 }
 
-/** ✅ Admin: plan upsert in subscriptions (op business_id) */
+/**
+ * ✅ Admin: plan aanpassen via subscriptions (op business_id)
+ * BELANGRIJK: jouw UI leest plan uit business_listings_admin_view → subscriptions
+ */
 export async function adminSetListingPlanAction(
   lang: Locale,
   businessId: string,
@@ -100,13 +103,19 @@ export async function adminSetListingPlanAction(
 }
 
 /** ✅ Admin: soft delete op businesses + business_listings */
-export async function adminSoftDeleteBusinessAction(lang: Locale, businessId: string): Promise<Result> {
+export async function adminSoftDeleteBusinessAction(
+  lang: Locale,
+  businessId: string
+): Promise<Result> {
   try {
     await requireSuperAdmin();
     const admin = supabaseAdmin();
     const ts = new Date().toISOString();
 
-    const { error: bErr } = await admin.from("businesses").update({ deleted_at: ts } as any).eq("id", businessId);
+    const { error: bErr } = await admin
+      .from("businesses")
+      .update({ deleted_at: ts } as any)
+      .eq("id", businessId);
     if (bErr) return fail(bErr.message);
 
     const { error: lErr } = await admin
@@ -123,12 +132,18 @@ export async function adminSoftDeleteBusinessAction(lang: Locale, businessId: st
 }
 
 /** ✅ Admin: restore soft delete */
-export async function adminRestoreBusinessAction(lang: Locale, businessId: string): Promise<Result> {
+export async function adminRestoreBusinessAction(
+  lang: Locale,
+  businessId: string
+): Promise<Result> {
   try {
     await requireSuperAdmin();
     const admin = supabaseAdmin();
 
-    const { error: bErr } = await admin.from("businesses").update({ deleted_at: null } as any).eq("id", businessId);
+    const { error: bErr } = await admin
+      .from("businesses")
+      .update({ deleted_at: null } as any)
+      .eq("id", businessId);
     if (bErr) return fail(bErr.message);
 
     const { error: lErr } = await admin

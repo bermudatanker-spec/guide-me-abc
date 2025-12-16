@@ -25,7 +25,7 @@ import {
 } from "../actions";
 
 /* -------------------------------------------------------
-   Types (komt uit VIEW)
+   Types (komt uit VIEW: business_listings_admin_view)
 -------------------------------------------------------- */
 type Row = {
   id: string; // listing id
@@ -39,9 +39,7 @@ type Row = {
   categories: { name: string; slug: string } | null;
 };
 
-type Props = {
-  lang: Locale;
-};
+type Props = { lang: Locale };
 
 function normalizePlan(p: any): Plan {
   const s = String(p ?? "").trim().toLowerCase();
@@ -59,6 +57,8 @@ function normalizeStatus(s: any): ListingStatus {
 export default function AdminBusinessesClient({ lang }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
+
+  // ✅ FIX: resolvedLang is écht Locale → geen rode kronkels bij actions calls
   const resolvedLang = (getLangFromPath(pathname) || lang) as Locale;
 
   const supabase = useMemo(() => supabaseBrowser(), []);
@@ -105,7 +105,6 @@ export default function AdminBusinessesClient({ lang }: Props) {
       setLoading(true);
       setErrorMsg(null);
 
-      // ✅ LEES UIT VIEW (dus plan klopt)
       const { data, error } = await supabase
         .from("business_listings_admin_view")
         .select(
@@ -124,7 +123,6 @@ export default function AdminBusinessesClient({ lang }: Props) {
         .order("business_name", { ascending: true });
 
       if (error) throw new Error(error.message);
-
       setRows((data as any) ?? []);
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Kon admin bedrijven niet laden.");
@@ -247,7 +245,11 @@ export default function AdminBusinessesClient({ lang }: Props) {
                           variant="outlineSoft"
                           size="sm"
                           disabled={isBusy}
-                          onClick={() => runBusy(`st:${r.business_id}`, () => adminSetListingStatusAction(resolvedLang, r.business_id, "active"))}
+                          onClick={() =>
+                            runBusy(`st:${r.business_id}`, () =>
+                              adminSetListingStatusAction(resolvedLang, r.business_id, "active")
+                            )
+                          }
                         >
                           <CheckCircle2 className="h-3 w-3 mr-1.5" />
                           Active
@@ -257,7 +259,11 @@ export default function AdminBusinessesClient({ lang }: Props) {
                           variant="outlineSoft"
                           size="sm"
                           disabled={isBusy}
-                          onClick={() => runBusy(`st:${r.business_id}`, () => adminSetListingStatusAction(resolvedLang, r.business_id, "pending"))}
+                          onClick={() =>
+                            runBusy(`st:${r.business_id}`, () =>
+                              adminSetListingStatusAction(resolvedLang, r.business_id, "pending")
+                            )
+                          }
                         >
                           <XCircle className="h-3 w-3 mr-1.5" />
                           Pending
@@ -267,7 +273,11 @@ export default function AdminBusinessesClient({ lang }: Props) {
                           variant="outlineSoft"
                           size="sm"
                           disabled={isBusy}
-                          onClick={() => runBusy(`st:${r.business_id}`, () => adminSetListingStatusAction(resolvedLang, r.business_id, "inactive"))}
+                          onClick={() =>
+                            runBusy(`st:${r.business_id}`, () =>
+                              adminSetListingStatusAction(resolvedLang, r.business_id, "inactive")
+                            )
+                          }
                         >
                           Inactive
                         </Button>
@@ -276,7 +286,11 @@ export default function AdminBusinessesClient({ lang }: Props) {
                           variant="outlineSoft"
                           size="sm"
                           disabled={isBusy}
-                          onClick={() => runBusy(`pl:${r.business_id}`, () => adminSetListingPlanAction(resolvedLang, r.business_id, "starter"))}
+                          onClick={() =>
+                            runBusy(`pl:${r.business_id}`, () =>
+                              adminSetListingPlanAction(resolvedLang, r.business_id, "starter")
+                            )
+                          }
                         >
                           Starter
                         </Button>
@@ -285,7 +299,11 @@ export default function AdminBusinessesClient({ lang }: Props) {
                           variant="outlineSoft"
                           size="sm"
                           disabled={isBusy}
-                          onClick={() => runBusy(`pl:${r.business_id}`, () => adminSetListingPlanAction(resolvedLang, r.business_id, "growth"))}
+                          onClick={() =>
+                            runBusy(`pl:${r.business_id}`, () =>
+                              adminSetListingPlanAction(resolvedLang, r.business_id, "growth")
+                            )
+                          }
                         >
                           Growth
                         </Button>
@@ -294,7 +312,11 @@ export default function AdminBusinessesClient({ lang }: Props) {
                           variant="outlineSoft"
                           size="sm"
                           disabled={isBusy}
-                          onClick={() => runBusy(`pl:${r.business_id}`, () => adminSetListingPlanAction(resolvedLang, r.business_id, "pro"))}
+                          onClick={() =>
+                            runBusy(`pl:${r.business_id}`, () =>
+                              adminSetListingPlanAction(resolvedLang, r.business_id, "pro")
+                            )
+                          }
                         >
                           Pro
                         </Button>
@@ -304,7 +326,11 @@ export default function AdminBusinessesClient({ lang }: Props) {
                             variant="outline"
                             size="sm"
                             disabled={isBusy}
-                            onClick={() => runBusy(`rs:${r.business_id}`, () => adminRestoreBusinessAction(resolvedLang, r.business_id))}
+                            onClick={() =>
+                              runBusy(`rs:${r.business_id}`, () =>
+                                adminRestoreBusinessAction(resolvedLang, r.business_id)
+                              )
+                            }
                           >
                             Restore
                           </Button>
@@ -316,7 +342,9 @@ export default function AdminBusinessesClient({ lang }: Props) {
                             onClick={() => {
                               const ok = window.confirm(`Soft delete "${r.business_name}"?`);
                               if (!ok) return;
-                              runBusy(`del:${r.business_id}`, () => adminSoftDeleteBusinessAction(resolvedLang, r.business_id));
+                              runBusy(`del:${r.business_id}`, () =>
+                                adminSoftDeleteBusinessAction(resolvedLang, r.business_id)
+                              );
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
