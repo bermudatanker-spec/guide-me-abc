@@ -4,16 +4,34 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ResponsiveImage from "@/components/ResponsiveImage";
 
-type Lang = "en" | "nl" | "pap" | "es";
-type IslandId = "aruba" | "bonaire" | "curacao";
-
-const ISLANDS: readonly IslandId[] = ["aruba", "bonaire", "curacao"] as const;
-
-const ISLAND_BG: Record<IslandId, string> = {
-  aruba: "/images/aruba-island.jpg",
-  bonaire: "/images/bonaire-island.jpg",
-  curacao: "/images/curacao-island.jpg",
+/**
+ * ✅ Next.js 16:
+ * params worden als Promise geïnjecteerd (en soms ook searchParams, maar hier niet nodig).
+ */
+type PageProps = {
+  params: Promise<{
+    lang: string;
+    island: string;
+  }>;
 };
+
+export const dynamic = "force-dynamic";
+
+/* ----------------------------- Types ----------------------------- */
+
+const VALID_LANGS = ["en", "nl", "pap", "es"] as const;
+type Lang = (typeof VALID_LANGS)[number];
+
+const ISLANDS = ["aruba", "bonaire", "curacao"] as const;
+type IslandId = (typeof ISLANDS)[number];
+
+type CategorySlug =
+  | "shops"
+  | "activities"
+  | "car-rentals"
+  | "restaurants"
+  | "services"
+  | "real-estate";
 
 type Copy = {
   name: string;
@@ -24,16 +42,18 @@ type Copy = {
   exploreByCategory: string;
   explore: string;
   categories: {
-    slug:
-      | "shops"
-      | "activities"
-      | "car-rentals"
-      | "restaurants"
-      | "services"
-      | "real-estate";
+    slug: CategorySlug;
     title: string;
     subtitle: string;
   }[];
+};
+
+/* ----------------------------- Data ------------------------------ */
+
+const ISLAND_BG: Record<IslandId, string> = {
+  aruba: "/images/aruba-island.jpg",
+  bonaire: "/images/bonaire-island.jpg",
+  curacao: "/images/curacao-island.jpg",
 };
 
 const COPY: Record<Lang, Record<IslandId, Copy>> = {
@@ -732,46 +752,46 @@ const ACTION_LABELS = {
   },
 } as const;
 
-function categoryActions(
-  lang: Lang,
-  island: IslandId,
-  slug: keyof typeof ACTION_LABELS
-) {
-  const L = ACTION_LABELS[slug];
-  const base = `/${lang}/islands/${island}/${slug}`;
-  return [
-    { label: L.primary[lang], href: base },
-    { label: L.secondary[lang], href: `${base}?${L.secondaryQuery}` },
-  ];
+/* ---------------------------- Helpers ---------------------------- */
+
+function parseLang(raw: string): Lang {
+  const v = (raw ?? "").toLowerCase().trim();
+  return (VALID_LANGS as readonly string[]).includes(v) ? (v as Lang) : "en";
 }
 
-/* Helpers */
+function parseIsland(raw: string): IslandId | null {
+  const v = (raw ?? "").toLowerCase().trim();
+  return (ISLANDS as readonly string[]).includes(v) ? (v as IslandId) : null;
+}
+
 function getCopy(lang: Lang, island: IslandId): Copy {
   const byLang = COPY[lang] ?? COPY.en;
   return byLang[island] ?? COPY.en[island];
 }
 
-/* Metadata */
-type PageParams = {
-  params: Promise<{ lang: string; island: string }>;
-};
+function categoryActions(lang: Lang, island: IslandId, slug: keyof typeof ACTION_LABELS) {
+  const L = ACTION_LABELS[slug] as any;
+  const base = `/${lang}/islands/${island}/${slug}`;
+  return [
+    { label: L.primary[lang] as string, href: base },
+    { label: L.secondary[lang] as string, href: `${base}?${L.secondaryQuery}` },
+  ] as const;
+}
 
-export async function generateMetadata(
-  { params }: PageParams
-): Promise<Metadata> {
+/* -------------------------- Metadata ----------------------------- */
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { lang: rawLang, island: rawIsland } = await params;
 
-  const lang = (["en", "nl", "pap", "es"].includes(rawLang)
-    ? rawLang
-    : "en") as Lang;
+  const lang = parseLang(rawLang);
+  const island = parseIsland(rawIsland);
 
-  const island = rawIsland as IslandId;
-
-  if (!ISLANDS.includes(island)) {
+  if (!island) {
     return {
       title: "Island not found | Guide Me ABC",
       description: "Please choose Aruba, Bonaire or Curaçao.",
       robots: { index: false, follow: false },
+      metadataBase: new URL("https://guide-me-abc.com"),
     };
   }
 
@@ -779,6 +799,7 @@ export async function generateMetadata(
   const image = ISLAND_BG[island];
   const title = `${c.name} – ${c.tagline} | Guide Me ABC`;
 
+  // ✅ Record<string,string> → geen TS gezeur over pap/es keys
   const languages: Record<string, string> = {
     en: `/en/islands/${island}`,
     nl: `/nl/islands/${island}`,
@@ -786,17 +807,28 @@ export async function generateMetadata(
     es: `/es/islands/${island}`,
   };
 
+  const canonical = `/${lang}/islands/${island}`;
+
   return {
     title,
     description: c.description,
-    alternates: { languages },
+
+    // ✅ voorkomt "url rode kronkels" en helpt OG url typing
+    metadataBase: new URL("https://guide-me-abc.com"),
+
+    alternates: {
+      canonical,
+      languages,
+    },
+
     openGraph: {
       title,
       description: c.description,
-      url: `/${lang}/islands/${island}`,
+      url: canonical, // ✅ relative ok i.c.m. metadataBase
       type: "website",
       images: [{ url: image, width: 1200, height: 630, alt: `${c.name} hero` }],
     },
+
     twitter: {
       card: "summary_large_image",
       title,
@@ -806,22 +838,18 @@ export async function generateMetadata(
   };
 }
 
-export default async function IslandPage({ params }: PageParams) {
+/* ----------------------------- Page ------------------------------ */
+
+export default async function IslandPage({ params }: PageProps) {
   const { lang: rawLang, island: rawIsland } = await params;
 
-  const lang = (["en", "nl", "pap", "es"].includes(rawLang)
-    ? rawLang
-    : "en") as Lang;
-  const island = rawIsland as IslandId;
+  const lang = parseLang(rawLang);
+  const island = parseIsland(rawIsland);
 
-  if (!ISLANDS.includes(island)) {
-    notFound();
-  }
+  if (!island) notFound();
 
   const c = getCopy(lang, island);
   const bg = ISLAND_BG[island];
-
-  // ... rest van je JSX ongewijzigd ...
 
   return (
     <div className="min-h-screen bg-background">
@@ -866,34 +894,23 @@ export default async function IslandPage({ params }: PageParams) {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
         {/* CATEGORIES */}
         <section>
-          <h2 className="text-3xl font-bold mb-8">
-            {c.exploreByCategory}
-          </h2>
+          <h2 className="text-3xl font-bold mb-8">{c.exploreByCategory}</h2>
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {c.categories.map((cat) => {
-              const [primary, secondary] = categoryActions(
-                lang,
-                island,
-                cat.slug
-              );
+              const [primary, secondary] = categoryActions(lang, island, cat.slug);
+
               return (
                 <div
                   key={cat.slug}
                   className="rounded-xl border p-4 text-center bg-card hover:border-primary/50 transition-shadow"
-                  style={{
-                    boxShadow: "0 4px 20px hsl(220 15% 20% / .08)",
-                  }}
+                  style={{ boxShadow: "0 4px 20px hsl(220 15% 20% / .08)" }}
                 >
                   <div className="font-semibold">{cat.title}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {cat.subtitle}
-                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{cat.subtitle}</div>
 
                   <div className="mt-3 flex flex-col items-center gap-2 text-sm">
-                    <Link
-                      href={primary.href}
-                      className="text-primary font-medium hover:underline"
-                    >
+                    <Link href={primary.href} className="text-primary font-medium hover:underline">
                       {primary.label} →
                     </Link>
                     <Link
