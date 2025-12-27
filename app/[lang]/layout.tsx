@@ -1,11 +1,23 @@
 // app/[lang]/layout.tsx
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 
 import ClientRoot from "../ClientRoot";
 import { isLocale, type Locale } from "@/i18n/config";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getPlatformSettings } from "@/lib/platform-settings";
+
+// Aanrader als maintenance/user altijd up-to-date moet zijn:
+export const dynamic = "force-dynamic";
+
+function normalizeLang(raw: string): Locale {
+  return isLocale(raw) ? (raw as Locale) : "en";
+}
+
+function normalizeRoles(input: unknown): string[] {
+  if (Array.isArray(input)) return input.map((r) => String(r).toLowerCase());
+  if (typeof input === "string") return [input.toLowerCase()];
+  return [];
+}
 
 export default async function LangLayout({
   children,
@@ -14,36 +26,23 @@ export default async function LangLayout({
   children: ReactNode;
   params: Promise<{ lang: string }>;
 }) {
-  // ✅ nieuwe Next.js manier: params eerst awaiten
   const { lang: raw } = await params;
-  const lang: Locale = isLocale(raw) ? raw : "en";
+  const lang = normalizeLang(raw);
 
-  // 1) Settings + user parallel ophalen
+  // Settings + user parallel ophalen
   const [settings, user] = await Promise.all([
     getPlatformSettings(),
     (async () => {
-      const supabase = await supabaseServer(); // ✅ supabaseServer is async
+      const supabase = await supabaseServer();
       const { data } = await supabase.auth.getUser();
       return data.user ?? null;
     })(),
   ]);
 
-  // 2) Rollen normaliseren
-  let roles: string[] = [];
-  const rawRoles = (user?.app_metadata as any)?.roles;
+  const roles = normalizeRoles((user?.app_metadata as Record<string, unknown> | null)?.roles);
+  const isSuperAdmin = roles.includes("super_admin") || roles.includes("superadmin");
+  const maintenanceOn = Boolean(settings?.maintenance_mode);
 
-  if (Array.isArray(rawRoles)) {
-    roles = rawRoles.map((r: any) => String(r).toLowerCase());
-  } else if (typeof rawRoles === "string") {
-    roles = [rawRoles.toLowerCase()];
-  }
-
-  const isSuperAdmin =
-    roles.includes("super_admin") || roles.includes("superadmin");
-
-  const maintenanceOn = settings?.maintenance_mode;
-
-  // 3) Maintenance-lock voor iedereen behalve super_admin
   if (maintenanceOn && !isSuperAdmin) {
     const isNl = lang === "nl";
 
@@ -63,22 +62,12 @@ export default async function LangLayout({
     );
   }
 
-  // 4) Normale layout
   return (
-    <Suspense
-      fallback={
-        <main className="min-h-dvh flex items-center justify-center">
-          <span className="text-sm text-muted-foreground">
-            Guide Me ABC wordt geladen…
-          </span>
-        </main>
-      }
-    >
-      <ClientRoot lang={lang}>
-        <main id="page-content" className="min-h-dvh pt-16">
-          {children}
-        </main>
-      </ClientRoot>
-    </Suspense>
+    <ClientRoot lang={lang}>
+      {/* BELANGRIJK: geen <main> wrapper hier om nested-main/layout issues te voorkomen */}
+      <div id="page-content" className="min-h-dvh pt-16">
+        {children}
+      </div>
+    </ClientRoot>
   );
 }
