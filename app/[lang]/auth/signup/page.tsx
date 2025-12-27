@@ -2,12 +2,10 @@ import type { Locale } from "@/i18n/config";
 import SignupClient from "./SignupClient";
 
 type PageProps = {
-    params: {lang: Locale };
+  params: Promise<{ lang: string }>; // Must be a Promise
 };
 
-export const dynamic = "force-dynamic";
-
-export default function SignupPage({ params }: PageProps) {
-    const { lang } = params;
-    return <SignupClient lang={lang} />;
+export default async function SignupPage({ params }: PageProps) {
+  const { lang } = await params; // Must be awaited
+  return <SignupClient lang={lang as Locale} />;
 }

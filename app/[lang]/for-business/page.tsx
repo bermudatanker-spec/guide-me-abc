@@ -7,14 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, Users, MapPin, Globe, BarChart3, MessageCircle, Star, ArrowRight } from "lucide-react";
 
-type Params = { lang: Locale };
+type Params = Promise<{ lang: string }>; // ✅ Next 16 type definitie
 const dict = (l: Locale) => DICTS[l] ?? DICTS.en;
 
 /* -------------------- Metadata -------------------- */
 export async function generateMetadata(
   { params }: { params: Params }
 ): Promise<Metadata> {
-  const lang = isLocale(params.lang) ? params.lang : "en";
+  const resolvedParams = await params; // ✅ Verplichte await
+  const lang = isLocale(resolvedParams.lang) ? (resolvedParams.lang as Locale) : "en";
   const t = dict(lang);
 
   const languages: Record<string, string> = {
@@ -120,17 +121,7 @@ const features: Feature[] = [
   { icon: Users, title: "Reach More Customers", description: "Connect with locals and tourists alike" },
 ];
 
-const faqs = [
-  { q: "How does the free trial work?", a: "Start with a 14-day free trial on any plan. No credit card required. You can upgrade, downgrade, or cancel anytime." },
-  { q: "Can I change plans later?", a: "Absolutely! You can upgrade or downgrade your plan at any time. Changes take effect on your next billing cycle." },
-  { q: "What payment methods do you accept?", a: "We accept all major credit cards, PayPal, and local bank transfers for annual subscriptions." },
-  { q: "Is there a setup fee?", a: "No setup fees! Your subscription includes everything you need to get started." },
-  { q: "Can I cancel anytime?", a: "Yes, you can cancel your subscription at any time. No questions asked, no cancellation fees." },
-  { q: "Do you offer annual billing?", a: "Yes! Annual billing comes with a 20% discount. Contact us for details." },
-];
-
 /* -------------------- Helpers: consistent CTA style -------------------- */
-// dezelfde turquoise gradient + zachte glow als je Home-knoppen
 const ctaClass =
   "inline-flex items-center justify-center rounded-xl px-6 py-3 text-base font-semibold text-white " +
   "transition-all duration-300 ease-out hover:scale-[1.02] " +
@@ -142,11 +133,12 @@ const ctaStyle: React.CSSProperties = {
 
 /* -------------------- Page -------------------- */
 export default async function ForBusinessPage({ params }: { params: Params }) {
-  const lang = isLocale(params.lang) ? params.lang : "en";
+  const resolvedParams = await params; // ✅ Verplichte await
+  const lang = isLocale(resolvedParams.lang) ? (resolvedParams.lang as Locale) : "en";
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero (boxed gradient + turquoise CTA) */}
+      {/* Hero */}
       <section className="pt-24 pb-16 bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
@@ -216,17 +208,16 @@ export default async function ForBusinessPage({ params }: { params: Params }) {
                 aria-label={`${plan.name} plan`}
               >
                 {plan.popular && (
-              <Badge
-                 className="absolute -top-3 left-1/2 -translate-x-1/2 text-white font-medium border-0 shadow-sm"
-                 style={{
-                   background:
-                    "linear-gradient(90deg, #00BFD3 0%, rgba(0,191,211,0.12) 100%)",
-                   boxShadow: "0 4px 12px rgba(0,191,211,0.35)",
-                  }}
-                >
-                  Most Popular
-                </Badge>
-             )}
+                  <Badge
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 text-white font-medium border-0 shadow-sm"
+                    style={{
+                      background: "linear-gradient(90deg, #00BFD3 0%, rgba(0,191,211,0.12) 100%)",
+                      boxShadow: "0 4px 12px rgba(0,191,211,0.35)",
+                    }}
+                  >
+                    Most Popular
+                  </Badge>
+                )}
 
                 <CardContent className="p-6">
                   <h3 className="text-2xl font-bold text-foreground mb-2">{plan.name}</h3>
@@ -244,7 +235,6 @@ export default async function ForBusinessPage({ params }: { params: Params }) {
                     ))}
                   </ul>
 
-                  {/* Zelfde turquoise CTA-stijl als hero/home */}
                   <Link
                     href={`/${lang}/business/auth`}
                     className={`${ctaClass} w-full justify-center`}
@@ -259,7 +249,7 @@ export default async function ForBusinessPage({ params }: { params: Params }) {
           </div>
         </section>
 
-        {/* Social Proof (placeholder logos) */}
+        {/* Social Proof */}
         <section className="mb-20 text-center" aria-labelledby="trusted-heading">
           <h2 id="trusted-heading" className="text-3xl font-bold mb-8 text-foreground">
             Trusted by Local Businesses
@@ -277,15 +267,13 @@ export default async function ForBusinessPage({ params }: { params: Params }) {
           </div>
         </section>
 
-        {/* Final CTA – “boxed” met lichte gradient achtergrond */}
+        {/* Final CTA */}
         <section
           className="text-center rounded-2xl p-10 md:p-12"
           aria-labelledby="cta-heading"
           style={{
-            background:
-              "linear-gradient(180deg, rgba(0,191,211,0.10) 0%, rgba(0,191,211,0.04) 100%)",
-            boxShadow:
-              "0 12px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,191,211,0.10) inset",
+            background: "linear-gradient(180deg, rgba(0,191,211,0.10) 0%, rgba(0,191,211,0.04) 100%)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,191,211,0.10) inset",
           }}
         >
           <h2 id="cta-heading" className="text-3xl font-bold mb-4 text-foreground">

@@ -1,11 +1,15 @@
-// app/[lang]/maintenance/page.tsx
 import type { Metadata } from "next";
 import { isLocale, type Locale } from "@/i18n/config";
 
-type Params = { lang: Locale };
+// ✅ Next 16 type definitie: params is een Promise
+type PageProps = {
+  params: Promise<{ lang: string }>;
+};
 
-export function generateMetadata({ params }: { params: Params }): Metadata {
-  const lang = isLocale(params.lang) ? params.lang : "en";
+/* -------------------- Metadata (Next 16 Fix) -------------------- */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const resolvedParams = await params; // ✅ Verplichte await
+  const lang = isLocale(resolvedParams.lang) ? (resolvedParams.lang as Locale) : "en";
   const isNl = lang === "nl";
 
   return {
@@ -16,8 +20,10 @@ export function generateMetadata({ params }: { params: Params }): Metadata {
   };
 }
 
-export default function MaintenancePage({ params }: { params: Params }) {
-  const lang = isLocale(params.lang) ? params.lang : "en";
+/* -------------------- Page Component (Next 16 Fix) -------------------- */
+export default async function MaintenancePage({ params }: PageProps) {
+  const resolvedParams = await params; // ✅ Verplichte await
+  const lang = isLocale(resolvedParams.lang) ? (resolvedParams.lang as Locale) : "en";
   const isNl = lang === "nl";
 
   return (

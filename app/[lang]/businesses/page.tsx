@@ -26,10 +26,9 @@ type Row = {
   status: Status;
 };
 
-// In Next 16 zijn params & searchParams Promises
 type PageProps = {
   params: Promise<{ lang: Locale }>;
-  searchParams: Promise<{ island?: string }> | { island?: string };
+  searchParams: Promise<{ island?: string }>;
 };
 
 /* --------------------- Plan labels & styles ---------------------- */
@@ -48,7 +47,6 @@ const PLAN_BADGE_CLASS: Record<Plan, string> = {
   pro: "bg-primary text-primary-foreground",
 };
 
-// ranking: pro > growth > starter > free
 const PLAN_RANK: Record<Plan, number> = {
   pro: 0,
   growth: 1,
@@ -73,12 +71,10 @@ export default async function BusinessesPage({
   searchParams,
 }: PageProps) {
   const resolvedParams = await params;
-  const resolvedSearch =
-    (await Promise.resolve(searchParams)) as { island?: string } | undefined;
+  const resolvedSearch = await searchParams;
 
   const lang = isLocale(resolvedParams.lang) ? resolvedParams.lang : "en";
 
-  // island filter from URL (?island=aruba)
   const rawIsland = (resolvedSearch?.island ?? "").toLowerCase().trim();
   const islandFilter = VALID_ISLANDS.includes(rawIsland as Island)
     ? (rawIsland as Island)

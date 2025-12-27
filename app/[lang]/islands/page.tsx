@@ -1,12 +1,12 @@
-// app/[lang]/islands/page.tsx
 import type { Metadata } from "next";
 import Link from "next/link";
 import ResponsiveImage from "@/components/ResponsiveImage";
 import { isLocale, type Locale } from "@/i18n/config";
 import { Button } from "@/components/ui/button";
 
+// ✅ Next 16 type definitie: params is een Promise
 type PageProps = {
-  params: { lang: Locale };
+  params: Promise<{ lang: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(
   { params }: PageProps
 ): Promise<Metadata> {
-  const { lang: raw } = params;
-  const lang = isLocale(raw) ? raw : "en";
+  const { lang: raw } = await params; // ✅ Verplichte await voor params
+  const lang = isLocale(raw) ? (raw as Locale) : "en";
 
   const title = "ABC Islands | Guide Me ABC";
   const description =
@@ -32,15 +32,16 @@ export async function generateMetadata(
   return {
     title,
     description,
+    metadataBase: new URL('https://guide-me-abc.com'),
     alternates: { languages },
     openGraph: { title, description, url: `/${lang}/islands` },
   };
 }
 
-/* Page */
-export default function IslandsIndex({ params }: PageProps) {
-  const { lang: raw } = params;
-  const lang = isLocale(raw) ? raw : "en";
+/* Page Component */
+export default async function IslandsIndex({ params }: PageProps) {
+  const { lang: raw } = await params; // ✅ Verplichte await voor params
+  const lang = isLocale(raw) ? (raw as Locale) : "en";
 
   const islands = [
     {
@@ -97,7 +98,7 @@ export default function IslandsIndex({ params }: PageProps) {
         {islands.map((i) => (
           <div
             key={i.id}
-            className="rounded-xl overflow-hidden border bg-card shadow-sm hover:shadow-lg transition-all"
+            className="rounded-xl overflow-hidden border bg-card shadow-sm hover:shadow-lg transition-all flex flex-col"
           >
             <div className="relative aspect-[4/3]">
               <ResponsiveImage
@@ -109,10 +110,10 @@ export default function IslandsIndex({ params }: PageProps) {
               />
             </div>
 
-            <div className="p-6">
+            <div className="p-6 flex-1 flex flex-col">
               <h2 className="text-2xl font-bold mb-1">{i.name}</h2>
               <p className="text-primary font-medium mb-3">{i.tagline}</p>
-              <p className="text-muted-foreground text-sm mb-4">{i.desc}</p>
+              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">{i.desc}</p>
 
               <h3 className="text-sm font-semibold mb-2 text-foreground">
                 Highlights:
@@ -123,20 +124,22 @@ export default function IslandsIndex({ params }: PageProps) {
                 ))}
               </ul>
 
-              <Button
-                asChild
-                className="w-full font-semibold text-white"
-                style={{
-                  background:
-                    "linear-gradient(90deg, #00BFD3 0%, #00E0A1 100%)",
-                  boxShadow:
-                    "0 4px 12px rgba(0,191,211,0.45), 0 0 18px rgba(0,191,211,0.35)",
-                }}
-              >
-                <Link href={`/${lang}/islands/${i.id}`}>
-                  Explore {i.name}
-                </Link>
-              </Button>
+              <div className="mt-auto">
+                <Button
+                  asChild
+                  className="w-full font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, #00BFD3 0%, #00E0A1 100%)",
+                    boxShadow:
+                      "0 4px 12px rgba(0,191,211,0.45), 0 0 18px rgba(0,191,211,0.35)",
+                  }}
+                >
+                  <Link href={`/${lang}/islands/${i.id}`}>
+                    Explore {i.name}
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         ))}
