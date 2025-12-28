@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { langHref } from "@/lib/lang-href";
 import { getLangFromPath } from "@/lib/locale-path";
 import { useToast } from "@/hooks/use-toast";
+import type { DashboardListingRow } from "@/types/listing";
 
 // ✅ server actions (mutaties alleen via server)
 import {
@@ -40,21 +41,6 @@ import {
 /* -------------------------------------------------------
    Types – aansluiten op je Supabase schema (read-only)
 -------------------------------------------------------- */
-type ListingRow = {
-  id: string;
-  business_id: string;
-  business_name: string;
-  island: string;
-  status: string;
-  is_verified: boolean | null;
-  verified_at: string | null;
-  owner_id: string;
-  deleted_at?: string | null;
-  categories: { name: string; slug: string } | null;
-  subscription?: {
-    plan: "starter" | "growth" | "pro";
-  } | null;
-};
 
 type Props = {
   lang: Locale;
@@ -85,7 +71,7 @@ export default function DashboardClient({ lang, t }: Props) {
   const [userId, setUserId] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
-  const [listings, setListings] = useState<ListingRow[]>([]);
+  const [listings, setListings] = useState<DashboardListingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -160,7 +146,7 @@ export default function DashboardClient({ lang, t }: Props) {
       // ✅ alleen actieve (niet deleted) tonen op owner dashboard
       query = query.is("deleted_at", null);
 
-      const { data, error } = await query.returns<ListingRow[]>();
+      const { data, error } = await query.returns<DashboardListingRow[]>();
       if (error) throw new Error(error.message);
 
       setListings(data ?? []);
@@ -210,15 +196,15 @@ export default function DashboardClient({ lang, t }: Props) {
   }
 
   // ✅ Admin: status/plan via server actions (en niet meer client update)
-  function adminUpdateStatus(listing: ListingRow, status: ListingStatus) {
+  function adminUpdateStatus(listing: DashboardListingRow, status: ListingStatus) {
     return runBusy(listing.id, () => adminSoftDeleteBusinessAction(resolvedLang, listing.business_id));
   }
-  function adminUpdatePlan(listing: ListingRow, plan: Plan) {
+  function adminUpdatePlan(listing: DashboardListingRow, plan: Plan) {
     // Jij hebt adminSetListingPlanAction in admin-actions file? (zo ja)
     // Als niet: gebruik setListingPlanAction hieronder (maar dan moet admin via RLS kunnen).
     return runBusy(listing.id, () => adminSetListingPlanAction(resolvedLang, listing.business_id, plan));
   }
-  function promoteToPro(listing: ListingRow) {
+  function promoteToPro(listing: DashboardListingRow) {
     return runBusy(listing.id, async () => {
       const r1 = await adminSetListingPlanAction(resolvedLang, listing.business_id, "pro");
       if (!r1?.ok) return r1;
@@ -227,15 +213,15 @@ export default function DashboardClient({ lang, t }: Props) {
   }
 
   // ✅ Owner: (optioneel) status/plan via server actions (alleen als je dit echt wil in owner dashboard)
-  function ownerUpdateStatus(listing: ListingRow, status: ListingStatus) {
+  function ownerUpdateStatus(listing: DashboardListingRow, status: ListingStatus) {
     return runBusy(listing.id, () => setListingStatusAction(resolvedLang, listing.id, status));
   }
-  function ownerUpdatePlan(listing: ListingRow, plan: Plan) {
+  function ownerUpdatePlan(listing: DashboardListingRow, plan: Plan) {
     return runBusy(listing.id, () => setListingPlanAction(resolvedLang, listing.id, plan));
   }
 
   // ✅ soft delete (geen hard delete)
-  function deleteListing(listing: ListingRow) {
+  function deleteListing(listing: DashboardListingRow) {
     const ok = window.confirm(`Weet je zeker dat je "${listing.business_name}" wilt verwijderen?`);
     if (!ok) return;
 

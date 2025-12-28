@@ -8,6 +8,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
 
 import MiniSiteSettingsClient from "./MiniSiteSettingsClient";
+import type { ListingRow } from "@/types/listing";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -15,31 +16,6 @@ export const revalidate = 0;
 type PageProps = {
   // ✅ Next 16: params is Promise
   params: Promise<{ lang: string }>;
-};
-
-type ListingRow = {
-  id: string;
-  owner_id: string;
-
-  // ✅ actions fields (moeten in type staan want je select ze)
-  phone: string | null;
-  whatsapp: string | null;
-  email: string | null;
-  route_url: string | null;
-
-  subscription_plan: string | null;
-  status: string | null;
-
-  is_verified: boolean | null;
-  verified_at: string | null;
-
-  highlight_1: string | null;
-  highlight_2: string | null;
-  highlight_3: string | null;
-
-  social_instagram: string | null;
-  social_facebook: string | null;
-  social_tiktok: string | null;
 };
 
 export const metadata: Metadata = {
