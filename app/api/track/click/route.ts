@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
-type ClickEventType = "whatsapp" | "route" | "call" | "website";
+export type ClickEventType = "whatsapp" | "route" | "call" | "website";
 
 type TrackClickBody = {
   businessId: string;
