@@ -138,7 +138,6 @@ export default function MiniSiteActions({
       {waHref && (
         <Link
           href={waHref}
-          target="_blank"
           rel="noopener noreferrer"
           onClick={() => fire("whatsapp")}
           className={waBtn}
