@@ -1,16 +1,19 @@
 // src/components/Navigation.tsx
 "use client";
 
+
 import ResponsiveImage from "@/components/ResponsiveImage";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { trackClick } from "@/lib/track/trackClick";
 import { Menu, X, Mail, MessageCircle, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getLangFromPath } from "@/lib/locale-path";
+import type { Locale } from "@/i18n/config";
 
-type NavigationProps = { lang?: string };
+type NavigationProps = { lang?: Locale };
 
 const SUPPORTED = ["en", "nl", "pap", "es"] as const;
 type L = (typeof SUPPORTED)[number];
@@ -139,12 +142,28 @@ export default function Navigation({ lang }: NavigationProps) {
                 href="https://wa.me/59996763535"
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  void trackClick({
+                    businessId: "site:whatsapp",
+                    eventType: "whatsapp",
+                    path: pathname,
+                    lang,
+                  });
+                }}
                 className="hover:text-primary transition-colors"
               >
                 <MessageCircle className="h-5 w-5" />
               </Link>
               <Link
                 href="mailto:info@guide-me-abc.com"
+                onClick = {() => {
+                  void trackClick ({
+                    businessId: "site:email",
+                    eventType: "website",
+                    path: pathname,
+                    lang,
+                  });
+                }}
                 className="hover:text-primary transition-colors"
               >
                 <Mail className="h-5 w-5" />
