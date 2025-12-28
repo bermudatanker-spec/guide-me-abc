@@ -46,6 +46,8 @@ type ListingRow = {
   business_name: string;
   island: string;
   status: string;
+  is_verified: boolean | null;
+  verified_at: string | null;
   owner_id: string;
   deleted_at?: string | null;
   categories: { name: string; slug: string } | null;
@@ -138,6 +140,8 @@ export default function DashboardClient({ lang, t }: Props) {
     business_name,
     island,
     status,
+    is_verified,
+    verified_at,
     owner_id,
     deleted_at,
     categories:category_id (name, slug),

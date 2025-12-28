@@ -97,7 +97,9 @@ export default async function BusinessesPage({ params, searchParams }: PageProps
       logo_url,
       cover_image_url,
       subscription_plan,
-      status
+      status,
+      is_verified,
+      verified_at
     `
     )
     .eq("status", "active");

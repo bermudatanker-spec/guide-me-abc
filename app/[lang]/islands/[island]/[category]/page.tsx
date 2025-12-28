@@ -277,6 +277,8 @@ export default async function IslandCategoryPage({ params }: PageParams) {
       logo_url,
       cover_image_url,
       subscription_plan,
+      is_verified,
+      verified_at,
       status
     `
     )

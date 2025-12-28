@@ -62,7 +62,7 @@ export default function SearchResultsClient({ lang, q, island }: Props) {
       try {
         let query = supabase
           .from("business_listings")
-          .select("id,business_name,description,island")
+          .select("id,business_name,description,island, is_verified, verified_at")
           .limit(30);
 
         if (isIslandWord(term)) {

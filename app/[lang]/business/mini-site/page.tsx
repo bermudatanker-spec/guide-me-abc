@@ -30,6 +30,9 @@ type ListingRow = {
   subscription_plan: string | null;
   status: string | null;
 
+  is_verified: boolean | null;
+  verified_at: string | null;
+
   highlight_1: string | null;
   highlight_2: string | null;
   highlight_3: string | null;
@@ -84,6 +87,8 @@ export default async function MiniSiteSettingsPage({ params }: PageProps) {
         owner_id,
         subscription_plan,
         status,
+        is_verified,
+        verified_at,
         highlight_1,
         highlight_2,
         highlight_3,
