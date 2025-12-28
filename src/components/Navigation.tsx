@@ -65,7 +65,10 @@ export default function Navigation({ lang }: NavigationProps) {
       { label: "Aruba", href: href("/islands/aruba") },
       { label: "Bonaire", href: href("/islands/bonaire") },
       { label: "Curaçao", href: href("/islands/curacao") },
-      { label: activeLang === "nl" ? "Bedrijven" : "Businesses", href: href("/business") },
+      {
+        label: activeLang === "nl" ? "Bedrijven" : "Businesses",
+        href: href("/business"),
+      },
       { label: "Blog", href: href("/blog") },
       { label: "FAQ", href: href("/faq") },
       { label: activeLang === "nl" ? "Contact" : "Contact", href: href("/contact") },
@@ -109,6 +112,7 @@ export default function Navigation({ lang }: NavigationProps) {
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="container mx-auto flex h-22 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href={`/${activeLang}`} className="flex items-center gap-3">
+            {/* ✅ MATEN LATEN ZOALS JIJ ZE ZETTE */}
             <div className="relative flex h-[100px] w-[150px] items-center">
               <ResponsiveImage
                 src="/images/logo_guide_me_abc.png"
@@ -149,6 +153,7 @@ export default function Navigation({ lang }: NavigationProps) {
                 {/* ✅ WhatsApp icoon groen */}
                 <MessageCircle className="h-5 w-5 text-[#25D366]" />
               </a>
+
               <a
                 href={mailHref}
                 onClick={() => fire("website", "site:email")}
@@ -173,8 +178,13 @@ export default function Navigation({ lang }: NavigationProps) {
               <button
                 type="button"
                 onClick={() => setLangOpen((v) => !v)}
-                // ✅ Ocean knop uit globals, maten gelijk gehouden (px-3 py-2 text-sm rounded-full)
-                className="inline-flex items-center gap-2 rounded-full border border-border button-gradient-ocean px-3 py-2 text-sm font-semibold text-white shadow-[0_4px_18px_rgba(0,0,0,0.18)] hover:opacity-95 transition"
+                // ✅ MATEN EXACT LATEN: px-3 py-2 text-sm rounded-full
+                className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-semibold text-white shadow-[0_4px_18px_rgba(0,0,0,0.18)] hover:opacity-95 transition"
+                // ✅ Ocean knopkleur (zonder afhankelijk te zijn van classnaam)
+                style={{
+                  background: "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
+                  boxShadow: "0 3px 8px rgba(0,191,211,0.25)",
+                }}
                 aria-label="Language"
                 aria-expanded={langOpen}
               >
@@ -183,8 +193,8 @@ export default function Navigation({ lang }: NavigationProps) {
               </button>
 
               {langOpen && (
-                // ✅ Dropdown glass EXACT zoals header
-                <div className="absolute right-0 mt-2 w-40 overflow-hidden rounded-xl bg-slate-900/40 backdrop-blur-x1 border border-white/25 shadow-[0_18px_45px_rgba(15,23,42,0.45)]">
+                // ✅ GLASS EFFECT (niet wit) + blur zoals header vibe
+                <div className="absolute right-0 mt-2 w-40 overflow-hidden rounded-xl border border-white/25 bg-slate-900/40 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.45)]">
                   {SUPPORTED.map((l) => (
                     <Link
                       key={l}
@@ -193,9 +203,10 @@ export default function Navigation({ lang }: NavigationProps) {
                         setLangOpen(false);
                         fire("route", "site:lang");
                       }}
+                      // ✅ Tekst wit (wat jij vroeg)
                       className={cx(
                         "block px-4 py-3 text-sm transition text-white",
-                        l === activeLang ? "bg-white/15 font-semibold text-foreground" : "hover:bg-white/10"
+                        l === activeLang ? "bg-white/15 font-semibold text-white" : "hover:bg-white/10"
                       )}
                     >
                       <span className="uppercase">{l}</span>
@@ -235,38 +246,38 @@ export default function Navigation({ lang }: NavigationProps) {
             aria-hidden="true"
           />
 
-          {/* ✅ Mobile panel glass EXACT zoals header */}
-          <nav className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/95">
-            {/* Close button */}
+          {/* ✅ Panel houdt je bestaande glass-gevoel */}
+          <nav className="fixed inset-0 z-50 flex flex-col bg-background/85 backdrop-blur">
+            {/* Close button (hersteld) */}
             <button
               onClick={() => setOpen(false)}
-              className="absolute right-0 mt-2 w-40 overflow-hidden rounded-xl bg-slate-900/40 backdrop-blur-x1 border border-white/25 shadow-[0_18px_45px_rgba(15,23,42,0.45)]">
+              className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/70 shadow-[0_6px_20px_rgba(0,0,0,0.22)]"
               aria-label={activeLang === "nl" ? "Sluit menu" : "Close menu"}
+            >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex flex-col h-full px-6 pt-20 pb-10 overflow-y-auto">
-              {/* Primary links */}
+              {/* Primary links (terug zoals het hoorde) */}
               <div className="flex flex-col">
-                {SUPPORTED.map((code: L) => (
+                {links.map((l) => (
                   <Link
-                key={`lang-${code}`}
-                href={switchTo(code)}
-                onClick={() => {
-                setOpen(false);
-                fire("route", "site:lang");
-              }}
-            className={cx(
-              "inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold border border-white/30 text-white",
-              code === activeLang
-              ? "bg-white/20"
-              : "bg-white/10 hover:bg-white/20"
-              )}
-                >
-              {code.toUpperCase()}
-                </Link>
+                    key={l.href}
+                    href={l.href}
+                    onClick={() => {
+                      setOpen(false);
+                      fire("route", "site:nav");
+                    }}
+                    className={cx(
+                      "py-5 text-lg font-medium border-b border-border/20 transition-colors",
+                      isActive(l.href) ? "text-primary" : "text-foreground"
+                    )}
+                  >
+                    {l.label}
+                  </Link>
                 ))}
               </div>
+
               {/* Actions */}
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 {/* ✅ WhatsApp knop groen */}
@@ -324,6 +335,8 @@ export default function Navigation({ lang }: NavigationProps) {
                 <div className="text-sm font-semibold text-muted-foreground mb-3">
                   {activeLang === "nl" ? "Taal" : "Language"}
                 </div>
+
+                {/* ✅ Tekst wit op mobiel (wat jij vroeg) */}
                 <div className="flex flex-wrap gap-2">
                   {SUPPORTED.map((l) => (
                     <Link
@@ -334,8 +347,10 @@ export default function Navigation({ lang }: NavigationProps) {
                         fire("route", "site:lang");
                       }}
                       className={cx(
-                        "inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold border border-border",
-                        l === activeLang ? "bg-muted text-foreground" : "bg-background text-muted-foreground hover:bg-muted/70"
+                        "inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold border border-white/20 backdrop-blur",
+                        l === activeLang
+                          ? "bg-white/20 text-white"
+                          : "bg-white/10 text-white/90 hover:bg-white/20"
                       )}
                     >
                       {l.toUpperCase()}
