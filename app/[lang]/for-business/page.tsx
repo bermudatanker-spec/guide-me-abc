@@ -1,5 +1,5 @@
 // src/app/[lang]/for-business/page.tsx
-import type React from "react";
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -9,17 +9,7 @@ import { buildLanguageAlternates } from "@/lib/seo/alternates";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Check,
-  Users,
-  MapPin,
-  Globe,
-  BarChart3,
-  MessageCircle,
-  Star,
-  ArrowRight,
-} from "lucide-react";
+import { Check, Users, MapPin, Globe, BarChart3, MessageCircle, Star, ArrowRight } from "lucide-react";
 
 type PageProps = {
   params: Promise<{ lang: string }>;
@@ -38,9 +28,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const lang: Locale = isLocale(raw) ? raw : "en";
   const t = dict(lang);
 
-  const title = `${t.forBusiness ?? "For Business"} | Guide Me ABC`;
+  // Gebruik je dict keys als ze bestaan, anders fallback
+  const title =
+    (t as any).forBusinessTitle ??
+    `${(t as any).forBusiness ?? "For Business"} | Guide Me ABC`;
+
   const description =
-    t.fbHeroSubtitle ??
+    (t as any).forBusinessDesc ??
+    (t as any).fbHeroSubtitle ??
     "Create your professional mini-site and reach customers on the ABC Islands with analytics, WhatsApp contact, reviews, and more.";
 
   const canonicalPath = `/${lang}${BASE_PATH}`;
@@ -139,13 +134,13 @@ const features: Feature[] = [
   { icon: Users, title: "Reach More Customers", description: "Connect with locals and tourists alike" },
 ];
 
-/* -------------------- Helpers: consistent CTA style -------------------- */
+/* -------------------- CTA styling -------------------- */
 const ctaClass =
   "inline-flex items-center justify-center rounded-xl px-6 py-3 text-base font-semibold text-white " +
   "transition-all duration-300 ease-out hover:scale-[1.02] " +
   "shadow-[0_6px_20px_rgba(0,191,211,0.25)]";
 
-const ctaStyle: React.CSSProperties = {
+const ctaStyle: CSSProperties = {
   background: "linear-gradient(90deg, #00BFD3 0%, rgba(0,191,211,0.12) 100%)",
 };
 
@@ -153,35 +148,61 @@ const ctaStyle: React.CSSProperties = {
 export default async function ForBusinessPage({ params }: PageProps) {
   const { lang: raw } = await params;
   const lang: Locale = isLocale(raw) ? raw : "en";
+  const t = dict(lang);
+
+  // Labels (met NL/EN fallback)
+  const badgeLabel = (t as any).forBusiness ?? "For Businesses";
+  const heroTitle = (t as any).fbHeroTitle ?? "Grow Your Business on the ABC Islands";
+  const heroSubtitle =
+    (t as any).fbHeroSubtitle ??
+    "Create your professional mini-site, reach thousands of potential customers, and grow your business with our all-in-one platform.";
+
+  // Belangrijk: laat de CTA altijd naar business/auth gaan (dat is jouw ondernemers login)
+  const businessAuthHref = `/${lang}/business/auth`;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero (boxed gradient + turquoise CTA) */}
+      {/* Hero */}
       <section className="pt-24 pb-16 bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
             <Badge className="mb-5 bg-primary/10 text-primary hover:bg-primary/20">
-              For Businesses
+              {badgeLabel}
             </Badge>
 
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">
-              Grow Your Business on the ABC Islands
+              {heroTitle}
             </h1>
 
             <p className="mt-6 text-xl text-muted-foreground">
-              Create your professional mini-site, reach thousands of potential customers,
-              and grow your business with our all-in-one platform.
+              {heroSubtitle}
             </p>
 
-            <div className="mt-8">
+            <div className="mt-8 flex items-center justify-center gap-3">
               <Link
-                href={`/${lang}/business/auth`}
+                href={businessAuthHref}
                 className={ctaClass}
                 style={ctaStyle}
                 aria-label="Start free trial for businesses"
               >
-                Get Started – Free Trial
+                {(t as any).fbHeroCta ?? "Get Started – Free Trial"}
                 <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
+              </Link>
+
+              {/* Extra: “Login” knop (handig voor jou én ondernemers) */}
+              <Link
+                href={businessAuthHref}
+                className="button-gradient
+                inline-flex items-center justify-center
+                rounded-xl px-6 py-3 text-base font-semibold
+                shadow-[0_10px_30px_rgba(0,0,0,0.28)]
+                hover:shadow-[0_14px_38px_rgba(0,0,0,0.36)]
+                hover:bg-muted
+                transition-all
+                "
+                aria-label="Business login"
+              >
+                {(t as any).menu_sign_in_business ?? "Business Login"}
               </Link>
             </div>
           </div>
@@ -191,11 +212,8 @@ export default async function ForBusinessPage({ params }: PageProps) {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Features */}
         <section className="mb-20" aria-labelledby="features-heading">
-          <h2
-            id="features-heading"
-            className="text-3xl font-bold mb-12 text-center text-foreground"
-          >
-            Everything You Need to Succeed
+          <h2 id="features-heading" className="text-3xl font-bold mb-12 text-center text-foreground">
+            {(t as any).fbFeaturesTitle ?? "Everything You Need to Succeed"}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -215,10 +233,10 @@ export default async function ForBusinessPage({ params }: PageProps) {
         <section className="mb-20" aria-labelledby="pricing-heading">
           <div className="text-center mb-12">
             <h2 id="pricing-heading" className="text-3xl font-bold mb-4 text-foreground">
-              Simple, Transparent Pricing
+              {(t as any).fbPricingTitle ?? "Simple, Transparent Pricing"}
             </h2>
             <p className="text-lg text-muted-foreground">
-              Choose the plan that fits your business. Upgrade anytime.
+              {(t as any).fbPricingSubtitle ?? "Choose the plan that fits your business. Upgrade anytime."}
             </p>
           </div>
 
@@ -231,7 +249,6 @@ export default async function ForBusinessPage({ params }: PageProps) {
                     ? "border-primary shadow-[0_0_0_1px_rgba(0,191,211,0.15),0_10px_30px_rgba(0,191,211,0.15)]"
                     : "border-border"
                 }`}
-                aria-label={`${plan.name} plan`}
               >
                 {plan.popular && (
                   <Badge
@@ -265,7 +282,7 @@ export default async function ForBusinessPage({ params }: PageProps) {
                   </ul>
 
                   <Link
-                    href={`/${lang}/business/auth`}
+                    href={businessAuthHref}
                     className={`${ctaClass} w-full justify-center`}
                     style={ctaStyle}
                     aria-label={`Choose ${plan.name} plan`}
@@ -278,50 +295,25 @@ export default async function ForBusinessPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* Social Proof (placeholder logos) */}
-        <section className="mb-20 text-center" aria-labelledby="trusted-heading">
-          <h2 id="trusted-heading" className="text-3xl font-bold mb-8 text-foreground">
-            Trusted by Local Businesses
-          </h2>
-
-          <div className="flex flex-wrap justify-center items-center gap-12 opacity-60">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="w-32 h-16 bg-muted rounded flex items-center justify-center"
-                aria-label={`Partner logo ${i + 1}`}
-              >
-                <span className="text-muted-foreground font-semibold">Logo {i + 1}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Final CTA – boxed */}
+        {/* Final CTA */}
         <section
           className="text-center rounded-2xl p-10 md:p-12"
           aria-labelledby="cta-heading"
           style={{
-            background:
-              "linear-gradient(180deg, rgba(0,191,211,0.10) 0%, rgba(0,191,211,0.04) 100%)",
-            boxShadow:
-              "0 12px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,191,211,0.10) inset",
+            background: "linear-gradient(180deg, rgba(0,191,211,0.10) 0%, rgba(0,191,211,0.04) 100%)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,191,211,0.10) inset",
           }}
         >
           <h2 id="cta-heading" className="text-3xl font-bold mb-4 text-foreground">
-            Ready to Grow Your Business?
+            {(t as any).fbFinalCtaTitle ?? "Ready to Grow Your Business?"}
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join hundreds of businesses already reaching more customers on the ABC Islands.
+            {(t as any).fbFinalCtaSubtitle ??
+              "Join hundreds of businesses already reaching more customers on the ABC Islands."}
           </p>
 
-          <Link
-            href={`/${lang}/business/auth`}
-            className={ctaClass}
-            style={ctaStyle}
-            aria-label="Start your free trial"
-          >
-            Start Your Free Trial
+          <Link href={businessAuthHref} className={ctaClass} style={ctaStyle}>
+            {(t as any).fbFinalCta ?? "Start Your Free Trial"}
             <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
           </Link>
         </section>

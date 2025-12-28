@@ -2,9 +2,11 @@
 import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 
+import MiniSiteActions from "@/components/business/MiniSiteActions";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isLocale, type Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
+
 import MiniSiteSettingsClient from "./MiniSiteSettingsClient";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +20,20 @@ type PageProps = {
 type ListingRow = {
   id: string;
   owner_id: string;
+
+  // ✅ actions fields (moeten in type staan want je select ze)
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  route_url: string | null;
+
   subscription_plan: string | null;
   status: string | null;
+
   highlight_1: string | null;
   highlight_2: string | null;
   highlight_3: string | null;
+
   social_instagram: string | null;
   social_facebook: string | null;
   social_tiktok: string | null;
@@ -45,7 +56,6 @@ export default async function MiniSiteSettingsPage({ params }: PageProps) {
   const { lang: rawLang } = await params;
   const lang: Locale = isLocale(rawLang) ? (rawLang as Locale) : "en";
 
-  // ✅ Bij jou is supabaseServer async
   const supabase = await supabaseServer();
 
   // 1) User ophalen
@@ -53,7 +63,6 @@ export default async function MiniSiteSettingsPage({ params }: PageProps) {
 
   if (userError) {
     console.error("[mini-site/settings] auth error", userError);
-    // Als auth faalt, stuur naar login (voorkomt rare “blank page”)
     redirect(langHref(lang, "/business/auth"));
   }
 
@@ -68,6 +77,10 @@ export default async function MiniSiteSettingsPage({ params }: PageProps) {
     .select(
       `
         id,
+        phone,
+        whatsapp,
+        email,
+        route_url,
         owner_id,
         subscription_plan,
         status,
@@ -91,7 +104,6 @@ export default async function MiniSiteSettingsPage({ params }: PageProps) {
   }
 
   if (!listing) {
-    // Geen PRO+ACTIVE listing → terug naar dashboard met hint
     redirect(langHref(lang, "/business/dashboard?mini=locked"));
   }
 
@@ -117,11 +129,22 @@ export default async function MiniSiteSettingsPage({ params }: PageProps) {
   };
 
   return (
-    <MiniSiteSettingsClient
-      lang={lang}
-      listingId={listing.id}
-      initialHighlights={initialHighlights}
-      initialSocials={initialSocials}
-    />
+    <>
+      <MiniSiteSettingsClient
+        lang={lang}
+        listingId={listing.id}
+        initialHighlights={initialHighlights}
+        initialSocials={initialSocials}
+      />
+
+      <MiniSiteActions
+        lang={lang}
+        businessId={listing.id}
+        phone={listing.phone ?? ""}
+        whatsapp={listing.whatsapp ?? ""}
+        email={listing.email ?? ""}
+        routeUrl={listing.route_url ?? ""}
+      />
+    </>
   );
 }
