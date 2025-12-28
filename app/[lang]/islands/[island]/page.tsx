@@ -4,10 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ResponsiveImage from "@/components/ResponsiveImage";
 
-/**
- * ✅ Next.js 16:
- * params worden als Promise geïnjecteerd (en soms ook searchParams, maar hier niet nodig).
- */
+import { isLocale, type Locale, LOCALES } from "@/i18n/config";
+import { buildLanguageAlternates } from "@/lib/seo/alternates";
+
 type PageProps = {
   params: Promise<{
     lang: string;
@@ -18,9 +17,6 @@ type PageProps = {
 export const dynamic = "force-dynamic";
 
 /* ----------------------------- Types ----------------------------- */
-
-const VALID_LANGS = ["en", "nl", "pap", "es"] as const;
-type Lang = (typeof VALID_LANGS)[number];
 
 const ISLANDS = ["aruba", "bonaire", "curacao"] as const;
 type IslandId = (typeof ISLANDS)[number];
@@ -48,7 +44,15 @@ type Copy = {
   }[];
 };
 
+type ActionDef = {
+  primary: Record<Locale, string>;
+  secondary: Record<Locale, string>;
+  secondaryQuery: string;
+};
+
 /* ----------------------------- Data ------------------------------ */
+
+const SITE_URL = "https://guide-me-abc.com";
 
 const ISLAND_BG: Record<IslandId, string> = {
   aruba: "/images/aruba-island.jpg",
@@ -56,7 +60,8 @@ const ISLAND_BG: Record<IslandId, string> = {
   curacao: "/images/curacao-island.jpg",
 };
 
-const COPY: Record<Lang, Record<IslandId, Copy>> = {
+// ✅ Jouw COPY object blijft exact hetzelfde, alleen type aangepast naar Locale
+const COPY: Record<Locale, Record<IslandId, Copy>> = {
   en: {
     aruba: {
       name: "Aruba",
@@ -658,8 +663,8 @@ const COPY: Record<Lang, Record<IslandId, Copy>> = {
   },
 };
 
-/* Category actions (labels + routes) */
-const ACTION_LABELS = {
+// ✅ Strikt getyped (geen any)
+const ACTION_LABELS: Record<CategorySlug, ActionDef> = {
   shops: {
     primary: {
       en: "View all shops",
@@ -685,7 +690,7 @@ const ACTION_LABELS = {
     secondary: {
       en: "Top-rated tours",
       nl: "Best beoordeelde tours",
-      pap: "Mihó Tournan evaluá ",
+      pap: "Mihó Tournan evaluá",
       es: "Tours mejor valorados",
     },
     secondaryQuery: "sort=rating_desc",
@@ -750,13 +755,12 @@ const ACTION_LABELS = {
     },
     secondaryQuery: "purpose=rent",
   },
-} as const;
+};
 
 /* ---------------------------- Helpers ---------------------------- */
 
-function parseLang(raw: string): Lang {
-  const v = (raw ?? "").toLowerCase().trim();
-  return (VALID_LANGS as readonly string[]).includes(v) ? (v as Lang) : "en";
+function parseLocale(raw: string): Locale {
+  return isLocale(raw) ? raw : "en";
 }
 
 function parseIsland(raw: string): IslandId | null {
@@ -764,18 +768,25 @@ function parseIsland(raw: string): IslandId | null {
   return (ISLANDS as readonly string[]).includes(v) ? (v as IslandId) : null;
 }
 
-function getCopy(lang: Lang, island: IslandId): Copy {
+function getCopy(lang: Locale, island: IslandId): Copy {
   const byLang = COPY[lang] ?? COPY.en;
   return byLang[island] ?? COPY.en[island];
 }
 
-function categoryActions(lang: Lang, island: IslandId, slug: keyof typeof ACTION_LABELS) {
-  const L = ACTION_LABELS[slug] as any;
+function categoryActions(lang: Locale, island: IslandId, slug: CategorySlug) {
+  const def = ACTION_LABELS[slug];
   const base = `/${lang}/islands/${island}/${slug}`;
+
   return [
-    { label: L.primary[lang] as string, href: base },
-    { label: L.secondary[lang] as string, href: `${base}?${L.secondaryQuery}` },
+    { label: def.primary[lang], href: base },
+    { label: def.secondary[lang], href: `${base}?${def.secondaryQuery}` },
   ] as const;
+}
+
+/* -------------------------- Static Params ------------------------ */
+
+export function generateStaticParams() {
+  return LOCALES.flatMap((lang) => ISLANDS.map((island) => ({ lang, island })));
 }
 
 /* -------------------------- Metadata ----------------------------- */
@@ -783,15 +794,17 @@ function categoryActions(lang: Lang, island: IslandId, slug: keyof typeof ACTION
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { lang: rawLang, island: rawIsland } = await params;
 
-  const lang = parseLang(rawLang);
+  const lang = parseLocale(rawLang);
   const island = parseIsland(rawIsland);
+
+  const metadataBase = new URL(SITE_URL);
 
   if (!island) {
     return {
       title: "Island not found | Guide Me ABC",
       description: "Please choose Aruba, Bonaire or Curaçao.",
       robots: { index: false, follow: false },
-      metadataBase: new URL("https://guide-me-abc.com"),
+      metadataBase,
     };
   }
 
@@ -799,36 +812,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const image = ISLAND_BG[island];
   const title = `${c.name} – ${c.tagline} | Guide Me ABC`;
 
-  // ✅ Record<string,string> → geen TS gezeur over pap/es keys
-  const languages: Record<string, string> = {
-    en: `/en/islands/${island}`,
-    nl: `/nl/islands/${island}`,
-    pap: `/pap/islands/${island}`,
-    es: `/es/islands/${island}`,
-  };
-
-  const canonical = `/${lang}/islands/${island}`;
+  const canonicalPath = `/${lang}/islands/${island}`;
 
   return {
     title,
     description: c.description,
-
-    // ✅ voorkomt "url rode kronkels" en helpt OG url typing
-    metadataBase: new URL("https://guide-me-abc.com"),
-
+    metadataBase,
     alternates: {
-      canonical,
-      languages,
+      canonical: canonicalPath,
+      languages: buildLanguageAlternates(LOCALES, `/islands/${island}`),
     },
-
     openGraph: {
       title,
       description: c.description,
-      url: canonical, // ✅ relative ok i.c.m. metadataBase
+      url: new URL(canonicalPath, SITE_URL).toString(), // ✅ absoluut (SEO/OG correct)
       type: "website",
       images: [{ url: image, width: 1200, height: 630, alt: `${c.name} hero` }],
     },
-
     twitter: {
       card: "summary_large_image",
       title,
@@ -843,7 +843,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function IslandPage({ params }: PageProps) {
   const { lang: rawLang, island: rawIsland } = await params;
 
-  const lang = parseLang(rawLang);
+  const lang = parseLocale(rawLang);
   const island = parseIsland(rawIsland);
 
   if (!island) notFound();
@@ -907,16 +907,15 @@ export default async function IslandPage({ params }: PageProps) {
                   style={{ boxShadow: "0 4px 20px hsl(220 15% 20% / .08)" }}
                 >
                   <div className="font-semibold">{cat.title}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{cat.subtitle}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {cat.subtitle}
+                  </div>
 
                   <div className="mt-3 flex flex-col items-center gap-2 text-sm">
                     <Link href={primary.href} className="text-primary font-medium hover:underline">
                       {primary.label} →
                     </Link>
-                    <Link
-                      href={secondary.href}
-                      className="text-muted-foreground hover:underline"
-                    >
+                    <Link href={secondary.href} className="text-muted-foreground hover:underline">
                       {secondary.label}
                     </Link>
                   </div>

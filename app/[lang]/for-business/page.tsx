@@ -1,12 +1,15 @@
-// app/[lang]/for-business/page.tsx
+// src/app/[lang]/for-business/page.tsx
 import type React from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { isLocale, type Locale } from "@/i18n/config";
+import { isLocale, type Locale, LOCALES } from "@/i18n/config";
 import { DICTS } from "@/i18n/dictionaries";
+import { buildLanguageAlternates } from "@/lib/seo/alternates";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Check,
   Users,
@@ -19,43 +22,42 @@ import {
 } from "lucide-react";
 
 type PageProps = {
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 };
-
-const dict = (l: Locale) => DICTS[l] ?? DICTS.en;
 
 export const dynamic = "force-dynamic";
 
+const SITE_URL = "https://guide-me-abc.com";
+const BASE_PATH = "/for-business";
+
+const dict = (l: Locale) => DICTS[l] ?? DICTS.en;
+
 /* -------------------- Metadata -------------------- */
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
-  const { lang: raw } = params;
-  const lang: Locale = isLocale(raw) ? (raw as Locale) : "en";
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
   const t = dict(lang);
 
-  const languages: Record<string, string> = {
-    en: "/en/for-business",
-    nl: "/nl/for-business",
-    pap: "/pap/for-business",
-    es: "/es/for-business",
-  };
+  const title = `${t.forBusiness ?? "For Business"} | Guide Me ABC`;
+  const description =
+    t.fbHeroSubtitle ??
+    "Create your professional mini-site and reach customers on the ABC Islands with analytics, WhatsApp contact, reviews, and more.";
+
+  const canonicalPath = `/${lang}${BASE_PATH}`;
 
   return {
-    title: t.forBusinessTitle ?? "For Business",
-    description:
-      t.forBusinessDesc ??
-      "Create your professional mini-site and reach customers on the ABC Islands with analytics, WhatsApp contact, reviews, and more.",
+    title,
+    description,
+    metadataBase: new URL(SITE_URL),
     alternates: {
-      canonical: `/${lang}/for-business`,
-      languages,
+      canonical: canonicalPath,
+      languages: buildLanguageAlternates(LOCALES, BASE_PATH),
     },
     openGraph: {
-      title: "For Business",
-      description:
-        t.forBusinessDesc ??
-        "Create your professional mini-site and reach customers on the ABC Islands.",
-      url: `/${lang}/for-business`,
+      title,
+      description,
+      url: new URL(canonicalPath, SITE_URL).toString(),
+      type: "website",
     },
   };
 }
@@ -129,36 +131,12 @@ type Feature = {
 };
 
 const features: Feature[] = [
-  {
-    icon: Globe,
-    title: "Professional Mini-Site",
-    description: "Beautiful, mobile-optimized presence",
-  },
-  {
-    icon: MapPin,
-    title: "Multi-Location Support",
-    description: "Manage all your branches easily",
-  },
-  {
-    icon: MessageCircle,
-    title: "Direct Customer Contact",
-    description: "WhatsApp integration for instant communication",
-  },
-  {
-    icon: Star,
-    title: "Customer Reviews",
-    description: "Build trust with authentic testimonials",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics & Insights",
-    description: "Track your performance and leads",
-  },
-  {
-    icon: Users,
-    title: "Reach More Customers",
-    description: "Connect with locals and tourists alike",
-  },
+  { icon: Globe, title: "Professional Mini-Site", description: "Beautiful, mobile-optimized presence" },
+  { icon: MapPin, title: "Multi-Location Support", description: "Manage all your branches easily" },
+  { icon: MessageCircle, title: "Direct Customer Contact", description: "WhatsApp integration for instant communication" },
+  { icon: Star, title: "Customer Reviews", description: "Build trust with authentic testimonials" },
+  { icon: BarChart3, title: "Analytics & Insights", description: "Track your performance and leads" },
+  { icon: Users, title: "Reach More Customers", description: "Connect with locals and tourists alike" },
 ];
 
 /* -------------------- Helpers: consistent CTA style -------------------- */
@@ -173,8 +151,8 @@ const ctaStyle: React.CSSProperties = {
 
 /* -------------------- Page -------------------- */
 export default async function ForBusinessPage({ params }: PageProps) {
-  const { lang: raw } = params;
-  const lang: Locale = isLocale(raw) ? (raw as Locale) : "en";
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
 
   return (
     <div className="min-h-screen bg-background">
@@ -191,8 +169,8 @@ export default async function ForBusinessPage({ params }: PageProps) {
             </h1>
 
             <p className="mt-6 text-xl text-muted-foreground">
-              Create your professional mini-site, reach thousands of potential
-              customers, and grow your business with our all-in-one platform.
+              Create your professional mini-site, reach thousands of potential customers,
+              and grow your business with our all-in-one platform.
             </p>
 
             <div className="mt-8">
@@ -219,17 +197,13 @@ export default async function ForBusinessPage({ params }: PageProps) {
           >
             Everything You Need to Succeed
           </h2>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map(({ icon: Icon, title, description }) => (
               <Card key={title} className="border-border">
                 <CardContent className="p-6">
-                  <Icon
-                    className="h-10 w-10 text-primary mb-4"
-                    aria-hidden="true"
-                  />
-                  <h3 className="font-semibold text-lg text-foreground mb-2">
-                    {title}
-                  </h3>
+                  <Icon className="h-10 w-10 text-primary mb-4" aria-hidden="true" />
+                  <h3 className="font-semibold text-lg text-foreground mb-2">{title}</h3>
                   <p className="text-muted-foreground">{description}</p>
                 </CardContent>
               </Card>
@@ -240,10 +214,7 @@ export default async function ForBusinessPage({ params }: PageProps) {
         {/* Pricing */}
         <section className="mb-20" aria-labelledby="pricing-heading">
           <div className="text-center mb-12">
-            <h2
-              id="pricing-heading"
-              className="text-3xl font-bold mb-4 text-foreground"
-            >
+            <h2 id="pricing-heading" className="text-3xl font-bold mb-4 text-foreground">
               Simple, Transparent Pricing
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -266,8 +237,7 @@ export default async function ForBusinessPage({ params }: PageProps) {
                   <Badge
                     className="absolute -top-3 left-1/2 -translate-x-1/2 text-white font-medium border-0 shadow-sm"
                     style={{
-                      background:
-                        "linear-gradient(90deg, #00BFD3 0%, rgba(0,191,211,0.12) 100%)",
+                      background: "linear-gradient(90deg, #00BFD3 0%, rgba(0,191,211,0.12) 100%)",
                       boxShadow: "0 4px 12px rgba(0,191,211,0.35)",
                     }}
                   >
@@ -276,28 +246,20 @@ export default async function ForBusinessPage({ params }: PageProps) {
                 )}
 
                 <CardContent className="p-6">
-                  <h3 className="text-2xl font-bold text-foreground mb-2">
-                    {plan.name}
-                  </h3>
+                  <h3 className="text-2xl font-bold text-foreground mb-2">{plan.name}</h3>
+
                   <div className="mb-4">
-                    <span className="text-4xl font-bold text-foreground">
-                      {plan.price}
-                    </span>
+                    <span className="text-4xl font-bold text-foreground">{plan.price}</span>
                     <span className="text-muted-foreground">{plan.period}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    {plan.description}
-                  </p>
+
+                  <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
+
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <Check
-                          className="h-5 w-5 text-primary shrink-0 mt-0.5"
-                          aria-hidden="true"
-                        />
-                        <span className="text-sm text-foreground">
-                          {feature}
-                        </span>
+                        <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                        <span className="text-sm text-foreground">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -318,12 +280,10 @@ export default async function ForBusinessPage({ params }: PageProps) {
 
         {/* Social Proof (placeholder logos) */}
         <section className="mb-20 text-center" aria-labelledby="trusted-heading">
-          <h2
-            id="trusted-heading"
-            className="text-3xl font-bold mb-8 text-foreground"
-          >
+          <h2 id="trusted-heading" className="text-3xl font-bold mb-8 text-foreground">
             Trusted by Local Businesses
           </h2>
+
           <div className="flex flex-wrap justify-center items-center gap-12 opacity-60">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -331,9 +291,7 @@ export default async function ForBusinessPage({ params }: PageProps) {
                 className="w-32 h-16 bg-muted rounded flex items-center justify-center"
                 aria-label={`Partner logo ${i + 1}`}
               >
-                <span className="text-muted-foreground font-semibold">
-                  Logo {i + 1}
-                </span>
+                <span className="text-muted-foreground font-semibold">Logo {i + 1}</span>
               </div>
             ))}
           </div>
@@ -354,8 +312,7 @@ export default async function ForBusinessPage({ params }: PageProps) {
             Ready to Grow Your Business?
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join hundreds of businesses already reaching more customers on the ABC
-            Islands.
+            Join hundreds of businesses already reaching more customers on the ABC Islands.
           </p>
 
           <Link

@@ -3,7 +3,7 @@ import type { Locale } from "./config";
 
 export type Dict = Record<string, string>;
 
-export const DICTS: Record<Locale, Dict> = {
+export const DICTS = {
   en: {
     // Navigation / common
     forBusiness: "For Business",
@@ -461,4 +461,4 @@ export const DICTS: Record<Locale, Dict> = {
     closed_temporarily: "Temporalmente sera",
     closed_temporarily_long: "E negoshi aki ta temporalmente sera.",
   },
-};
+}satisfies Record<Locale, Dict>;

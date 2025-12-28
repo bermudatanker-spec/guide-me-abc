@@ -1,47 +1,55 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ResponsiveImage from "@/components/ResponsiveImage";
-import { isLocale, type Locale } from "@/i18n/config";
+import { isLocale, type Locale, LOCALES } from "@/i18n/config";
 import { Button } from "@/components/ui/button";
+import { buildLanguageAlternates } from "@/lib/seo/alternates";
 
-// ✅ Next 16 type definitie: params is een Promise
 type PageProps = {
   params: Promise<{ lang: string }>;
 };
 
 export const dynamic = "force-dynamic";
 
+const SITE_URL = "https://guide-me-abc.com";
+const BASE_PATH = "/islands";
+
+export function generateStaticParams() {
+  return LOCALES.map((lang) => ({ lang }));
+}
+
 /* SEO */
-export async function generateMetadata(
-  { params }: PageProps
-): Promise<Metadata> {
-  const { lang: raw } = await params; // ✅ Verplichte await voor params
-  const lang = isLocale(raw) ? (raw as Locale) : "en";
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
 
   const title = "ABC Islands | Guide Me ABC";
   const description =
     "Discover Aruba, Bonaire, and Curaçao — pristine beaches, vibrant culture, and local highlights across the Caribbean.";
 
-  const languages: Record<string, string> = {
-    en: "/en/islands",
-    nl: "/nl/islands",
-    pap: "/pap/islands",
-    es: "/es/islands",
-  };
+  const canonicalPath = `/${lang}${BASE_PATH}`;
 
   return {
     title,
     description,
-    metadataBase: new URL('https://guide-me-abc.com'),
-    alternates: { languages },
-    openGraph: { title, description, url: `/${lang}/islands` },
+    metadataBase: new URL(SITE_URL),
+    alternates: {
+      canonical: canonicalPath,
+      languages: buildLanguageAlternates(LOCALES, BASE_PATH),
+    },
+    openGraph: {
+      title,
+      description,
+      url: new URL(canonicalPath, SITE_URL).toString(),
+      type: "website",
+    },
   };
 }
 
 /* Page Component */
 export default async function IslandsIndex({ params }: PageProps) {
-  const { lang: raw } = await params; // ✅ Verplichte await voor params
-  const lang = isLocale(raw) ? (raw as Locale) : "en";
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
 
   const islands = [
     {
@@ -113,7 +121,9 @@ export default async function IslandsIndex({ params }: PageProps) {
             <div className="p-6 flex-1 flex flex-col">
               <h2 className="text-2xl font-bold mb-1">{i.name}</h2>
               <p className="text-primary font-medium mb-3">{i.tagline}</p>
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">{i.desc}</p>
+              <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                {i.desc}
+              </p>
 
               <h3 className="text-sm font-semibold mb-2 text-foreground">
                 Highlights:
@@ -129,15 +139,12 @@ export default async function IslandsIndex({ params }: PageProps) {
                   asChild
                   className="w-full font-semibold text-white transition-opacity hover:opacity-90"
                   style={{
-                    background:
-                      "linear-gradient(90deg, #00BFD3 0%, #00E0A1 100%)",
+                    background: "linear-gradient(90deg, #00BFD3 0%, #00E0A1 100%)",
                     boxShadow:
                       "0 4px 12px rgba(0,191,211,0.45), 0 0 18px rgba(0,191,211,0.35)",
                   }}
                 >
-                  <Link href={`/${lang}/islands/${i.id}`}>
-                    Explore {i.name}
-                  </Link>
+                  <Link href={`/${lang}/islands/${i.id}`}>Explore {i.name}</Link>
                 </Button>
               </div>
             </div>

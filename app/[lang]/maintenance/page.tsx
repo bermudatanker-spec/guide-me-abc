@@ -1,18 +1,18 @@
-// app/[lang]/maintenance/page.tsx (voorbeeldpad)
-// of waar jouw maintenance route ook staat
-
+// src/app/[lang]/maintenance/page.tsx
 import type { Metadata } from "next";
-import { isLocale, type Locale } from "@/i18n/config";
+import { isLocale, type Locale, LOCALES } from "@/i18n/config";
+import { buildLanguageAlternates } from "@/lib/seo/alternates";
 
 type PageProps = {
   params: Promise<{ lang: string }>;
 };
 
 const SITE_URL = "https://guide-me-abc.com";
+const BASE_PATH = "/maintenance";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { lang: raw } = await params;
-  const lang: Locale = isLocale(raw) ? (raw as Locale) : "en";
+  const lang: Locale = isLocale(raw) ? raw : "en";
   const isNl = lang === "nl";
 
   const title = isNl ? "Onderhoud | Guide Me ABC" : "Maintenance | Guide Me ABC";
@@ -20,20 +20,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? "Guide Me ABC is tijdelijk niet beschikbaar vanwege onderhoud."
     : "Guide Me ABC is temporarily unavailable due to maintenance.";
 
-  const languages: Record<string, string> = {
-    en: "/en/maintenance",
-    nl: "/nl/maintenance",
-    pap: "/pap/maintenance",
-    es: "/es/maintenance",
-  };
-
   return {
     title,
     description,
     metadataBase: new URL(SITE_URL),
     alternates: {
-      canonical: `/${lang}/maintenance`,
-      languages,
+      canonical: `/${lang}${BASE_PATH}`,
+      languages: buildLanguageAlternates(LOCALES, BASE_PATH),
     },
     robots: {
       index: false,
@@ -51,7 +44,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title,
       description,
-      url: `/${lang}/maintenance`,
+      // OpenGraph URLs should be absolute
+      url: new URL(`/${lang}${BASE_PATH}`, SITE_URL).toString(),
       type: "website",
     },
   };
@@ -59,7 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function MaintenancePage({ params }: PageProps) {
   const { lang: raw } = await params;
-  const lang: Locale = isLocale(raw) ? (raw as Locale) : "en";
+  const lang: Locale = isLocale(raw) ? raw : "en";
   const isNl = lang === "nl";
 
   return (
@@ -80,9 +74,7 @@ export default async function MaintenancePage({ params }: PageProps) {
         </p>
 
         <p className="text-xs text-muted-foreground">
-          {isNl
-            ? "Bedankt voor je geduld."
-            : "Thanks for your patience."}
+          {isNl ? "Bedankt voor je geduld." : "Thanks for your patience."}
         </p>
       </div>
     </main>
