@@ -1,73 +1,103 @@
-// app/[lang]/layout.tsx
+// src/app/[lang]/layout.tsx
 import type { ReactNode } from "react";
+import { Suspense } from "react";
+import type { Metadata } from "next";
 
 import ClientRoot from "../ClientRoot";
-import { isLocale, type Locale } from "@/i18n/config";
+import { isLocale, type Locale, LOCALES } from "@/i18n/config";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
-// Aanrader als maintenance/user altijd up-to-date moet zijn:
+type LayoutProps = {
+  children: ReactNode;
+  params: Promise<{ lang: string }>;
+};
+
 export const dynamic = "force-dynamic";
 
-function normalizeLang(raw: string): Locale {
-  return isLocale(raw) ? (raw as Locale) : "en";
-}
-
-function normalizeRoles(input: unknown): string[] {
-  if (Array.isArray(input)) return input.map((r) => String(r).toLowerCase());
-  if (typeof input === "string") return [input.toLowerCase()];
-  return [];
-}
-
-export default async function LangLayout({
-  children,
-  params,
+/** SEO: per-locale canonical + alternates */
+export async function generateMetadata({
+  params,
 }: {
-  children: ReactNode;
-  params: Promise<{ lang: string }>;
-}) {
-  const { lang: raw } = await params;
-  const lang = normalizeLang(raw);
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
 
-  // Settings + user parallel ophalen
-  const [settings, user] = await Promise.all([
-    getPlatformSettings(),
-    (async () => {
-      const supabase = await supabaseServer();
-      const { data } = await supabase.auth.getUser();
-      return data.user ?? null;
-    })(),
-  ]);
+  return {
+    metadataBase: new URL("https://guide-me-abc.com"),
+    alternates: {
+      canonical: `/${lang}`,
+      languages: Object.fromEntries(
+        LOCALES.map((l) => [l, `/${l}`])
+      ) as Record<string, string>,
+    },
+  };
+}
 
-  const roles = normalizeRoles((user?.app_metadata as Record<string, unknown> | null)?.roles);
-  const isSuperAdmin = roles.includes("super_admin") || roles.includes("superadmin");
-  const maintenanceOn = Boolean(settings?.maintenance_mode);
+function LoadingShell() {
+  return (
+    <main className="min-h-dvh flex items-center justify-center px-4">
+      <span className="text-sm text-muted-foreground">
+        Guide Me ABC wordt geladen…
+      </span>
+    </main>
+  );
+}
 
-  if (maintenanceOn && !isSuperAdmin) {
-    const isNl = lang === "nl";
+export default async function LangLayout({ children, params }: LayoutProps) {
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
 
-    return (
-      <main className="min-h-dvh flex items-center justify-center px-4">
-        <div className="max-w-md text-center space-y-4">
-          <h1 className="text-2xl font-semibold">
-            {isNl ? "Tijdelijk niet beschikbaar" : "Temporarily unavailable"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isNl
-              ? "Guide Me ABC is tijdelijk in onderhoud. Probeer het later opnieuw."
-              : "Guide Me ABC is currently under maintenance. Please try again later."}
-          </p>
-        </div>
-      </main>
-    );
-  }
+  // Settings + user parallel
+  const [settings, user] = await Promise.all([
+    getPlatformSettings(),
+    (async () => {
+      const supabase = await supabaseServer();
+      const { data } = await supabase.auth.getUser();
+      return data.user ?? null;
+    })(),
+  ]);
 
-  return (
-    <ClientRoot lang={lang}>
-      {/* BELANGRIJK: geen <main> wrapper hier om nested-main/layout issues te voorkomen */}
-      <div id="page-content" className="min-h-dvh pt-16">
-        {children}
-      </div>
-    </ClientRoot>
-  );
+  // Rollen robuust normaliseren (array OF string)
+  const rawRoles = (user?.app_metadata as any)?.roles;
+
+  let roles: string[] = [];
+  if (Array.isArray(rawRoles)) {
+    roles = rawRoles.map((r: any) => String(r).toLowerCase());
+  } else if (typeof rawRoles === "string") {
+    roles = [rawRoles.toLowerCase()];
+  }
+
+  const isSuperAdmin =
+    roles.includes("super_admin") || roles.includes("superadmin");
+
+  // Maintenance lock (behalve super_admin)
+  if (settings?.maintenance_mode && !isSuperAdmin) {
+    const isNl = lang === "nl";
+    return (
+      <main className="min-h-dvh flex items-center justify-center px-4">
+        <div className="max-w-md text-center space-y-4">
+          <h1 className="text-2xl font-semibold">
+            {isNl ? "Tijdelijk niet beschikbaar" : "Temporarily unavailable"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isNl
+              ? "Guide Me ABC is tijdelijk in onderhoud. Probeer het later opnieuw."
+              : "Guide Me ABC is currently under maintenance. Please try again later."}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <Suspense fallback={<LoadingShell />}>
+      <ClientRoot lang={lang}>
+        <main id="page-content" className="min-h-dvh pt-16">
+          {children}
+        </main>
+      </ClientRoot>
+    </Suspense>
+  );
 }

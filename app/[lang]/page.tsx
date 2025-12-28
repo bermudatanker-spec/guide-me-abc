@@ -1,81 +1,61 @@
-// app/[lang]/layout.tsx
-import type { ReactNode } from "react";
-import { Suspense } from "react";
+// app/[lang]/page.tsx
+import type { Metadata } from "next";
 
-import ClientRoot from "../ClientRoot";
 import { isLocale, type Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
-import { getPlatformSettings } from "@/lib/platform-settings";
 
-export default async function LangLayout({
-  params,
-}: {
-  params: Promise<{ lang: string }>;
-}) {
-  // ✅ nieuwe Next.js manier: params eerst awaiten
-  const { lang: raw } = await params;
-  const lang: Locale = isLocale(raw) ? raw : "en";
+import Hero from "@/components/home/Hero";
+import QuickFilters from "@/components/home/QuickFilters";
+import FeaturedExperiences from "@/components/home/FeaturedExperiences";
+import IslandsOverview from "@/components/home/IslandsOverview";
+import LocalTips from "@/components/home/LocalTips";
+import SearchBar from "@/components/home/SearchBar";
 
-  // 1) Settings + user parallel ophalen
-  const [settings, user] = await Promise.all([
-    getPlatformSettings(),
-    (async () => {
-      const supabase = await supabaseServer(); // ✅ supabaseServer is async
-      const { data } = await supabase.auth.getUser();
-      return data.user ?? null;
-    })(),
-  ]);
+type PageProps = {
+  // Next.js 16: params is Promise + runtime is altijd string
+  params: Promise<{ lang: string }>;
+};
 
-  // 2) Rollen normaliseren
-  let roles: string[] = [];
-  const rawRoles = (user?.app_metadata as any)?.roles;
+export const dynamic = "force-dynamic";
 
-  if (Array.isArray(rawRoles)) {
-    roles = rawRoles.map((r: any) => String(r).toLowerCase());
-  } else if (typeof rawRoles === "string") {
-    roles = [rawRoles.toLowerCase()];
-  }
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
 
-  const isSuperAdmin =
-    roles.includes("super_admin") || roles.includes("superadmin");
+  const title =
+    lang === "nl"
+      ? "Guide Me ABC – Ontdek Aruba, Bonaire & Curaçao"
+      : "Guide Me ABC – Discover the ABC Islands";
 
-  const maintenanceOn = settings?.maintenance_mode;
+  const description =
+    lang === "nl"
+      ? "Vind lokale bedrijven, activiteiten en hidden gems op Aruba, Bonaire en Curaçao. Voor toeristen én lokale ondernemers."
+      : "Find the best beaches, restaurants, tours and trusted local businesses on Aruba, Bonaire and Curaçao.";
 
-  // 3) Maintenance-lock voor iedereen behalve super_admin
-  if (maintenanceOn && !isSuperAdmin) {
-    const isNl = lang === "nl";
+  return { title, description };
+}
 
-    return (
-      <main className="min-h-dvh flex items-center justify-center px-4">
-        <div className="max-w-md text-center space-y-4">
-          <h1 className="text-2xl font-semibold">
-            {isNl ? "Tijdelijk niet beschikbaar" : "Temporarily unavailable"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isNl
-              ? "Guide Me ABC is tijdelijk in onderhoud. Probeer het later opnieuw."
-              : "Guide Me ABC is currently under maintenance. Please try again later."}
-          </p>
-        </div>
-      </main>
-    );
-  }
+export default async function HomePage({ params }: PageProps) {
+  const { lang: raw } = await params;
+  const lang: Locale = isLocale(raw) ? raw : "en";
 
-  // 4) Normale layout
-  return (
-    <Suspense
-      fallback={
-        <main className="min-h-dvh flex items-center justify-center">
-          <span className="text-sm text-muted-foreground">
-            Guide Me ABC wordt geladen…
-          </span>
-        </main>
-      }
-    >
-      <ClientRoot lang={lang}>
-        <main id="page-content" className="min-h-dvh pt-16">
-        </main>
-      </ClientRoot>
-    </Suspense>
-  );
+  return (
+    <main className="min-h-screen bg-[#fdf7f1] text-slate-900">
+      <section className="pb-32">
+        <Hero lang={lang} />
+
+        <div className="mt-[-80px] flex justify-center px-4 sm:px-6 lg:px-8">
+          <div className="w-full max-w-[880px]">
+            <SearchBar lang={lang} />
+          </div>
+        </div>
+      </section>
+
+      <div className="px-4 sm:px-6 lg:px-10 max-w-6xl mx-auto pb-16 space-y-10">
+        <QuickFilters lang={lang} />
+        <FeaturedExperiences lang={lang} />
+        <IslandsOverview lang={lang} />
+        <LocalTips lang={lang} />
+      </div>
+    </main>
+  );
 }

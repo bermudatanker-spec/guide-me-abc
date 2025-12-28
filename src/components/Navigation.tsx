@@ -196,14 +196,9 @@ export default function Navigation({ lang }: NavigationProps) {
             {/* Voor bedrijven (desktop) */}
             <Button
               asChild
-              className="font-semibold text-white shadow-md transition-transform duration-150 hover:scale-[1.02]"
-              style={{
-                background:
-                  "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)",
-                boxShadow: "0 3px 10px rgba(255,122,79,0.3)",
-              }}
+              className="button-gradient font-semibold text-white shadow-md transition-transform duration-150 hover:scale-[1.02]"
             >
-              <Link href={`/${activeLang}/business/auth`}>
+              <Link href={`/${activeLang}/for-business`}>
                 {Lbl.forBusiness}
               </Link>
             </Button>
@@ -309,15 +304,10 @@ export default function Navigation({ lang }: NavigationProps) {
                 {/* Voor bedrijven (mobile) */}
                 <Button
                   asChild
-                  className="w-full text-white font-semibold transition hover:scale-[1.02]"
-                  style={{
-                    background:
-                      "linear-gradient(90deg, #FF7A4F 0%, #FF946C 100%)",
-                    boxShadow: "0 3px 10px rgba(255,122,79,0.3)",
-                  }}
+                  className="button-gradient w-full text-white font-semibold rounded-full py-6 transition hover:scale-[1.02]"
                 >
                   <Link
-                    href={`/${activeLang}/business/auth`}
+                    href={`/${activeLang}/for-business`}
                     onClick={() => setOpen(false)}
                   >
                     {Lbl.forBusiness}

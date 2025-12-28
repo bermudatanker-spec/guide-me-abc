@@ -67,12 +67,7 @@ export default function Hero({ lang }: HeroProps) {
               <Button
                 asChild
                 size="lg"
-                className="text-white font-semibold transition-transform duration-300 ease-out hover:scale-105"
-                style={{
-                  background:
-                    "linear-gradient(90deg, #00BFD3 0%, #009EC2 100%)",
-                  boxShadow: "0 6px 16px rgba(0,191,211,0.45)",
-                }}
+                className="button-gradient-ocean text-white font-semibold transition-transform duration-300 ease-out hover:scale-105"
               >
                 <Link href={`/${activeLang}/islands`}>{ctaExplore}</Link>
               </Button>
@@ -80,14 +75,9 @@ export default function Hero({ lang }: HeroProps) {
               <Button
                 asChild
                 size="lg"
-                className="text-white font-semibold transition-transform duration-300 ease-out hover:scale-105"
-                style={{
-                  background:
-                    "linear-gradient(90deg, #FF7A4F 0%, #FFA07A 100%)",
-                  boxShadow: "0 6px 16px rgba(255,122,79,0.45)",
-                }}
+                className="button-gradient text-white font-semibold transition-transform duration-300 ease-out hover:scale-105"
               >
-                <Link href={`/${activeLang}/business/auth`}>
+                <Link href={`/${activeLang}/for-business`}>
                   {ctaBusiness}
                 </Link>
               </Button>

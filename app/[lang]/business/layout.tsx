@@ -10,7 +10,9 @@ export default async function BusinessLayout({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const locale: Locale = isLocale(lang) ? lang : "en";
+  const locale: Locale = isLocale(lang) ? ( lang as Locale ) : "en";
+
+void locale;
 
   return <>{children}</>;
 }
