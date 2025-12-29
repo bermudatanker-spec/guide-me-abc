@@ -8,8 +8,8 @@ import type { Locale } from "@/i18n/config";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { langHref } from "@/lib/lang-href";
 import { getLangFromPath } from "@/lib/locale-path";
-import { useToast } from "@/hooks/use-toast";
 import { getRoleFlags } from "@/lib/auth/get-role-flags";
+import { useToast } from "@/hooks/use-toast";
 
 import VerifiedBadge from "@/components/business/VerifiedBadge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import {
 
 type Props = {
   lang: Locale;
-  t?: Record<string, string>;
+  t: Record<string, string>;
 };
 
 function normalizePlan(p: unknown): Plan {
@@ -48,7 +48,7 @@ function normalizeStatus(s: unknown): ListingStatus {
   return "pending";
 }
 
-export default function AdminBusinessesClient({ lang, t = {} }: Props) {
+export default function AdminBusinessesClient({ lang, t }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const resolvedLang = (getLangFromPath(pathname) || lang) as Locale;
@@ -61,11 +61,12 @@ export default function AdminBusinessesClient({ lang, t = {} }: Props) {
 
   const [listings, setListings] = useState<DashboardListingRow[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  // 1) Auth + super_admin gate
+  // 1) Auth gate (super_admin required)
   useEffect(() => {
     let alive = true;
 
@@ -85,10 +86,9 @@ export default function AdminBusinessesClient({ lang, t = {} }: Props) {
       }
 
       const flags = getRoleFlags(data.user);
-      const ok = !!flags?.isSuperAdmin;
-      setIsSuperAdmin(ok);
+      setIsSuperAdmin(flags.isSuperAdmin);
 
-      if (!ok) {
+      if (!flags.isSuperAdmin) {
         router.replace(langHref(resolvedLang, "/business/dashboard"));
         return;
       }
@@ -147,6 +147,7 @@ export default function AdminBusinessesClient({ lang, t = {} }: Props) {
     setBusyId(rowId);
     try {
       const res = await fn();
+
       if (!res?.ok) {
         toast({
           title: "Fout",
@@ -169,7 +170,11 @@ export default function AdminBusinessesClient({ lang, t = {} }: Props) {
     }
   }
 
-  // ✅ Actions — veilig: actions.ts resolved listingId/businessId zelf
+  /**
+   * ✅ Belangrijk:
+   * Jouw actions.ts kan "listingId OR businessId" aan (idOrBusinessId),
+   * dus we geven overal gewoon row.id door. Super consistent.
+   */
   function setStatus(row: DashboardListingRow, status: ListingStatus) {
     return runBusy(row.id, () => adminSetListingStatusAction(resolvedLang, row.id, status));
   }
@@ -198,6 +203,7 @@ export default function AdminBusinessesClient({ lang, t = {} }: Props) {
     return runBusy(row.id, () => adminSoftDeleteBusinessAction(resolvedLang, row.id));
   }
 
+  // optional
   function restore(row: DashboardListingRow) {
     return runBusy(row.id, () => adminRestoreBusinessAction(resolvedLang, row.id));
   }
@@ -214,6 +220,7 @@ export default function AdminBusinessesClient({ lang, t = {} }: Props) {
         const status = (r.status ?? "").toString().toLowerCase();
         const plan = (r.subscription?.plan ?? "").toString().toLowerCase();
         const owner = (r.owner_id ?? "").toString().toLowerCase();
+
         return (
           name.includes(q) ||
           island.includes(q) ||
@@ -245,6 +252,7 @@ export default function AdminBusinessesClient({ lang, t = {} }: Props) {
     );
   }
 
+  // redirect gebeurt al in effect; dit is alleen fallback
   if (!isSuperAdmin) return null;
 
   return (
@@ -373,7 +381,7 @@ export default function AdminBusinessesClient({ lang, t = {} }: Props) {
                             {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                           </Button>
 
-                          {/* Restore knop (optioneel) */}
+                          {/* Optioneel: restore knop */}
                           {/* <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => restore(r)}>
                             Restore
                           </Button> */}
