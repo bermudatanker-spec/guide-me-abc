@@ -1,5 +1,6 @@
 import type { Locale } from "@/i18n/config";
 import AdminBusinessesClient from "./ui/AdminBusinessesClient";
+import { requireSuperAdmin } from "@/lib/auth/requireSuperAdmin";
 
 type PageProps = {
   params: Promise<{ lang: Locale }>;
@@ -8,7 +9,8 @@ type PageProps = {
 export default async function AdminBusinessesPage({ params }: PageProps) {
   const { lang } = await params;
 
-  const t: Record<string, string> = {}
-  
-  return <AdminBusinessesClient lang={lang} t={t} />;
+  // extra server-guard (middleware doet het al, maar dit is veilig)
+  await requireSuperAdmin(lang);
+
+  return <AdminBusinessesClient lang={lang} t={{}} />;
 }
