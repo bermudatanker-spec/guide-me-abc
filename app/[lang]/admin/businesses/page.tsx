@@ -7,5 +7,8 @@ type PageProps = {
 
 export default async function AdminBusinessesPage({ params }: PageProps) {
   const { lang } = await params;
-  return <AdminBusinessesClient lang={lang} t={{}} />;
+
+  const t: Record<string, string> = {}
+  
+  return <AdminBusinessesClient lang={lang} t={t} />;
 }
