@@ -79,19 +79,18 @@ function getRolesFromUser(user: unknown): string[] {
   const u = user as any;
   const meta = u?.app_metadata ?? {};
 
-  const raw = meta?.roles ?? meta?.role ?? (u?.role ?? null);
+  const raw =
+    meta.roles ??
+    meta.role ??
+    u?.role ??
+    u?.user_metadata?.role ??
+    u?.user_metadata?.roles ??
+    [];
 
-  if (!raw) return [];
-
-  if (Array.isArray(raw)) {
-    return raw.map((r) => String(r).toLowerCase().trim()).filter(Boolean);
-  }
-
-  if (typeof raw === "string") {
-    return [raw.toLowerCase().trim()];
-  }
-
-  return [];
+  const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return arr
+    .map((r) => String(r).trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function isSuperAdminUser(roles: string[]): boolean {

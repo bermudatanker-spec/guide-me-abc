@@ -175,38 +175,47 @@ export default function AdminBusinessesClient({ lang, t }: Props) {
    * Jouw actions.ts kan "listingId OR businessId" aan (idOrBusinessId),
    * dus we geven overal gewoon row.id door. Super consistent.
    */
-  function setStatus(row: DashboardListingRow, status: ListingStatus) {
-    return runBusy(row.id, () => adminSetListingStatusAction(resolvedLang, row.id, status));
-  }
+function setStatus(row: DashboardListingRow, status: ListingStatus) {
+  return runBusy(row.id, () =>
+    adminSetListingStatusAction(resolvedLang, row.id, status)
+  );
+}
 
-  function setPlan(row: DashboardListingRow, plan: Plan) {
-    return runBusy(row.id, () => adminSetListingPlanAction(resolvedLang, row.id, plan));
-  }
+function setPlan(row: DashboardListingRow, plan: Plan) {
+  return runBusy(row.id, () =>
+    adminSetListingPlanAction(resolvedLang, row.id, plan)
+  );
+}
 
-  function setVerified(row: DashboardListingRow, verified: boolean) {
-    return runBusy(row.id, () => adminSetListingVerifiedAction(resolvedLang, row.id, verified));
-  }
+function setVerified(row: DashboardListingRow, verified: boolean) {
+  return runBusy(row.id, () =>
+    adminSetListingVerifiedAction(resolvedLang, row.id, verified)
+  );
+}
 
-  function promoteToPro(row: DashboardListingRow) {
-    return runBusy(row.id, async () => {
-      const r1 = await adminSetListingPlanAction(resolvedLang, row.id, "pro");
-      if (!r1?.ok) return r1;
-      return adminSetListingStatusAction(resolvedLang, row.id, "active");
-    });
-  }
+function promoteToPro(row: DashboardListingRow) {
+  return runBusy(row.id, async () => {
+    const r1 = await adminSetListingPlanAction(resolvedLang, row.id, "pro");
+    if (!r1?.ok) return r1;
+    return adminSetListingStatusAction(resolvedLang, row.id, "active");
+  });
+}
 
-  function softDelete(row: DashboardListingRow) {
-    const name = (row.business_name ?? "dit bedrijf").toString();
-    const confirmed = window.confirm(`Weet je zeker dat je "${name}" wilt verwijderen?`);
-    if (!confirmed) return;
+function softDelete(row: DashboardListingRow) {
+  const name = (row.business_name ?? "dit bedrijf").toString();
+  const confirmed = window.confirm(`Weet je zeker dat je "${name}" wilt verwijderen?`);
+  if (!confirmed) return;
 
-    return runBusy(row.id, () => adminSoftDeleteBusinessAction(resolvedLang, row.id));
-  }
+  return runBusy(row.id, () =>
+    adminSoftDeleteBusinessAction(resolvedLang, row.id)
+  );
+}
 
-  // optional
-  function restore(row: DashboardListingRow) {
-    return runBusy(row.id, () => adminRestoreBusinessAction(resolvedLang, row.id));
-  }
+function restore(row: DashboardListingRow) {
+  return runBusy(row.id, () =>
+    adminRestoreBusinessAction(resolvedLang, row.id)
+  );
+}
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
