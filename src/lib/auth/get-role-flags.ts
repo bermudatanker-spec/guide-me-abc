@@ -1,38 +1,38 @@
-// src/lib/auth/get-role-flags.ts
 import type { User } from "@supabase/supabase-js";
 
-export type Role = "super_admin" | "admin" | "business_owner" | "user";
+type RoleFlags = {
+  isSuperAdmin: boolean;
+  isAdmin: boolean;
+  isOwner: boolean; // handig later, nu meestal false
+  roles: string[];
+};
 
 function normalizeRoles(raw: unknown): string[] {
   if (!raw) return [];
-  if (Array.isArray(raw)) {
-    return raw.map((r) => String(r).toLowerCase().trim()).filter(Boolean);
-  }
-  if (typeof raw === "string") {
-    return [raw.toLowerCase().trim()];
-  }
-  return [];
+  const arr = Array.isArray(raw) ? raw : [raw];
+  return arr
+    .map((r) => String(r).trim().toLowerCase())
+    .filter(Boolean);
 }
 
-export function getRoleFlags(user: User | null) {
-  const meta: any = user?.app_metadata ?? {};
-
-  // Supabase kan roles (array) of role (string) hebben
-  const rolesRaw = meta.roles ?? meta.role ?? (user as any)?.role ?? [];
-
-  // Normaliseer + de-dupe
-  const roles = Array.from(new Set(normalizeRoles(rolesRaw)));
+/**
+ * Support:
+ * - app_metadata.roles: string[]
+ * - app_metadata.role: string
+ * - user.role: string (fallback)
+ */
+export function getRoleFlags(user: User | null | undefined): RoleFlags {
+  const meta: any = (user as any)?.app_metadata ?? {};
+  const roles = normalizeRoles(meta.roles ?? meta.role ?? (user as any)?.role);
 
   const isSuperAdmin = roles.includes("super_admin") || roles.includes("superadmin");
+  const isAdmin =
+    isSuperAdmin || roles.includes("admin") || roles.includes("moderator");
 
-  // super_admin overruled: super_admin = altijd admin
-  const isAdmin = isSuperAdmin || roles.includes("admin") || roles.includes("moderator");
-
-  // jouw “owner” is business_owner (niet "owner")
-  const isOwner = roles.includes("business_owner");
-
-  // user: expliciet user óf geen rollen (default)
-  const isUser = roles.includes("user") || roles.length === 0;
-
-  return { roles, isSuperAdmin, isAdmin, isOwner, isUser };
+  return {
+    isSuperAdmin,
+    isAdmin,
+    isOwner: false,
+    roles,
+  };
 }
