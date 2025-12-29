@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2, Search, Trash2, CheckCircle2, XCircle, Zap } from "lucide-react";
 
-import { getRoleFlags } from "@/lib/auth/get-role-flags";
 import type { Locale } from "@/i18n/config";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { langHref } from "@/lib/lang-href";
 import { getLangFromPath } from "@/lib/locale-path";
 import { useToast } from "@/hooks/use-toast";
+import { getRoleFlags } from "@/lib/auth/get-role-flags";
 
 import VerifiedBadge from "@/components/business/VerifiedBadge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import {
 
 type Props = {
   lang: Locale;
-  t: Record<string, string>;
+  t?: Record<string, string>;
 };
 
 function normalizePlan(p: unknown): Plan {
@@ -48,7 +48,7 @@ function normalizeStatus(s: unknown): ListingStatus {
   return "pending";
 }
 
-export default function AdminBusinessesClient({ lang, t }: Props) {
+export default function AdminBusinessesClient({ lang, t = {} }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const resolvedLang = (getLangFromPath(pathname) || lang) as Locale;
@@ -85,9 +85,10 @@ export default function AdminBusinessesClient({ lang, t }: Props) {
       }
 
       const flags = getRoleFlags(data.user);
-      setIsSuperAdmin(flags.isSuperAdmin);
+      const ok = !!flags?.isSuperAdmin;
+      setIsSuperAdmin(ok);
 
-      if (!flags.isSuperAdmin) {
+      if (!ok) {
         router.replace(langHref(resolvedLang, "/business/dashboard"));
         return;
       }
@@ -100,7 +101,7 @@ export default function AdminBusinessesClient({ lang, t }: Props) {
     };
   }, [router, supabase, resolvedLang]);
 
-  // 2) Load listings (admin sees all)
+  // 2) Load listings (super_admin sees all)
   async function loadListings() {
     try {
       setLoading(true);
@@ -168,30 +169,24 @@ export default function AdminBusinessesClient({ lang, t }: Props) {
     }
   }
 
-  // ✅ Actions – jouw actions.ts verwacht businessId voor status/plan/delete
+  // ✅ Actions — veilig: actions.ts resolved listingId/businessId zelf
   function setStatus(row: DashboardListingRow, status: ListingStatus) {
-    return runBusy(row.id, () =>
-      adminSetListingStatusAction(resolvedLang, row.business_id, status)
-    );
+    return runBusy(row.id, () => adminSetListingStatusAction(resolvedLang, row.id, status));
   }
 
   function setPlan(row: DashboardListingRow, plan: Plan) {
-    return runBusy(row.id, () =>
-      adminSetListingPlanAction(resolvedLang, row.business_id, plan)
-    );
+    return runBusy(row.id, () => adminSetListingPlanAction(resolvedLang, row.id, plan));
   }
 
   function setVerified(row: DashboardListingRow, verified: boolean) {
-    return runBusy(row.id, () =>
-      adminSetListingVerifiedAction(resolvedLang, row.id, verified)
-    );
+    return runBusy(row.id, () => adminSetListingVerifiedAction(resolvedLang, row.id, verified));
   }
 
   function promoteToPro(row: DashboardListingRow) {
     return runBusy(row.id, async () => {
-      const r1 = await adminSetListingPlanAction(resolvedLang, row.business_id, "pro");
+      const r1 = await adminSetListingPlanAction(resolvedLang, row.id, "pro");
       if (!r1?.ok) return r1;
-      return adminSetListingStatusAction(resolvedLang, row.business_id, "active");
+      return adminSetListingStatusAction(resolvedLang, row.id, "active");
     });
   }
 
@@ -200,16 +195,11 @@ export default function AdminBusinessesClient({ lang, t }: Props) {
     const confirmed = window.confirm(`Weet je zeker dat je "${name}" wilt verwijderen?`);
     if (!confirmed) return;
 
-    return runBusy(row.id, () =>
-      adminSoftDeleteBusinessAction(resolvedLang, row.business_id)
-    );
+    return runBusy(row.id, () => adminSoftDeleteBusinessAction(resolvedLang, row.id));
   }
 
-  // Optioneel: restore (als je knop weer aanzet)
   function restore(row: DashboardListingRow) {
-    return runBusy(row.id, () =>
-      adminRestoreBusinessAction(resolvedLang, row.business_id)
-    );
+    return runBusy(row.id, () => adminRestoreBusinessAction(resolvedLang, row.id));
   }
 
   const visible = useMemo(() => {
@@ -238,9 +228,7 @@ export default function AdminBusinessesClient({ lang, t }: Props) {
     rows.sort((a, b) =>
       (a.business_name ?? "")
         .toString()
-        .localeCompare((b.business_name ?? "").toString(), "nl", {
-          sensitivity: "base",
-        })
+        .localeCompare((b.business_name ?? "").toString(), "nl", { sensitivity: "base" })
     );
 
     return rows;
@@ -331,10 +319,7 @@ export default function AdminBusinessesClient({ lang, t }: Props) {
                             <Badge variant={plan === "pro" ? "default" : "secondary"} className="capitalize">
                               {plan}
                             </Badge>
-                            <Badge
-                              variant={status === "active" ? "default" : "secondary"}
-                              className="capitalize"
-                            >
+                            <Badge variant={status === "active" ? "default" : "secondary"} className="capitalize">
                               {status}
                             </Badge>
                           </div>
@@ -347,7 +332,11 @@ export default function AdminBusinessesClient({ lang, t }: Props) {
                           </Button>
 
                           <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setStatus(r, "active")}>
-                            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1.5" />}
+                            {isBusy ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                            )}
                             Active
                           </Button>
 

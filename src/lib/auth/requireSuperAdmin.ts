@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import { supabaseServer } from "@/lib/supabase/server";
 import { langHref } from "@/lib/lang-href";
-import { isSuperAdminUser } from "./roles";
+import { getRoleFlags } from "@/lib/auth/get-role-flags";
 
 export async function requireSuperAdmin(lang: Locale) {
   const supabase = await supabaseServer();
@@ -13,12 +13,11 @@ export async function requireSuperAdmin(lang: Locale) {
     console.error("[requireSuperAdmin] auth error", error);
   }
 
-  const user = data?.user;
-  if (!user) redirect(langHref(lang, "/business/auth"));
+  const { isSuperAdmin } = getRoleFlags(data.user)
 
-  if (!isSuperAdminUser(user)) {
+  if (!isSuperAdmin) {
     redirect(langHref(lang, "/business/dashboard"));
   }
 
-  return { user };
+  return data.user;
 }

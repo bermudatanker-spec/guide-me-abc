@@ -74,27 +74,36 @@ const isAssetOrApi = (p: string) =>
 
 /* ─────── Role helpers ─────── */
 
+// ✅ leest zowel app_metadata.roles (array) als app_metadata.role (string)
 function getRolesFromUser(user: unknown): string[] {
   const u = user as any;
-  const raw = u?.app_metadata?.roles;
+  const meta = u?.app_metadata ?? {};
+
+  const raw = meta?.roles ?? meta?.role ?? (u?.role ?? null);
+
   if (!raw) return [];
-  if (Array.isArray(raw)) return raw.map((r) => String(r).toLowerCase());
-  if (typeof raw === "string") return [raw.toLowerCase()];
+
+  if (Array.isArray(raw)) {
+    return raw.map((r) => String(r).toLowerCase().trim()).filter(Boolean);
+  }
+
+  if (typeof raw === "string") {
+    return [raw.toLowerCase().trim()];
+  }
+
   return [];
 }
 
 function isSuperAdminUser(roles: string[]): boolean {
-  const lower = roles.map((r) => r.toLowerCase());
-  return lower.includes("super_admin") || lower.includes("superadmin");
+  return roles.includes("super_admin") || roles.includes("superadmin");
 }
 
 function isAdminUser(roles: string[]): boolean {
-  const lower = roles.map((r) => r.toLowerCase());
   return (
-    lower.includes("admin") ||
-    lower.includes("moderator") ||
-    lower.includes("super_admin") ||
-    lower.includes("superadmin")
+    roles.includes("admin") ||
+    roles.includes("moderator") ||
+    roles.includes("super_admin") ||
+    roles.includes("superadmin")
   );
 }
 
@@ -124,9 +133,7 @@ export async function middleware(req: NextRequest) {
 
   // 3) Auth callback routes altijd doorlaten (OOK met /{lang} prefix)
   if (
-    AUTH_CALLBACK_PATHS.some(
-      (p) => pathNoLang === p || pathNoLang.startsWith(p + "/"),
-    )
+    AUTH_CALLBACK_PATHS.some((p) => pathNoLang === p || pathNoLang.startsWith(p + "/"))
   ) {
     return NextResponse.next();
   }
@@ -135,7 +142,7 @@ export async function middleware(req: NextRequest) {
   const isMaintenancePage =
     pathNoLang === "/maintenance" || pathNoLang.startsWith("/maintenance/");
 
-  // 5) Bepaal public routes (maar let op: maintenance kan alsnog blokkeren)
+  // 5) Bepaal public routes
   const isPublicPath =
     pathStartsWithAny(pathNoLang, ALWAYS_PUBLIC_PREFIXES) ||
     pathStartsWithAny(pathNoLang, PUBLIC_AUTH_PAGES) ||
@@ -149,8 +156,9 @@ export async function middleware(req: NextRequest) {
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnon) {
-    // Zonder env vars: geen auth/maintenance checks mogelijk → laat door (maar log wel)
-    console.error("[middleware] Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    console.error(
+      "[middleware] Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY"
+    );
     return res;
   }
 
@@ -183,13 +191,14 @@ export async function middleware(req: NextRequest) {
   const isSuper = isSuperAdminUser(roles);
   const isAdmin = isAdminUser(roles);
 
+  // 8) Maintenance flag uitlezen
   let maintenanceOn = false;
   if (!maintResult.error) {
     const raw = (maintResult.data as any)?.value;
     maintenanceOn = raw === true || raw === "true" || raw === 1 || raw === "1";
   }
 
-  // 8) Maintenance bypass (query + cookie)
+  // 9) Maintenance bypass (query + cookie)
   const bypassToken = process.env.MAINTENANCE_BYPASS_TOKEN;
   const urlToken = req.nextUrl.searchParams.get("bypass_maint");
   const hasQueryBypass = !!bypassToken && urlToken === bypassToken;
@@ -201,41 +210,35 @@ export async function middleware(req: NextRequest) {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      // optional: secure: true, // Vercel is https; kan aan als je wil
+      secure: true,
     });
   }
 
   const bypassMaintenance = hasQueryBypass || hasCookieBypass;
 
-  // 9) Maintenance guard:
-  // - super_admin mag altijd door
-  // - maintenance page zelf mag altijd
-  // - bypass token mag door
+  // 10) Maintenance guard
   if (maintenanceOn && !isSuper && !isMaintenancePage && !bypassMaintenance) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}/maintenance`;
-    // cleanup eventuele oude flags
     url.searchParams.delete("forbidden");
     url.searchParams.delete("redirectedFrom");
     return NextResponse.redirect(url);
   }
 
-  // 10) Als route publiek is (en maintenance is ok): laat door
+  // 11) Als route publiek is: laat door
   if (isPublicPath) {
     return res;
   }
 
-  // 11) Admin/Godmode wensen
-  const wantsAdmin =
-    pathNoLang === ADMIN_PREFIX || pathNoLang.startsWith(ADMIN_PREFIX + "/");
-  const wantsSuper =
-    pathNoLang === SUPER_PREFIX || pathNoLang.startsWith(SUPER_PREFIX + "/");
+  // 12) Admin/Godmode wensen
+  const wantsAdmin = pathNoLang === ADMIN_PREFIX || pathNoLang.startsWith(ADMIN_PREFIX + "/");
+  const wantsSuper = pathNoLang === SUPER_PREFIX || pathNoLang.startsWith(SUPER_PREFIX + "/");
 
-  // 12) Moet ingelogd zijn?
+  // 13) Moet ingelogd zijn?
   const needsAuth =
     wantsAdmin || wantsSuper || pathStartsWithAny(pathNoLang, PROTECTED_PREFIXES);
 
-  // 13) Niet ingelogd → naar business/auth met redirect terug
+  // 14) Niet ingelogd → naar business/auth met redirect terug
   if (needsAuth && !user) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}/business/auth`;
@@ -243,7 +246,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 14) Godmode: alleen super_admin
+  // 15) Godmode: alleen super_admin
   if (wantsSuper && !isSuper) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}`;
@@ -251,7 +254,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 15) Admin: admin + super_admin
+  // 16) Admin: admin + super_admin
   if (wantsAdmin && !isAdmin) {
     const url = req.nextUrl.clone();
     url.pathname = `/${lang}`;
@@ -262,10 +265,7 @@ export async function middleware(req: NextRequest) {
   return res;
 }
 
-/* ───────── Matcher ─────────
-   Belangrijk: we matchen alles behalve _next/api/static files.
-   Auth callbacks worden in middleware zelf vrijgelaten (ook met locale prefix).
-*/
+/* ───────── Matcher ───────── */
 export const config = {
   matcher: ["/((?!_next|api|.*\\..*).*)"],
 };
