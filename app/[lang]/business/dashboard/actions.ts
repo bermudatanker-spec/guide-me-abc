@@ -18,7 +18,60 @@ export type Result<T = {}> = Ok<T> | Fail;
 export type ListingStatus = "pending" | "active" | "inactive";
 export type Plan = "starter" | "growth" | "pro";
 
-type AuditAction = "delete" | "undo_delete" | "set_status" | "set_plan";
+// ✅ ADMIN: verified toggle (accept listingId OR businessId)
+export async function adminSetListingVerifiedAction(
+  lang: Locale,
+  idOrBusinessId: string,
+  verified: boolean
+): Promise<Result> {
+  try {
+    const auth = await getAuthedUser();
+    if (!auth.ok) return auth;
+    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
+
+    const gate = getAdminClient();
+    if (!gate.ok) return gate;
+
+    const listingId = await resolveListingId(gate.admin, idOrBusinessId);
+
+    const patch = verified
+      ? { is_verified: true, verified_at: nowIso() }
+      : { is_verified: false, verified_at: null };
+
+    const { error } = await gate.admin
+      .from("business_listings")
+      .update(patch as any)
+      .eq("id", listingId);
+
+    if (error) return fail(error.message);
+
+    // audit best effort
+    const { data: row } = await gate.admin
+      .from("business_listings")
+      .select("business_id")
+      .eq("id", listingId)
+      .maybeSingle();
+
+    if (row?.business_id) {
+      await auditBestEffort({
+        actorUserId: auth.user.id,
+        businessId: row.business_id,
+        action: "set_status", // of maak een aparte audit action "set_verified" als je wil
+        detail: { verified },
+      });
+    }
+
+    // revalidate plekken waar badge zichtbaar is
+    revalidatePath(adminBusinessesPath(lang));
+    revalidatePath(dashboardPath(lang));
+    // mini-site pages zijn dynamisch per id — dashboard refresh is meestal genoeg.
+    return ok({});
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+type AuditAction = "delete" | "undo_delete" | "set_status" | "set_plan" | "set_verified";
 
 function ok<T>(data?: T): Ok<T> {
   return { ok: true, ...(data ?? ({} as T)) };
@@ -36,10 +89,12 @@ function getRoles(user: any): string[] {
   const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
   return arr.map((r) => String(r).trim().toLowerCase()).filter(Boolean);
 }
+
 function isSuperAdmin(user: any): boolean {
   const roles = getRoles(user);
   return roles.includes("super_admin") || roles.includes("superadmin");
 }
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -90,7 +145,9 @@ async function auditBestEffort(input: {
     const gate = getAdminClient();
     if (!gate.ok) return;
 
-    await gate.admin.from("audit_business_moderation").insert({
+    const { admin } = gate;
+
+    await admin.from("audit_business_moderation").insert({
       business_id: input.businessId,
       actor_user_id: input.actorUserId,
       action: input.action,
@@ -190,14 +247,18 @@ export async function adminSetListingStatusAction(
   try {
     const auth = await getAuthedUser();
     if (!auth.ok) return auth;
-    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
+
+    const { user } = auth;
+    if (!isSuperAdmin(user)) return fail("Geen toegang (super_admin vereist).");
 
     const gate = getAdminClient();
     if (!gate.ok) return gate;
 
-    const listingId = await resolveListingId(gate.admin, idOrBusinessId);
+    const { admin } = gate;
 
-    const { error } = await gate.admin
+    const listingId = await resolveListingId(admin, idOrBusinessId);
+
+    const { error } = await admin
       .from("business_listings")
       .update({ status } as any)
       .eq("id", listingId);
@@ -205,7 +266,7 @@ export async function adminSetListingStatusAction(
     if (error) return fail(error.message);
 
     // audit best effort
-    const { data: row } = await gate.admin
+    const { data: row } = await admin
       .from("business_listings")
       .select("business_id")
       .eq("id", listingId)
@@ -213,7 +274,7 @@ export async function adminSetListingStatusAction(
 
     if (row?.business_id) {
       await auditBestEffort({
-        actorUserId: auth.user.id,
+        actorUserId: user.id,
         businessId: row.business_id,
         action: "set_status",
         detail: { status },
@@ -228,8 +289,8 @@ export async function adminSetListingStatusAction(
   }
 }
 
-// ADMIN: plan per business (EN zichtbaar maken in UI)
-// ✅ schrijft naar subscriptions (jouw aanpak)
+// ADMIN: plan per business
+// ✅ schrijft naar subscriptions
 // ✅ schrijft óók naar business_listings.subscription_plan (jouw UI leest dit!)
 export async function adminSetListingPlanAction(
   lang: Locale,
@@ -239,13 +300,17 @@ export async function adminSetListingPlanAction(
   try {
     const auth = await getAuthedUser();
     if (!auth.ok) return auth;
-    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
+
+    const { user } = auth;
+    if (!isSuperAdmin(user)) return fail("Geen toegang (super_admin vereist).");
 
     const gate = getAdminClient();
     if (!gate.ok) return gate;
 
+    const { admin } = gate;
+
     // 1) upsert subscriptions
-    const { error: sErr } = await gate.admin
+    const { error: sErr } = await admin
       .from("subscriptions")
       .upsert(
         {
@@ -260,8 +325,8 @@ export async function adminSetListingPlanAction(
 
     if (sErr) return fail(sErr.message);
 
-    // 2) ✅ update business_listings.subscription_plan zodat de UI niet altijd "starter" blijft
-    const { error: lErr } = await gate.admin
+    // 2) update business_listings.subscription_plan zodat UI mee verandert
+    const { error: lErr } = await admin
       .from("business_listings")
       .update({ subscription_plan: plan } as any)
       .eq("business_id", businessId)
@@ -270,7 +335,7 @@ export async function adminSetListingPlanAction(
     if (lErr) return fail(lErr.message);
 
     await auditBestEffort({
-      actorUserId: auth.user.id,
+      actorUserId: user.id,
       businessId,
       action: "set_plan",
       detail: { plan },
@@ -292,27 +357,31 @@ export async function adminSoftDeleteBusinessAction(
   try {
     const auth = await getAuthedUser();
     if (!auth.ok) return auth;
-    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
+
+    const { user } = auth;
+    if (!isSuperAdmin(user)) return fail("Geen toegang (super_admin vereist).");
 
     const gate = getAdminClient();
     if (!gate.ok) return gate;
 
+    const { admin } = gate;
+
     const ts = nowIso();
 
-    const { error: bErr } = await gate.admin
+    const { error: bErr } = await admin
       .from("businesses")
       .update({ deleted_at: ts } as any)
       .eq("id", businessId);
     if (bErr) return fail(bErr.message);
 
-    const { error: lErr } = await gate.admin
+    const { error: lErr } = await admin
       .from("business_listings")
       .update({ deleted_at: ts } as any)
       .eq("business_id", businessId);
     if (lErr) return fail(lErr.message);
 
     await auditBestEffort({
-      actorUserId: auth.user.id,
+      actorUserId: user.id,
       businessId,
       action: "delete",
       detail: { via: "adminSoftDeleteBusinessAction" },
@@ -334,25 +403,29 @@ export async function adminRestoreBusinessAction(
   try {
     const auth = await getAuthedUser();
     if (!auth.ok) return auth;
-    if (!isSuperAdmin(auth.user)) return fail("Geen toegang (super_admin vereist).");
+
+    const { user } = auth;
+    if (!isSuperAdmin(user)) return fail("Geen toegang (super_admin vereist).");
 
     const gate = getAdminClient();
     if (!gate.ok) return gate;
 
-    const { error: bErr } = await gate.admin
+    const { admin } = gate;
+
+    const { error: bErr } = await admin
       .from("businesses")
       .update({ deleted_at: null } as any)
       .eq("id", businessId);
     if (bErr) return fail(bErr.message);
 
-    const { error: lErr } = await gate.admin
+    const { error: lErr } = await admin
       .from("business_listings")
       .update({ deleted_at: null } as any)
       .eq("business_id", businessId);
     if (lErr) return fail(lErr.message);
 
     await auditBestEffort({
-      actorUserId: auth.user.id,
+      actorUserId: user.id,
       businessId,
       action: "undo_delete",
       detail: { via: "adminRestoreBusinessAction" },
@@ -398,9 +471,9 @@ export async function setListingStatusAction(
 
 /**
  * Owner: plan
- * - jouw UI roept dit soms aan met listing.id (ownerUpdatePlan)
- * - admin roept plan action apart aan (adminSetListingPlanAction)
- * Daarom: accepteer "listingId OR businessId" en route correct.
+ * - owners mogen meestal niet plan wijzigen
+ * - daarom: alleen admin toegestaan
+ * - accepteert "listingId OR businessId"
  */
 export async function setListingPlanAction(
   lang: Locale,
@@ -411,7 +484,6 @@ export async function setListingPlanAction(
     const auth = await getAuthedUser();
     if (!auth.ok) return auth;
 
-    // owners mogen meestal niet plan wijzigen -> block netjes
     if (!isSuperAdmin(auth.user)) {
       return fail("Alleen admin kan plan aanpassen.");
     }
@@ -454,7 +526,6 @@ export async function softDeleteListingAction(
 
 /* -------------------------------------------------------
    ✅ BUSINESS soft delete / undo delete
-   (dit gebruikt je dashboard ook)
 -------------------------------------------------------- */
 
 export async function softDeleteBusinessAction(
@@ -498,7 +569,7 @@ export async function softDeleteBusinessAction(
   }
 }
 
-// ✅ Dit was de missende export die jouw app liet crashen
+// ✅ Export (was bij jou essentieel)
 export async function undoDeleteBusinessAction(
   lang: Locale,
   businessId: string

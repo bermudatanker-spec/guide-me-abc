@@ -1,4 +1,4 @@
-type ClickEventType = "whatsapp" | "route" | "call" | "website";
+type ClickEventType = "whatsapp" | "route" | "call" | "website" | "email";
 
 type TrackClickArgs = {
   businessId: string;

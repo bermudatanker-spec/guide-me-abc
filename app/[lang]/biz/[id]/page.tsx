@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { createServerClient } from "@supabase/ssr";
-
+import VerifiedBadge from "@/components/business/VerifiedBadge";
 import { isLocale, type Locale } from "@/i18n/config";
 import {
   DAY_ORDER,
@@ -81,6 +81,10 @@ type OfferRow = {
 type BizRow = {
   id: string;
   business_name: string;
+
+  is_verified: boolean | null;
+  verified_at: string | null;
+
   island: "aruba" | "bonaire" | "curacao" | string;
   category_name: string | null;
   description: string | null;
@@ -352,6 +356,8 @@ export default async function BizDetailPage({ params }: PageProps) {
       `
       id,
       business_name,
+      is_verified,
+      verified_at,
       island,
       description,
       address,
@@ -384,6 +390,9 @@ export default async function BizDetailPage({ params }: PageProps) {
     .maybeSingle<{
       id: string;
       business_name: string;
+
+      is_verified: boolean | null;
+      verified_at: string | null;
       island: string;
       description: string | null;
       address: string | null;
@@ -415,6 +424,10 @@ export default async function BizDetailPage({ params }: PageProps) {
   const biz: BizRow = {
     id: data.id,
     business_name: data.business_name,
+
+    is_verified: data.is_verified ?? null,
+    verified_at: data.verified_at ?? null,
+
     island: (data.island as string) ?? "",
     category_name: data.category_name?.name ?? null,
     description: data.description,
@@ -506,9 +519,14 @@ export default async function BizDetailPage({ params }: PageProps) {
 
           {/* title + short description */}
           <div className="max-w-3xl space-y-3">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-title-gradient text-shadow-hero">
-              {biz.business_name}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl md:text-4xl font-bold">{biz.business_name}</h1>
+                <VerifiedBadge
+                verified={biz.is_verified}
+                verifiedAt={biz.verified_at}
+              compact
+              />
+            </div>
             {biz.description && (
               <p className="max-w-xl text-sm sm:text-base text-white/90">
                 {biz.description}

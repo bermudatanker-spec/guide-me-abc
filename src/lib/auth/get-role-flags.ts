@@ -18,7 +18,7 @@ export function getRoleFlags(user: User | null) {
   const meta: any = user?.app_metadata ?? {};
 
   // Supabase kan roles (array) of role (string) hebben
-  const rolesRaw = meta.roles ?? meta.role ?? [];
+  const rolesRaw = meta.roles ?? meta.role ?? (user as any)?.role ?? [];
 
   // Normaliseer + de-dupe
   const roles = Array.from(new Set(normalizeRoles(rolesRaw)));

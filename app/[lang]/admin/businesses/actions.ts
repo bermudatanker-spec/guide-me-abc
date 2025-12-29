@@ -19,11 +19,17 @@ function ok<T>(data?: T): Ok<T> {
   return { ok: true, ...(data ?? ({} as T)) };
 }
 function fail(error: unknown): Fail {
-  return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  return {
+    ok: false,
+    error: error instanceof Error ? error.message : String(error),
+  };
 }
 
 function adminPath(lang: Locale) {
   return langHref(lang, "/admin/businesses");
+}
+function dashboardPath(lang: Locale) {
+  return langHref(lang, "/business/dashboard");
 }
 
 async function requireSuperAdmin() {
@@ -32,7 +38,11 @@ async function requireSuperAdmin() {
   if (error) throw new Error(error.message);
   if (!data?.user) throw new Error("Niet ingelogd.");
 
-  const role = ((data.user.app_metadata as any)?.role ?? (data.user as any)?.role ?? "")
+  const role = (
+    (data.user.app_metadata as any)?.role ??
+    (data.user as any)?.role ??
+    ""
+  )
     .toString()
     .toLowerCase();
 
@@ -43,24 +53,75 @@ async function requireSuperAdmin() {
   return data.user.id;
 }
 
-/** ✅ Admin: status aanpassen op business_listings (op business_id) */
+/**
+ * ✅ Resolve helper: accepteert listing.id OF business_id
+ * en geeft altijd { listingId, businessId } terug.
+ */
+async function resolveListingAndBusinessId(admin: any, idOrBusinessId: string) {
+  const { data, error } = await admin
+    .from("business_listings")
+    .select("id, business_id")
+    .or(`id.eq.${idOrBusinessId},business_id.eq.${idOrBusinessId}`)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data?.id || !data?.business_id) {
+    throw new Error("Listing/business niet gevonden.");
+  }
+  return { listingId: data.id as string, businessId: data.business_id as string };
+}
+
+/** ✅ Admin: status aanpassen op business_listings (listingId OR businessId) */
 export async function adminSetListingStatusAction(
   lang: Locale,
-  businessId: string,
+  idOrBusinessId: string,
   status: ListingStatus
 ): Promise<Result> {
   try {
     await requireSuperAdmin();
     const admin = supabaseAdmin();
 
+    const { listingId } = await resolveListingAndBusinessId(admin, idOrBusinessId);
+
     const { error } = await admin
       .from("business_listings")
       .update({ status } as any)
-      .eq("business_id", businessId);
+      .eq("id", listingId);
 
     if (error) return fail(error.message);
 
     revalidatePath(adminPath(lang));
+    revalidatePath(dashboardPath(lang));
+    return ok({});
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** ✅ Admin: verified/unverified (listingId OR businessId) */
+export async function adminSetListingVerifiedAction(
+  lang: Locale,
+  idOrBusinessId: string,
+  verified: boolean
+): Promise<Result> {
+  try {
+    await requireSuperAdmin();
+    const admin = supabaseAdmin();
+
+    const { listingId } = await resolveListingAndBusinessId(admin, idOrBusinessId);
+    const verified_at = verified ? new Date().toISOString() : null;
+
+    const { error } = await admin
+      .from("business_listings")
+      .update({ is_verified: verified, verified_at } as any)
+      .eq("id", listingId);
+
+    if (error) return fail(error.message);
+
+    revalidatePath(adminPath(lang));
+    revalidatePath(dashboardPath(lang));
     return ok({});
   } catch (e) {
     return fail(e);
@@ -68,17 +129,19 @@ export async function adminSetListingStatusAction(
 }
 
 /**
- * ✅ Admin: plan aanpassen via subscriptions (op business_id)
- * BELANGRIJK: jouw UI leest plan uit business_listings_admin_view → subscriptions
+ * ✅ Admin: plan aanpassen via subscriptions
+ * (listingId OR businessId -> resolved naar businessId)
  */
 export async function adminSetListingPlanAction(
   lang: Locale,
-  businessId: string,
+  idOrBusinessId: string,
   plan: Plan
 ): Promise<Result> {
   try {
     await requireSuperAdmin();
     const admin = supabaseAdmin();
+
+    const { businessId } = await resolveListingAndBusinessId(admin, idOrBusinessId);
 
     const { error } = await admin
       .from("subscriptions")
@@ -96,22 +159,25 @@ export async function adminSetListingPlanAction(
     if (error) return fail(error.message);
 
     revalidatePath(adminPath(lang));
+    revalidatePath(dashboardPath(lang));
     return ok({});
   } catch (e) {
     return fail(e);
   }
 }
 
-/** ✅ Admin: soft delete op businesses + business_listings */
+/** ✅ Admin: soft delete op businesses + business_listings (listingId OR businessId) */
 export async function adminSoftDeleteBusinessAction(
   lang: Locale,
-  businessId: string
+  idOrBusinessId: string
 ): Promise<Result> {
   try {
     await requireSuperAdmin();
     const admin = supabaseAdmin();
     const ts = new Date().toISOString();
 
+    const { businessId } = await resolveListingAndBusinessId(admin, idOrBusinessId);
+
     const { error: bErr } = await admin
       .from("businesses")
       .update({ deleted_at: ts } as any)
@@ -125,20 +191,23 @@ export async function adminSoftDeleteBusinessAction(
     if (lErr) return fail(lErr.message);
 
     revalidatePath(adminPath(lang));
+    revalidatePath(dashboardPath(lang));
     return ok({});
   } catch (e) {
     return fail(e);
   }
 }
 
-/** ✅ Admin: restore soft delete */
+/** ✅ Admin: restore soft delete (listingId OR businessId) */
 export async function adminRestoreBusinessAction(
   lang: Locale,
-  businessId: string
+  idOrBusinessId: string
 ): Promise<Result> {
   try {
     await requireSuperAdmin();
     const admin = supabaseAdmin();
+
+    const { businessId } = await resolveListingAndBusinessId(admin, idOrBusinessId);
 
     const { error: bErr } = await admin
       .from("businesses")
@@ -153,6 +222,7 @@ export async function adminRestoreBusinessAction(
     if (lErr) return fail(lErr.message);
 
     revalidatePath(adminPath(lang));
+    revalidatePath(dashboardPath(lang));
     return ok({});
   } catch (e) {
     return fail(e);

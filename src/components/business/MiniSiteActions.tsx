@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MapPin, Phone, MessageCircle, Mail } from "lucide-react";
 import type { Locale } from "@/i18n/config";
@@ -119,16 +118,14 @@ export default function MiniSiteActions({
     " border border-border bg-background/75 backdrop-blur " +
     "shadow-[0_6px_18px_rgba(0,0,0,0.18)] hover:shadow-[0_10px_22px_rgba(0,0,0,0.26)]";
 
-  // WhatsApp turquoise-ish (sluit aan bij jouw primary)
+  // WhatsApp: groen (duidelijk WhatsApp)
   const waBtn =
     baseBtn +
-    " bg-primary text-white shadow-[0_10px_26px_rgba(0,191,211,0.30)] " +
-    "hover:shadow-[0_14px_32px_rgba(0,191,211,0.38)]";
+    " bg-[#25D366] text-white shadow-[0_10px_26px_rgba(37,211,102,0.30)] " +
+    "hover:shadow-[0_14px_32px_rgba(37,211,102,0.38)]";
 
   // Mail coral uit globals (button-gradient = koraal default)
-  const mailBtn =
-    baseBtn +
-    " button-gradient"; // gebruikt jouw globals.css
+  const mailBtn = baseBtn + " button-gradient";
 
   return (
     <div className={className ?? "flex flex-wrap items-center gap-3"}>
@@ -177,7 +174,7 @@ export default function MiniSiteActions({
       {mailHref ? (
         <a
           href={mailHref}
-          onClick={() => fire("website" as ClickEventType)}
+          onClick={() => fire("email")}
           className={mailBtn}
           aria-label={labels.email}
         >

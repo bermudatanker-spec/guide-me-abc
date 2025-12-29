@@ -2,92 +2,92 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Loader2, Search, CheckCircle2, XCircle, Trash2, Zap } from "lucide-react";
+import { Loader2, Search, Trash2, CheckCircle2, XCircle, Zap } from "lucide-react";
 
+import { getRoleFlags } from "@/lib/auth/get-role-flags";
 import type { Locale } from "@/i18n/config";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { langHref } from "@/lib/lang-href";
 import { getLangFromPath } from "@/lib/locale-path";
 import { useToast } from "@/hooks/use-toast";
 
+import VerifiedBadge from "@/components/business/VerifiedBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+
+import type { DashboardListingRow } from "@/types/listing";
 
 import {
   adminSetListingStatusAction,
   adminSetListingPlanAction,
   adminSoftDeleteBusinessAction,
   adminRestoreBusinessAction,
+  adminSetListingVerifiedAction,
   type ListingStatus,
   type Plan,
 } from "../actions";
 
-/* -------------------------------------------------------
-   Types (komt uit VIEW: business_listings_admin_view)
--------------------------------------------------------- */
-type Row = {
-  id: string; // listing id
-  business_id: string;
-  business_name: string;
-  island: string;
-  status: string;
-  plan: string; // ✅ uit view
-  owner_id: string;
-  deleted_at: string | null;
-  categories: { name: string; slug: string } | null;
+type Props = {
+  lang: Locale;
+  t: Record<string, string>;
 };
 
-type Props = { lang: Locale };
-
-function normalizePlan(p: any): Plan {
+function normalizePlan(p: unknown): Plan {
   const s = String(p ?? "").trim().toLowerCase();
   if (s === "pro") return "pro";
   if (s === "growth") return "growth";
   return "starter";
 }
-function normalizeStatus(s: any): ListingStatus {
+
+function normalizeStatus(s: unknown): ListingStatus {
   const v = String(s ?? "").trim().toLowerCase();
   if (v === "active") return "active";
   if (v === "inactive") return "inactive";
   return "pending";
 }
 
-export default function AdminBusinessesClient({ lang }: Props) {
+export default function AdminBusinessesClient({ lang, t }: Props) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
-
-  // ✅ FIX: resolvedLang is écht Locale → geen rode kronkels bij actions calls
   const resolvedLang = (getLangFromPath(pathname) || lang) as Locale;
 
   const supabase = useMemo(() => supabaseBrowser(), []);
   const { toast } = useToast();
 
   const [authLoading, setAuthLoading] = useState(true);
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
-  // ✅ Admin gate (super_admin)
+  const [listings, setListings] = useState<DashboardListingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  // 1) Auth + super_admin gate
   useEffect(() => {
     let alive = true;
+
     (async () => {
       const { data, error } = await supabase.auth.getUser();
       if (!alive) return;
 
-      if (error || !data?.user) {
+      if (error) {
+        setErrorMsg(error.message);
+        setAuthLoading(false);
+        return;
+      }
+
+      if (!data?.user) {
         router.replace(langHref(resolvedLang, "/business/auth"));
         return;
       }
 
-      const role = ((data.user.app_metadata as any)?.role ?? (data.user as any)?.role ?? "")
-        .toString()
-        .toLowerCase();
+      const flags = getRoleFlags(data.user);
+      setIsSuperAdmin(flags.isSuperAdmin);
 
-      if (!(role === "super_admin" || role === "superadmin")) {
+      if (!flags.isSuperAdmin) {
         router.replace(langHref(resolvedLang, "/business/dashboard"));
         return;
       }
@@ -100,69 +100,154 @@ export default function AdminBusinessesClient({ lang }: Props) {
     };
   }, [router, supabase, resolvedLang]);
 
-  async function load() {
+  // 2) Load listings (admin sees all)
+  async function loadListings() {
     try {
       setLoading(true);
       setErrorMsg(null);
 
       const { data, error } = await supabase
-        .from("business_listings_admin_view")
+        .from("business_listings")
         .select(
           `
           id,
           business_id,
           business_name,
+          is_verified,
+          verified_at,
           island,
           status,
-          plan,
           owner_id,
           deleted_at,
-          categories:category_id (name, slug)
+          categories:category_id (name, slug),
+          subscription:subscriptions ( plan )
         `
         )
-        .order("business_name", { ascending: true });
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .returns<DashboardListingRow[]>();
 
       if (error) throw new Error(error.message);
-      setRows((data as any) ?? []);
+      setListings(data ?? []);
     } catch (e: any) {
-      setErrorMsg(e?.message ?? "Kon admin bedrijven niet laden.");
+      setErrorMsg(e?.message ?? "Kon je bedrijven niet laden.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (authLoading) return;
-    void load();
+    if (!isSuperAdmin) return;
+    void loadListings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading]);
+  }, [isSuperAdmin]);
 
-  async function runBusy(key: string, fn: () => Promise<any>) {
-    setBusyKey(key);
+  async function runBusy(rowId: string, fn: () => Promise<any>) {
+    setBusyId(rowId);
     try {
       const res = await fn();
       if (!res?.ok) {
-        toast({ title: "Fout", description: res?.error ?? "Onbekende fout", variant: "destructive" });
+        toast({
+          title: "Fout",
+          description: res?.error ?? "Onbekende fout",
+          variant: "destructive",
+        });
         return;
       }
+
       toast({ title: "Gelukt ✅" });
-      await load();
+      await loadListings();
     } catch (e: any) {
-      toast({ title: "Serverfout", description: e?.message ?? "Onbekende fout", variant: "destructive" });
+      toast({
+        title: "Serverfout",
+        description: e?.message ?? "Onbekende fout",
+        variant: "destructive",
+      });
     } finally {
-      setBusyKey(null);
+      setBusyId(null);
     }
+  }
+
+  // ✅ Actions – jouw actions.ts verwacht businessId voor status/plan/delete
+  function setStatus(row: DashboardListingRow, status: ListingStatus) {
+    return runBusy(row.id, () =>
+      adminSetListingStatusAction(resolvedLang, row.business_id, status)
+    );
+  }
+
+  function setPlan(row: DashboardListingRow, plan: Plan) {
+    return runBusy(row.id, () =>
+      adminSetListingPlanAction(resolvedLang, row.business_id, plan)
+    );
+  }
+
+  function setVerified(row: DashboardListingRow, verified: boolean) {
+    return runBusy(row.id, () =>
+      adminSetListingVerifiedAction(resolvedLang, row.id, verified)
+    );
+  }
+
+  function promoteToPro(row: DashboardListingRow) {
+    return runBusy(row.id, async () => {
+      const r1 = await adminSetListingPlanAction(resolvedLang, row.business_id, "pro");
+      if (!r1?.ok) return r1;
+      return adminSetListingStatusAction(resolvedLang, row.business_id, "active");
+    });
+  }
+
+  function softDelete(row: DashboardListingRow) {
+    const name = (row.business_name ?? "dit bedrijf").toString();
+    const confirmed = window.confirm(`Weet je zeker dat je "${name}" wilt verwijderen?`);
+    if (!confirmed) return;
+
+    return runBusy(row.id, () =>
+      adminSoftDeleteBusinessAction(resolvedLang, row.business_id)
+    );
+  }
+
+  // Optioneel: restore (als je knop weer aanzet)
+  function restore(row: DashboardListingRow) {
+    return runBusy(row.id, () =>
+      adminRestoreBusinessAction(resolvedLang, row.business_id)
+    );
   }
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
+    let rows = [...listings];
 
-    return rows.filter((r) => {
-      const s = `${r.business_name} ${r.island} ${r.status} ${r.plan} ${r.categories?.name ?? ""}`.toLowerCase();
-      return s.includes(q);
-    });
-  }, [rows, search]);
+    if (q) {
+      rows = rows.filter((r) => {
+        const name = (r.business_name ?? "").toString().toLowerCase();
+        const island = (r.island ?? "").toString().toLowerCase();
+        const cat = (r.categories?.name ?? "").toString().toLowerCase();
+        const status = (r.status ?? "").toString().toLowerCase();
+        const plan = (r.subscription?.plan ?? "").toString().toLowerCase();
+        const owner = (r.owner_id ?? "").toString().toLowerCase();
+        return (
+          name.includes(q) ||
+          island.includes(q) ||
+          cat.includes(q) ||
+          status.includes(q) ||
+          plan.includes(q) ||
+          owner.includes(q)
+        );
+      });
+    }
+
+    rows.sort((a, b) =>
+      (a.business_name ?? "")
+        .toString()
+        .localeCompare((b.business_name ?? "").toString(), "nl", {
+          sensitivity: "base",
+        })
+    );
+
+    return rows;
+  }, [listings, search]);
+
+  const title = t.adminBusinessesTitle ?? "Admin · Businesses";
+  const subtitle = t.adminBusinessesSubtitle ?? "Beheer alle bedrijven (super_admin).";
 
   if (authLoading || loading) {
     return (
@@ -172,12 +257,14 @@ export default function AdminBusinessesClient({ lang }: Props) {
     );
   }
 
+  if (!isSuperAdmin) return null;
+
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="flex flex-col gap-2 mb-6">
-          <h1 className="text-3xl font-bold">Admin • Bedrijven</h1>
-          <p className="text-sm text-muted-foreground">Status + plan beheren (plan komt uit subscriptions → view).</p>
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-1">{title}</h1>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
 
         {errorMsg && (
@@ -189,173 +276,125 @@ export default function AdminBusinessesClient({ lang }: Props) {
         <div className="mb-4 max-w-md">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Zoek..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input
+              className="pl-9"
+              placeholder="Zoek op naam, eiland, status, plan, owner…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </div>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Businesses ({visible.length})</CardTitle>
+            <CardTitle>Alle bedrijven</CardTitle>
           </CardHeader>
 
           <CardContent>
-            <div className="space-y-4">
-              {visible.map((r) => {
-                const plan = normalizePlan(r.plan);
-                const status = normalizeStatus(r.status);
-                const isBusy = busyKey?.includes(r.business_id) ?? false;
+            {visible.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">Geen resultaten.</div>
+            ) : (
+              <div className="space-y-4">
+                {visible.map((r) => {
+                  const plan = normalizePlan(r.subscription?.plan);
+                  const status = normalizeStatus(r.status);
+                  const isBusy = busyId === r.id;
 
-                return (
-                  <div key={r.id} className="border border-border rounded-lg p-4 hover:bg-muted/40 transition-colors">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="font-semibold text-lg">{r.business_name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {r.island} • {r.categories?.name ?? "—"} • owner: {r.owner_id.slice(0, 8)}…
+                  return (
+                    <div
+                      key={r.id}
+                      className="border border-border rounded-lg p-4 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-lg text-foreground">
+                              {(r.business_name ?? "—").toString()}
+                            </h3>
+                            <VerifiedBadge verified={r.is_verified} verifiedAt={r.verified_at} compact />
+                          </div>
+
+                          <p className="text-sm text-muted-foreground">
+                            {r.island ?? "—"} • {r.categories?.name ?? "—"}
+                            {r.owner_id ? (
+                              <>
+                                {" "}
+                                •{" "}
+                                <span className="text-xs text-muted-foreground/80">
+                                  owner: {r.owner_id.slice(0, 8)}…
+                                </span>
+                              </>
+                            ) : null}
+                          </p>
+
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Badge variant={plan === "pro" ? "default" : "secondary"} className="capitalize">
+                              {plan}
+                            </Badge>
+                            <Badge
+                              variant={status === "active" ? "default" : "secondary"}
+                              className="capitalize"
+                            >
+                              {status}
+                            </Badge>
+                          </div>
                         </div>
 
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant={plan === "pro" ? "default" : "secondary"} className="capitalize">
-                            {plan}
-                          </Badge>
-                          <Badge variant={status === "active" ? "default" : "secondary"} className="capitalize">
-                            {status}
-                          </Badge>
-                        </div>
-                      </div>
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          <Button variant="hero" size="sm" disabled={isBusy} onClick={() => promoteToPro(r)}>
+                            <Zap className="h-4 w-4 mr-1" />
+                            Pro + actief
+                          </Button>
 
-                      <div className="flex flex-wrap gap-2 justify-end">
-                        <Button
-                          variant="hero"
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() =>
-                            runBusy(`pro:${r.business_id}`, async () => {
-                              const a = await adminSetListingPlanAction(resolvedLang, r.business_id, "pro");
-                              if (!a?.ok) return a;
-                              return adminSetListingStatusAction(resolvedLang, r.business_id, "active");
-                            })
-                          }
-                        >
-                          <Zap className="h-4 w-4 mr-1" />
-                          Pro + actief
-                        </Button>
+                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setStatus(r, "active")}>
+                            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1.5" />}
+                            Active
+                          </Button>
 
-                        <Button
-                          variant="outlineSoft"
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() =>
-                            runBusy(`st:${r.business_id}`, () =>
-                              adminSetListingStatusAction(resolvedLang, r.business_id, "active")
-                            )
-                          }
-                        >
-                          <CheckCircle2 className="h-3 w-3 mr-1.5" />
-                          Active
-                        </Button>
+                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setStatus(r, "pending")}>
+                            <XCircle className="h-3 w-3 mr-1.5" />
+                            Pending
+                          </Button>
 
-                        <Button
-                          variant="outlineSoft"
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() =>
-                            runBusy(`st:${r.business_id}`, () =>
-                              adminSetListingStatusAction(resolvedLang, r.business_id, "pending")
-                            )
-                          }
-                        >
-                          <XCircle className="h-3 w-3 mr-1.5" />
-                          Pending
-                        </Button>
+                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setStatus(r, "inactive")}>
+                            Inactive
+                          </Button>
 
-                        <Button
-                          variant="outlineSoft"
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() =>
-                            runBusy(`st:${r.business_id}`, () =>
-                              adminSetListingStatusAction(resolvedLang, r.business_id, "inactive")
-                            )
-                          }
-                        >
-                          Inactive
-                        </Button>
+                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setPlan(r, "starter")}>
+                            Starter
+                          </Button>
 
-                        <Button
-                          variant="outlineSoft"
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() =>
-                            runBusy(`pl:${r.business_id}`, () =>
-                              adminSetListingPlanAction(resolvedLang, r.business_id, "starter")
-                            )
-                          }
-                        >
-                          Starter
-                        </Button>
+                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setPlan(r, "growth")}>
+                            Growth
+                          </Button>
 
-                        <Button
-                          variant="outlineSoft"
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() =>
-                            runBusy(`pl:${r.business_id}`, () =>
-                              adminSetListingPlanAction(resolvedLang, r.business_id, "growth")
-                            )
-                          }
-                        >
-                          Growth
-                        </Button>
+                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setPlan(r, "pro")}>
+                            Pro
+                          </Button>
 
-                        <Button
-                          variant="outlineSoft"
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() =>
-                            runBusy(`pl:${r.business_id}`, () =>
-                              adminSetListingPlanAction(resolvedLang, r.business_id, "pro")
-                            )
-                          }
-                        >
-                          Pro
-                        </Button>
+                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setVerified(r, true)}>
+                            Verify
+                          </Button>
 
-                        {r.deleted_at ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isBusy}
-                            onClick={() =>
-                              runBusy(`rs:${r.business_id}`, () =>
-                                adminRestoreBusinessAction(resolvedLang, r.business_id)
-                              )
-                            }
-                          >
+                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setVerified(r, false)}>
+                            Unverify
+                          </Button>
+
+                          <Button variant="destructive" size="sm" disabled={isBusy} onClick={() => softDelete(r)}>
+                            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          </Button>
+
+                          {/* Restore knop (optioneel) */}
+                          {/* <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => restore(r)}>
                             Restore
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={isBusy}
-                            onClick={() => {
-                              const ok = window.confirm(`Soft delete "${r.business_name}"?`);
-                              if (!ok) return;
-                              runBusy(`del:${r.business_id}`, () =>
-                                adminSoftDeleteBusinessAction(resolvedLang, r.business_id)
-                              );
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                          </Button> */}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

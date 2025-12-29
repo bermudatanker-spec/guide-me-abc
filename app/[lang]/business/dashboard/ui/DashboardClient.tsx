@@ -16,6 +16,7 @@ import {
 
 import type { Locale } from "@/i18n/config";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import VerifiedBadge from "@/components/business/VerifiedBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import {
   adminSetListingPlanAction,
   adminSoftDeleteBusinessAction,
   adminRestoreBusinessAction,
+  adminSetListingVerifiedAction,
   setListingStatusAction,
   setListingPlanAction,
   softDeleteListingAction,
@@ -38,22 +40,19 @@ import {
   type Plan,
 } from "../actions";
 
-/* -------------------------------------------------------
-   Types – aansluiten op je Supabase schema (read-only)
--------------------------------------------------------- */
-
 type Props = {
   lang: Locale;
   t: Record<string, string>;
 };
 
-function normalizePlan(p: any): Plan {
+function normalizePlan(p: unknown): Plan {
   const s = String(p ?? "").trim().toLowerCase();
   if (s === "pro") return "pro";
   if (s === "growth") return "growth";
   return "starter";
 }
-function normalizeStatus(s: any): ListingStatus {
+
+function normalizeStatus(s: unknown): ListingStatus {
   const v = String(s ?? "").trim().toLowerCase();
   if (v === "active") return "active";
   if (v === "inactive") return "inactive";
@@ -78,7 +77,7 @@ export default function DashboardClient({ lang, t }: Props) {
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  /* 1) Auth check – user + role ophalen ------------------- */
+  /* 1) Auth check – user + role ophalen */
   useEffect(() => {
     let alive = true;
 
@@ -99,7 +98,11 @@ export default function DashboardClient({ lang, t }: Props) {
 
       setUserId(data.user.id);
 
-      const role = ((data.user.app_metadata as any)?.role ?? (data.user as any)?.role ?? "")
+      const role = (
+        (data.user.app_metadata as any)?.role ??
+        (data.user as any)?.role ??
+        ""
+      )
         .toString()
         .toLowerCase();
 
@@ -112,39 +115,36 @@ export default function DashboardClient({ lang, t }: Props) {
     };
   }, [router, supabase, resolvedLang]);
 
-  /* 2) Data ophalen zodra userId bekend is ------------------- */
+  /* 2) Data ophalen zodra userId bekend is */
   async function loadListings(uid: string, superAdmin: boolean) {
     try {
       setLoading(true);
       setErrorMsg(null);
 
       let query = supabase
-  .from("business_listings")
-  .select(`
-    id,
-    business_id,
-    business_name,
-    island,
-    status,
-    is_verified,
-    verified_at,
-    owner_id,
-    deleted_at,
-    categories:category_id (name, slug),
-    subscription:subscriptions (
-      plan
-    )
-  `)
-  .is("deleted_at", null)
-  .order("created_at", { ascending: false });
+        .from("business_listings")
+        .select(
+          `
+            id,
+            business_id,
+            business_name,
+            is_verified,
+            verified_at,
+            island,
+            status,
+            owner_id,
+            deleted_at,
+            categories:category_id (name, slug),
+            subscription:subscriptions ( plan )
+          `
+        )
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
 
-      // Owner ziet alleen eigen listings (RLS/kolom)
+      // Owner ziet alleen eigen listings
       if (!superAdmin) {
         query = query.eq("owner_id", uid);
       }
-
-      // ✅ alleen actieve (niet deleted) tonen op owner dashboard
-      query = query.is("deleted_at", null);
 
       const { data, error } = await query.returns<DashboardListingRow[]>();
       if (error) throw new Error(error.message);
@@ -163,7 +163,7 @@ export default function DashboardClient({ lang, t }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, isSuperAdmin]);
 
-  /* 3) Acties ------------------------------------- */
+  /* 3) Acties */
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace(`/${resolvedLang}`);
@@ -195,15 +195,25 @@ export default function DashboardClient({ lang, t }: Props) {
     }
   }
 
-  // ✅ Admin: status/plan via server actions (en niet meer client update)
+  // ✅ Admin: status/plan via server actions
   function adminUpdateStatus(listing: DashboardListingRow, status: ListingStatus) {
-    return runBusy(listing.id, () => adminSoftDeleteBusinessAction(resolvedLang, listing.business_id));
+    return runBusy(listing.id, () =>
+      adminSetListingStatusAction(resolvedLang, listing.id, status)
+    );
   }
+
   function adminUpdatePlan(listing: DashboardListingRow, plan: Plan) {
-    // Jij hebt adminSetListingPlanAction in admin-actions file? (zo ja)
-    // Als niet: gebruik setListingPlanAction hieronder (maar dan moet admin via RLS kunnen).
-    return runBusy(listing.id, () => adminSetListingPlanAction(resolvedLang, listing.business_id, plan));
+    return runBusy(listing.id, () =>
+      adminSetListingPlanAction(resolvedLang, listing.business_id, plan)
+    );
   }
+
+  function adminUpdateVerified(listing: DashboardListingRow, verified: boolean) {
+  return runBusy(listing.id, () =>
+    adminSetListingVerifiedAction(resolvedLang, listing.id, verified)
+  );
+}
+
   function promoteToPro(listing: DashboardListingRow) {
     return runBusy(listing.id, async () => {
       const r1 = await adminSetListingPlanAction(resolvedLang, listing.business_id, "pro");
@@ -212,7 +222,7 @@ export default function DashboardClient({ lang, t }: Props) {
     });
   }
 
-  // ✅ Owner: (optioneel) status/plan via server actions (alleen als je dit echt wil in owner dashboard)
+  // ✅ Owner (laat staan als je het later wil gebruiken; anders kun je deze 2 weghalen)
   function ownerUpdateStatus(listing: DashboardListingRow, status: ListingStatus) {
     return runBusy(listing.id, () => setListingStatusAction(resolvedLang, listing.id, status));
   }
@@ -222,27 +232,43 @@ export default function DashboardClient({ lang, t }: Props) {
 
   // ✅ soft delete (geen hard delete)
   function deleteListing(listing: DashboardListingRow) {
-    const ok = window.confirm(`Weet je zeker dat je "${listing.business_name}" wilt verwijderen?`);
+    const name = (listing.business_name ?? "dit bedrijf").toString();
+    const ok = window.confirm(`Weet je zeker dat je "${name}" wilt verwijderen?`);
     if (!ok) return;
 
     if (isSuperAdmin) {
-      return runBusy(listing.id, () => adminSoftDeleteBusinessAction(resolvedLang, listing.id));
+      // super_admin delete business (meestal op business_id)
+      return runBusy(listing.id, () =>
+        adminSoftDeleteBusinessAction(resolvedLang, listing.business_id)
+      );
     }
+
+    // owner delete listing
     return runBusy(listing.id, () => softDeleteListingAction(resolvedLang, listing.id));
   }
 
-  /* 4) Filter + sort ---------------- */
+  // ✅ (optioneel) restore voor super_admin, zodat import niet “unused” is
+  function restoreBusiness(listing: DashboardListingRow) {
+    if (!isSuperAdmin) return;
+    return runBusy(listing.id, () =>
+      adminRestoreBusinessAction(resolvedLang, listing.business_id)
+    );
+  }
+
+  /* 4) Filter + sort */
   const visibleListings = useMemo(() => {
     let rows = [...listings];
     const q = search.trim().toLowerCase();
+
     if (q) {
       rows = rows.filter((r) => {
+        const name = (r.business_name ?? "").toString().toLowerCase();
         const island = (r.island ?? "").toString().toLowerCase();
         const cat = (r.categories?.name ?? "").toString().toLowerCase();
         const status = (r.status ?? "").toString().toLowerCase();
         const plan = (r.subscription?.plan ?? "").toString().toLowerCase();
         return (
-          r.business_name.toLowerCase().includes(q) ||
+          name.includes(q) ||
           island.includes(q) ||
           cat.includes(q) ||
           status.includes(q) ||
@@ -253,13 +279,16 @@ export default function DashboardClient({ lang, t }: Props) {
 
     if (isSuperAdmin) {
       rows.sort((a, b) =>
-        a.business_name.localeCompare(b.business_name, "nl", { sensitivity: "base" })
+        (a.business_name ?? "").toString().localeCompare((b.business_name ?? "").toString(), "nl", {
+          sensitivity: "base",
+        })
       );
     }
+
     return rows;
   }, [listings, search, isSuperAdmin]);
 
-  /* 5) Teksten ---------------------- */
+  /* 5) Teksten */
   const title = t.dashboardTitle ?? "Dashboard";
   const subtitle = t.dashboardSubtitle ?? "Beheer je bedrijfsregistraties";
   const myBusinesses = t.myBusinesses ?? "Mijn bedrijven";
@@ -269,7 +298,7 @@ export default function DashboardClient({ lang, t }: Props) {
   const miniSiteLabel = t.view ?? "Mini-site";
   const editLabel = t.edit ?? "Bewerken";
 
-  /* 6) Loading ---------------------- */
+  /* 6) Loading */
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -278,7 +307,7 @@ export default function DashboardClient({ lang, t }: Props) {
     );
   }
 
-  /* 7) UI -------------------------- */
+  /* 7) UI */
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -295,10 +324,7 @@ export default function DashboardClient({ lang, t }: Props) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="hero"
-              onClick={() => router.push(langHref(resolvedLang, "/business/create"))}
-            >
+            <Button variant="hero" onClick={() => router.push(langHref(resolvedLang, "/business/create"))}>
               <Plus className="mr-2 h-4 w-4" />
               {addBusiness}
             </Button>
@@ -338,10 +364,7 @@ export default function DashboardClient({ lang, t }: Props) {
             {visibleListings.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">{noBusinesses}</p>
-                <Button
-                  variant="hero"
-                  onClick={() => router.push(langHref(resolvedLang, "/business/create"))}
-                >
+                <Button variant="hero" onClick={() => router.push(langHref(resolvedLang, "/business/create"))}>
                   <Plus className="mr-2 h-4 w-4" />
                   {addBusiness}
                 </Button>
@@ -362,11 +385,17 @@ export default function DashboardClient({ lang, t }: Props) {
                     >
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <h3 className="font-semibold text-lg text-foreground">{r.business_name}</h3>
+                          {/* ✅ Naam + verified badge */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-lg text-foreground">
+                              {(r.business_name ?? "—").toString()}
+                            </h3>
+                            <VerifiedBadge verified={r.is_verified} verifiedAt={r.verified_at} compact />
+                          </div>
 
                           <p className="text-sm text-muted-foreground">
                             {r.island ?? "—"} • {r.categories?.name ?? "—"}
-                            {isSuperAdmin && (
+                            {isSuperAdmin && r.owner_id ? (
                               <>
                                 {" "}
                                 •{" "}
@@ -374,7 +403,7 @@ export default function DashboardClient({ lang, t }: Props) {
                                   owner: {r.owner_id.slice(0, 8)}…
                                 </span>
                               </>
-                            )}
+                            ) : null}
                           </p>
 
                           <div className="flex flex-wrap gap-2 mt-2">
@@ -391,12 +420,7 @@ export default function DashboardClient({ lang, t }: Props) {
                           {/* ✅ Admin controls */}
                           {isSuperAdmin && (
                             <>
-                              <Button
-                                variant="hero"
-                                size="sm"
-                                disabled={isBusy}
-                                onClick={() => promoteToPro(r)}
-                              >
+                              <Button variant="hero" size="sm" disabled={isBusy} onClick={() => promoteToPro(r)}>
                                 <Zap className="h-4 w-4 mr-1" />
                                 Pro + actief
                               </Button>
@@ -407,7 +431,11 @@ export default function DashboardClient({ lang, t }: Props) {
                                 disabled={isBusy}
                                 onClick={() => adminUpdateStatus(r, "active")}
                               >
-                                {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1.5" />}
+                                {isBusy ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                                )}
                                 Active
                               </Button>
 
@@ -456,6 +484,29 @@ export default function DashboardClient({ lang, t }: Props) {
                               >
                                 Pro
                               </Button>
+
+                              <Button
+                                variant="outlineSoft"
+                                size="sm"
+                                disabled={isBusy}
+                                onClick={() => adminUpdateVerified(r, true)}
+                              >
+                                Verify
+                              </Button>
+
+                              <Button
+                                variant="outlineSoft"
+                                size="sm"
+                                disabled={isBusy}
+                                onClick={() => adminUpdateVerified(r, false)}
+                              >
+                                Unverify
+                              </Button>
+
+                              {/* ✅ Restore (optioneel knopje; haal weg als je ‘m niet wil tonen) */}
+                              {/* <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => restoreBusiness(r)}>
+                                Restore
+                              </Button> */}
                             </>
                           )}
 
@@ -477,25 +528,14 @@ export default function DashboardClient({ lang, t }: Props) {
                             variant="outline"
                             size="sm"
                             disabled={isBusy}
-                            onClick={() =>
-                              router.push(langHref(resolvedLang, `/business/edit/${r.id}`))
-                            }
+                            onClick={() => router.push(langHref(resolvedLang, `/business/edit/${r.id}`))}
                           >
                             {editLabel}
                           </Button>
 
                           {/* Verwijderen (soft) */}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={isBusy}
-                            onClick={() => deleteListing(r)}
-                          >
-                            {isBusy ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
+                          <Button variant="destructive" size="sm" disabled={isBusy} onClick={() => deleteListing(r)}>
+                            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                           </Button>
                         </div>
                       </div>

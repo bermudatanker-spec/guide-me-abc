@@ -2,29 +2,49 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
 
 type Props = {
-  verified?: boolean | null;
+  verified: boolean | null;
   verifiedAt?: string | null;
   compact?: boolean;
 };
 
-export default function VerifiedBadge({ verified, verifiedAt, compact }: Props) {
-  if (!verified) return null;
-
-  const date = verifiedAt ? new Date(verifiedAt).toLocaleDateString() : null;
-
-  return (
-    <Badge
-      className={
-        compact
-          ? "gap-1 bg-primary/10 text-primary hover:bg-primary/15"
-          : "gap-1 bg-primary/10 text-primary hover:bg-primary/15 px-3 py-1"
-      }
-      title={date ? `Verified on ${date}` : "Verified"}
-    >
-      <CheckCircle2 className="h-3.5 w-3.5" />
-      <span className="text-xs font-semibold">
-        Verified{date ? ` • ${date}` : ""}
+export default function VerifiedBadge({
+  verified,
+  verifiedAt,
+  compact = false,
+}: Props) {
+  if (verified) {
+    return (
+      <span
+        className={`
+          inline-flex items-center gap-1 rounded-full
+          bg-emerald-500/15 text-emerald-700
+          ${compact ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm"}
+          font-semibold
+        `}
+        title={
+          verifiedAt
+            ? `Verified on ${new Date(verifiedAt).toLocaleDateString()}`
+            : "Verified business"
+        }
+      >
+        ✔ Verified
       </span>
-    </Badge>
+    );
+  }
+
+  // 👇 NIET verified → trots maar eerlijk
+  return (
+    <span
+      className={`
+        inline-flex items-center gap-1 rounded-full
+        bg-muted text-muted-foreground
+        ${compact ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm"}
+        font-medium
+        cursor-help
+      `}
+      title="Verification increases trust and visibility"
+    >
+      ⏳ Not verified
+    </span>
   );
 }

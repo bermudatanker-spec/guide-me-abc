@@ -17,7 +17,7 @@ import {
 import type { Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-
+import VerifiedBadge from "@/components/business/VerifiedBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +67,8 @@ type Listing = {
   status: string | null;
   subscription_plan: string | null;
   deleted_at?: string | null;
+  is_verified: boolean | null;
+  verified_at: string | null;
 };
 
 type Props = {
@@ -135,7 +137,7 @@ export default function DashboardHome({ lang, business, caps }: Props) {
         // 2) listing op business_id (consequent!)
         const { data: l, error: lErr } = await supabase
           .from("business_listings")
-          .select("id, business_id, business_name, island, status, subscription_plan, deleted_at")
+          .select(`id, business_id, business_name, island, status, subscription_plan, deleted_at, is_verified, verified_at`)
           .eq("business_id", business.id)
           .is("deleted_at", null)
           .order("created_at", { ascending: true })
@@ -216,20 +218,33 @@ export default function DashboardHome({ lang, business, caps }: Props) {
       <div className="mb-6">
         <h1 className="text-3xl md:text-4xl font-bold">{title}</h1>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{businessName}</span>
-          <span>•</span>
-          <span className="capitalize">{island}</span>
+       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+       <span className="font-medium text-foreground">{businessName}</span>
 
-          <span className="ms-2" />
+           <span>•</span>
+           <span className="capitalize">{island}</span>
 
-          <Badge variant={plan === "pro" ? "default" : "secondary"} className="capitalize">
-            {plan}
-          </Badge>
-          <Badge variant={status === "active" ? "default" : "secondary"} className="capitalize">
-            {status}
-          </Badge>
+           <span className="ms-2" />
 
+           <Badge variant={plan === "pro" ? "default" : "secondary"} className="capitalize">
+        {plan}
+           </Badge>
+           <Badge variant={status === "active" ? "default" : "secondary"} className="capitalize">
+        {status}
+           </Badge>
+
+        <VerifiedBadge
+          verified={listing?.is_verified ?? null}
+          verifiedAt={listing?.verified_at ?? null}
+           compact
+            />
+            
+        {isAdmin && <Badge variant="default">super_admin</Badge>}
+        {isDeleted && (
+            <Badge variant="destructive">
+            {lang === "nl" ? "verwijderd" : "deleted"}
+            </Badge>
+          )}
           {isAdmin ? (
             <Badge variant="default">super_admin</Badge>
           ) : null}
