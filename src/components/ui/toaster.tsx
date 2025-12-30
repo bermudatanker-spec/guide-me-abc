@@ -2,12 +2,6 @@
 "use client";
 
 import { useToast } from "@/hooks/use-toast";
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastTitle,
-} from "@/components/ui/toast";
 
 export function Toaster() {
   const { toasts, dismiss } = useToast();
@@ -15,32 +9,29 @@ export function Toaster() {
   if (!toasts.length) return null;
 
   return (
-    <>
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
       {toasts.map((t) => (
-        <Toast
+        <div
           key={t.id}
-          // ✅ variant uit jouw ToastOptions ("default" | "success" | "destructive")
-          //    fallback naar "default" voor de zekerheid
-          variant={t.variant ?? "default"}
-          onOpenChange={(open) => {
-            // Als de toast sluit (via swipe, timeout, ESC, etc.) → uit store halen
-            if (!open) dismiss(t.id);
-          }}
+          className={`rounded-md px-4 py-3 shadow-lg text-white
+            ${t.variant === "success" ? "bg-green-600" : ""}
+            ${t.variant === "destructive" ? "bg-red-600" : ""}
+            ${!t.variant || t.variant === "default" ? "bg-gray-800" : ""}
+          `}
         >
-          <div className="grid gap-1">
-            {t.title && <ToastTitle>{t.title}</ToastTitle>}
-            {t.description && (
-              <ToastDescription>{t.description}</ToastDescription>
-            )}
-          </div>
+          {t.title && <div className="font-semibold">{t.title}</div>}
+          {t.description && (
+            <div className="text-sm opacity-90">{t.description}</div>
+          )}
 
-          {/* Optionele action (bijv. knop) */}
-          {t.action}
-
-          {/* Handmatig sluiten via X-knop */}
-          <ToastClose onClick={() => dismiss(t.id)} />
-        </Toast>
+          <button
+            onClick={() => dismiss(t.id)}
+            className="absolute top-1 right-2 text-xs opacity-70 hover:opacity-100"
+          >
+            ✕
+          </button>
+        </div>
       ))}
-    </>
+    </div>
   );
 }

@@ -9,7 +9,9 @@ export async function supabaseServer() {
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anon) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY"
+    );
   }
 
   return createServerClient(url, anon, {
@@ -49,3 +51,9 @@ export async function supabaseServer() {
     },
   });
 }
+
+/**
+ * ✅ Alias zodat je imports overal kloppen
+ * (page.tsx en route.ts gebruiken deze naam)
+ */
+export const createServerSupabaseClient = supabaseServer;

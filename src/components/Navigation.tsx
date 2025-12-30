@@ -67,7 +67,7 @@ export default function Navigation({ lang }: NavigationProps) {
       { label: "Curaçao", href: href("/islands/curacao") },
       {
         label: activeLang === "nl" ? "Bedrijven" : "Businesses",
-        href: href("/business"),
+        href: href("/businesses"),
       },
       { label: "Blog", href: href("/blog") },
       { label: "FAQ", href: href("/faq") },

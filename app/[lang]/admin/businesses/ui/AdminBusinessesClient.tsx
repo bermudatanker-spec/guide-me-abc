@@ -1,409 +1,238 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { Loader2, Search, Trash2, CheckCircle2, XCircle, Zap } from "lucide-react";
+import React from "react";
+import { useToast } from "@/components/ui/use-toast";
+import type { BusinessRow, SubscriptionPlan, SubscriptionStatus } from "../types";
 
-import type { Locale } from "@/i18n/config";
-import { supabaseBrowser } from "@/lib/supabase/browser";
-import { langHref } from "@/lib/lang-href";
-import { getLangFromPath } from "@/lib/locale-path";
-import { getRoleFlags } from "@/lib/auth/get-role-flags";
-import { useToast } from "@/hooks/use-toast";
+const PLANS: SubscriptionPlan[] = ["free", "starter", "growth", "pro"];
+const STATUSES: SubscriptionStatus[] = ["inactive", "active"];
 
-import VerifiedBadge from "@/components/business/VerifiedBadge";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+const SAVE_URL = "/api/admin/businesses/subscription";
+const ADMIN_TOKEN = process.env.NEXT_PUBLIC_GODMODE_TOKEN;
 
-import type { DashboardListingRow } from "@/types/listing";
-
-import {
-  adminSetListingStatusAction,
-  adminSetListingPlanAction,
-  adminSoftDeleteBusinessAction,
-  adminRestoreBusinessAction,
-  adminSetListingVerifiedAction,
-  type ListingStatus,
-  type Plan,
-} from "../actions";
-
-type Props = {
-  lang: Locale;
-  t: Record<string, string>;
+type RowState = {
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  dirty: boolean;
+  saving: boolean;
+  error: string | null;
 };
 
-function normalizePlan(p: unknown): Plan {
-  const s = String(p ?? "").trim().toLowerCase();
-  if (s === "pro") return "pro";
-  if (s === "growth") return "growth";
-  return "starter";
+type Props = {
+  lang: string;
+  businesses: BusinessRow[];
+};
+
+function normalizePlan(v: unknown): SubscriptionPlan {
+  const s = String(v ?? "free").toLowerCase();
+  return (PLANS.includes(s as any) ? s : "free") as SubscriptionPlan;
+}
+function normalizeStatus(v: unknown): SubscriptionStatus {
+  const s = String(v ?? "inactive").toLowerCase();
+  return (STATUSES.includes(s as any) ? s : "inactive") as SubscriptionStatus;
 }
 
-function normalizeStatus(s: unknown): ListingStatus {
-  const v = String(s ?? "").trim().toLowerCase();
-  if (v === "active") return "active";
-  if (v === "inactive") return "inactive";
-  return "pending";
+async function readJsonSafe(res: Response) {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
-export default function AdminBusinessesClient({ lang, t }: Props) {
-  const router = useRouter();
-  const pathname = usePathname() ?? "/";
-  const resolvedLang = (getLangFromPath(pathname) || lang) as Locale;
-
-  const supabase = useMemo(() => supabaseBrowser(), []);
+export default function AdminBusinessesClient({ businesses }: Props) {
   const { toast } = useToast();
 
-  const [authLoading, setAuthLoading] = useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-
-  const [listings, setListings] = useState<DashboardListingRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-
-  // 1) Auth gate (super_admin required)
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (!alive) return;
-
-      if (error) {
-        setErrorMsg(error.message);
-        setAuthLoading(false);
-        return;
-      }
-
-      if (!data?.user) {
-        router.replace(langHref(resolvedLang, "/business/auth"));
-        return;
-      }
-
-      const flags = getRoleFlags(data.user);
-      setIsSuperAdmin(flags.isSuperAdmin);
-
-      if (!flags.isSuperAdmin) {
-        router.replace(langHref(resolvedLang, "/business/dashboard"));
-        return;
-      }
-
-      setAuthLoading(false);
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [router, supabase, resolvedLang]);
-
-  // 2) Load listings (super_admin sees all)
-  async function loadListings() {
-    try {
-      setLoading(true);
-      setErrorMsg(null);
-
-      const { data, error } = await supabase
-        .from("business_listings")
-        .select(
-          `
-          id,
-          business_id,
-          business_name,
-          is_verified,
-          verified_at,
-          island,
-          status,
-          owner_id,
-          deleted_at,
-          categories:category_id (name, slug),
-          subscription:subscriptions ( plan )
-        `
-        )
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .returns<DashboardListingRow[]>();
-
-      if (error) throw new Error(error.message);
-      setListings(data ?? []);
-    } catch (e: any) {
-      setErrorMsg(e?.message ?? "Kon je bedrijven niet laden.");
-    } finally {
-      setLoading(false);
+  const [query, setQuery] = React.useState("");
+  const [rows, setRows] = React.useState<Record<string, RowState>>(() => {
+    const initial: Record<string, RowState> = {};
+    for (const b of businesses) {
+      const sub = b.subscriptions ?? null;
+      initial[b.id] = {
+        plan: normalizePlan(sub?.plan),
+        status: normalizeStatus(sub?.status),
+        dirty: false,
+        saving: false,
+        error: null,
+      };
     }
-  }
-
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    void loadListings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSuperAdmin]);
-
-  async function runBusy(rowId: string, fn: () => Promise<any>) {
-    setBusyId(rowId);
-    try {
-      const res = await fn();
-
-      if (!res?.ok) {
-        toast({
-          title: "Fout",
-          description: res?.error ?? "Onbekende fout",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({ title: "Gelukt ✅" });
-      await loadListings();
-    } catch (e: any) {
-      toast({
-        title: "Serverfout",
-        description: e?.message ?? "Onbekende fout",
-        variant: "destructive",
-      });
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  /**
-   * ✅ Belangrijk:
-   * Jouw actions.ts kan "listingId OR businessId" aan (idOrBusinessId),
-   * dus we geven overal gewoon row.id door. Super consistent.
-   */
-function setStatus(row: DashboardListingRow, status: ListingStatus) {
-  return runBusy(row.id, () =>
-    adminSetListingStatusAction(resolvedLang, row.id, status)
-  );
-}
-
-function setPlan(row: DashboardListingRow, plan: Plan) {
-  return runBusy(row.id, () =>
-    adminSetListingPlanAction(resolvedLang, row.id, plan)
-  );
-}
-
-function setVerified(row: DashboardListingRow, verified: boolean) {
-  return runBusy(row.id, () =>
-    adminSetListingVerifiedAction(resolvedLang, row.id, verified)
-  );
-}
-
-function promoteToPro(row: DashboardListingRow) {
-  return runBusy(row.id, async () => {
-    const r1 = await adminSetListingPlanAction(resolvedLang, row.id, "pro");
-    if (!r1?.ok) return r1;
-    return adminSetListingStatusAction(resolvedLang, row.id, "active");
+    return initial;
   });
-}
 
-function softDelete(row: DashboardListingRow) {
-  const name = (row.business_name ?? "dit bedrijf").toString();
-  const confirmed = window.confirm(`Weet je zeker dat je "${name}" wilt verwijderen?`);
-  if (!confirmed) return;
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return businesses;
+    return businesses.filter((b) => b.name.toLowerCase().includes(q));
+  }, [businesses, query]);
 
-  return runBusy(row.id, () =>
-    adminSoftDeleteBusinessAction(resolvedLang, row.id)
-  );
-}
-
-function restore(row: DashboardListingRow) {
-  return runBusy(row.id, () =>
-    adminRestoreBusinessAction(resolvedLang, row.id)
-  );
-}
-
-  const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let rows = [...listings];
-
-    if (q) {
-      rows = rows.filter((r) => {
-        const name = (r.business_name ?? "").toString().toLowerCase();
-        const island = (r.island ?? "").toString().toLowerCase();
-        const cat = (r.categories?.name ?? "").toString().toLowerCase();
-        const status = (r.status ?? "").toString().toLowerCase();
-        const plan = (r.subscription?.plan ?? "").toString().toLowerCase();
-        const owner = (r.owner_id ?? "").toString().toLowerCase();
-
-        return (
-          name.includes(q) ||
-          island.includes(q) ||
-          cat.includes(q) ||
-          status.includes(q) ||
-          plan.includes(q) ||
-          owner.includes(q)
-        );
-      });
-    }
-
-    rows.sort((a, b) =>
-      (a.business_name ?? "")
-        .toString()
-        .localeCompare((b.business_name ?? "").toString(), "nl", { sensitivity: "base" })
-    );
-
-    return rows;
-  }, [listings, search]);
-
-  const title = t.adminBusinessesTitle ?? "Admin · Businesses";
-  const subtitle = t.adminBusinessesSubtitle ?? "Beheer alle bedrijven (super_admin).";
-
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  function setPlan(businessId: string, plan: SubscriptionPlan) {
+    setRows((r) => ({
+      ...r,
+      [businessId]: { ...r[businessId], plan, dirty: true, error: null },
+    }));
+  }
+  function setStatus(businessId: string, status: SubscriptionStatus) {
+    setRows((r) => ({
+      ...r,
+      [businessId]: { ...r[businessId], status, dirty: true, error: null },
+    }));
   }
 
-  // redirect gebeurt al in effect; dit is alleen fallback
-  if (!isSuperAdmin) return null;
+  async function saveOne(businessId: string) {
+    const row = rows[businessId];
+    if (!row || row.saving) return;
+
+    setRows((r) => ({
+      ...r,
+      [businessId]: { ...r[businessId], saving: true, error: null },
+    }));
+
+    try {
+      const res = await fetch(SAVE_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(ADMIN_TOKEN ? { "x-admin-token": ADMIN_TOKEN } : {}),
+        },
+        body: JSON.stringify({
+          businessId,
+          plan: row.plan,
+          status: row.status,
+        }),
+      });
+
+      const json = await readJsonSafe(res);
+
+      if (!res.ok) {
+        const msg = json?.error ?? `Save failed (${res.status})`;
+        throw new Error(msg);
+      }
+
+      setRows((r) => ({
+        ...r,
+        [businessId]: { ...r[businessId], saving: false, dirty: false, error: null },
+      }));
+
+      toast({ title: "Opgeslagen", description: "Abonnement bijgewerkt." });
+    } catch (e: any) {
+      setRows((r) => ({
+        ...r,
+        [businessId]: {
+          ...r[businessId],
+          saving: false,
+          error: e?.message ?? "Unknown error",
+        },
+      }));
+      toast({ title: "Fout", description: e?.message ?? "Unknown error", variant: "destructive" });
+    }
+  }
+
+  async function saveAll() {
+    const dirtyIds = Object.entries(rows)
+      .filter(([, v]) => v.dirty && !v.saving)
+      .map(([id]) => id);
+
+    for (const id of dirtyIds) {
+      // sequential is prima voor admin
+      // voorkomt race conditions
+      // eslint-disable-next-line no-await-in-loop
+      await saveOne(id);
+    }
+  }
+
+  const dirtyCount = Object.values(rows).filter((r) => r.dirty).length;
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-1">{title}</h1>
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
-        </div>
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <input
+          className="w-full max-w-md rounded-md border px-3 py-2"
+          placeholder="Zoek op bedrijfsnaam..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button
+          className="rounded-md border px-3 py-2 disabled:opacity-50"
+          onClick={saveAll}
+          disabled={dirtyCount === 0}
+        >
+          Alles opslaan ({dirtyCount})
+        </button>
+      </div>
 
-        {errorMsg && (
-          <div className="mb-6 p-3 rounded-md border border-red-500/40 bg-red-50 text-sm text-red-700">
-            {errorMsg}
-          </div>
-        )}
+      <div className="w-full overflow-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/30">
+            <tr className="text-left">
+              <th className="p-3">Bedrijf</th>
+              <th className="p-3">Plan</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Acties</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((b) => {
+              const row = rows[b.id];
+              return (
+                <tr key={b.id} className="border-t">
+                  <td className="p-3">
+                    <div className="font-medium">{b.name}</div>
+                    <div className="text-xs opacity-70">{b.island ?? ""}</div>
+                    {row?.error ? (
+                      <div className="text-xs text-red-600 mt-1">{row.error}</div>
+                    ) : null}
+                  </td>
 
-        <div className="mb-4 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Zoek op naam, eiland, status, plan, owner…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Alle bedrijven</CardTitle>
-          </CardHeader>
-
-          <CardContent>
-            {visible.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground">Geen resultaten.</div>
-            ) : (
-              <div className="space-y-4">
-                {visible.map((r) => {
-                  const plan = normalizePlan(r.subscription?.plan);
-                  const status = normalizeStatus(r.status);
-                  const isBusy = busyId === r.id;
-
-                  return (
-                    <div
-                      key={r.id}
-                      className="border border-border rounded-lg p-4 hover:bg-muted/40 transition-colors"
+                  <td className="p-3">
+                    <select
+                      className="rounded-md border px-2 py-1"
+                      value={row?.plan ?? "free"}
+                      onChange={(e) => setPlan(b.id, e.target.value as SubscriptionPlan)}
                     >
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold text-lg text-foreground">
-                              {(r.business_name ?? "—").toString()}
-                            </h3>
-                            <VerifiedBadge verified={r.is_verified} verifiedAt={r.verified_at} compact />
-                          </div>
+                      {PLANS.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
 
-                          <p className="text-sm text-muted-foreground">
-                            {r.island ?? "—"} • {r.categories?.name ?? "—"}
-                            {r.owner_id ? (
-                              <>
-                                {" "}
-                                •{" "}
-                                <span className="text-xs text-muted-foreground/80">
-                                  owner: {r.owner_id.slice(0, 8)}…
-                                </span>
-                              </>
-                            ) : null}
-                          </p>
+                  <td className="p-3">
+                    <select
+                      className="rounded-md border px-2 py-1"
+                      value={row?.status ?? "inactive"}
+                      onChange={(e) => setStatus(b.id, e.target.value as SubscriptionStatus)}
+                    >
+                      {STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
 
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            <Badge variant={plan === "pro" ? "default" : "secondary"} className="capitalize">
-                              {plan}
-                            </Badge>
-                            <Badge variant={status === "active" ? "default" : "secondary"} className="capitalize">
-                              {status}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 justify-end">
-                          <Button variant="hero" size="sm" disabled={isBusy} onClick={() => promoteToPro(r)}>
-                            <Zap className="h-4 w-4 mr-1" />
-                            Pro + actief
-                          </Button>
-
-                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setStatus(r, "active")}>
-                            {isBusy ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="h-3 w-3 mr-1.5" />
-                            )}
-                            Active
-                          </Button>
-
-                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setStatus(r, "pending")}>
-                            <XCircle className="h-3 w-3 mr-1.5" />
-                            Pending
-                          </Button>
-
-                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setStatus(r, "inactive")}>
-                            Inactive
-                          </Button>
-
-                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setPlan(r, "starter")}>
-                            Starter
-                          </Button>
-
-                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setPlan(r, "growth")}>
-                            Growth
-                          </Button>
-
-                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setPlan(r, "pro")}>
-                            Pro
-                          </Button>
-
-                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setVerified(r, true)}>
-                            Verify
-                          </Button>
-
-                          <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => setVerified(r, false)}>
-                            Unverify
-                          </Button>
-
-                          <Button variant="destructive" size="sm" disabled={isBusy} onClick={() => softDelete(r)}>
-                            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                          </Button>
-
-                          {/* Optioneel: restore knop */}
-                          {/* <Button variant="outlineSoft" size="sm" disabled={isBusy} onClick={() => restore(r)}>
-                            Restore
-                          </Button> */}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </main>
+                  <td className="p-3">
+                    <button
+                      className="rounded-md border px-3 py-2 disabled:opacity-50"
+                      onClick={() => saveOne(b.id)}
+                      disabled={!row || row.saving || !row.dirty}
+                    >
+                      {row?.saving ? "Opslaan..." : "Opslaan"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 ? (
+              <tr>
+                <td className="p-6 opacity-70" colSpan={4}>
+                  Geen resultaten
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
