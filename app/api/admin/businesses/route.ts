@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const ADMIN_TOKEN = process.env.NEXT_PUBLIC_GODMODE_TOKEN!;
+const ADMIN_TOKEN = process.env.GODMODE_TOKEN!;
 
 function adminSupabase() {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {

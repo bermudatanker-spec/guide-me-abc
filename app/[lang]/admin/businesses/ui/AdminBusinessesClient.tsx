@@ -8,7 +8,7 @@ const PLANS: SubscriptionPlan[] = ["free", "starter", "growth", "pro"];
 const STATUSES: SubscriptionStatus[] = ["inactive", "active"];
 
 const SAVE_URL = "/api/admin/businesses/subscription";
-const ADMIN_TOKEN = process.env.NEXT_PUBLIC_GODMODE_TOKEN;
+const ADMIN_TOKEN = process.env.GODMODE_TOKEN;
 
 type RowState = {
   plan: SubscriptionPlan;
