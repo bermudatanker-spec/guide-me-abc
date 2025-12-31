@@ -1,71 +1,57 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireGodmode } from "@/lib/admin/admin-guard";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import "@/lib/admin/admin-guard";
-
 type Plan = "free" | "starter" | "growth" | "pro";
 type Status = "active" | "inactive";
 
-function isPlan(v: any): v is Plan {
-  return v === "free" || v === "starter" || v === "growth" || v === "pro";
-}
-function isStatus(v: any): v is Status {
-  return v === "active" || v === "inactive";
-}
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const GODMODE_TOKEN = process.env.GODMODE_TOKEN;
-
-function unauthorized() {
-  return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-}
-
-function adminSupabase() {
-  if (!SUPABASE_URL) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
-  if (!SERVICE_ROLE_KEY) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
-  return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
 export async function POST(req: Request) {
+  const guard = requireGodmode(req);
+  if (!guard.ok) return guard.res;
+
   try {
-    if (!GODMODE_TOKEN) throw new Error("Missing GODMODE_TOKEN");
+    const body = await req.json().catch(() => null);
+    const business_id = body?.business_id as string | undefined;
+    const plan = body?.plan as Plan | undefined;
+    const status = body?.status as Status | undefined;
 
-    const token = req.headers.get("x-admin-token");
-    if (!token || token !== GODMODE_TOKEN) return unauthorized();
+    if (!business_id) {
+      return NextResponse.json({ ok: false, error: "Missing business_id" }, { status: 400 });
+    }
 
-    const body = await req.json().catch(() => ({}));
+    if (!plan && !status) {
+      return NextResponse.json({ ok: false, error: "Nothing to update" }, { status: 400 });
+    }
 
-    const businessId = body?.businessId ?? body?.business_id;
-    const plan = body?.plan;
-    const status = body?.status;
+    const sb = supabaseAdmin();
 
-    if (!businessId) throw new Error("Missing businessId");
-    if (!isPlan(plan)) throw new Error(`Invalid plan: ${plan}`);
-    if (!isStatus(status)) throw new Error(`Invalid status: ${status}`);
-
-    const supabase = adminSupabase();
-
-    const { error } = await supabase
+    // moet bestaan
+    const { data: existing } = await sb
       .from("subscriptions")
-      .upsert(
-        { business_id: businessId, plan, status },
-        { onConflict: "business_id" }
-      );
+      .select("id")
+      .eq("business_id", business_id)
+      .maybeSingle();
 
-    if (error) throw error;
+    if (!existing?.id) {
+      return NextResponse.json({ ok: false, error: "Subscription not found" }, { status: 404 });
+    }
+
+    const patch: any = {};
+    if (plan) patch.plan = plan;
+    if (status) patch.status = status;
+
+    const { error } = await sb
+      .from("subscriptions")
+      .update(patch)
+      .eq("business_id", business_id);
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    console.error("[update-subscription] error:", e);
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? "Server error" },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: e?.message ?? "Server error" }, { status: 500 });
   }
 }

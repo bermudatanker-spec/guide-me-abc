@@ -8,7 +8,6 @@ const PLANS: SubscriptionPlan[] = ["free", "starter", "growth", "pro"];
 const STATUSES: SubscriptionStatus[] = ["inactive", "active"];
 
 const SAVE_URL = "/api/admin/businesses/subscription";
-const ADMIN_TOKEN = process.env.GODMODE_TOKEN;
 
 type RowState = {
   plan: SubscriptionPlan;
@@ -43,11 +42,33 @@ async function readJsonSafe(res: Response) {
 export default function AdminBusinessesClient({ businesses }: Props) {
   const { toast } = useToast();
 
+  // ✅ token hoort NIET in process.env in de client
+  const [adminToken, setAdminToken] = React.useState<string>("");
+
+  // load token uit sessionStorage (alleen browser)
+  React.useEffect(() => {
+    const t = sessionStorage.getItem("admin_token") ?? "";
+    setAdminToken(t);
+  }, []);
+
   const [query, setQuery] = React.useState("");
-  const [rows, setRows] = React.useState<Record<string, RowState>>(() => {
+
+  // rows state
+  const [rows, setRows] = React.useState<Record<string, RowState>>({});
+
+  // ✅ zorg dat saveOne altijd de nieuwste rows ziet
+  const rowsRef = React.useRef(rows);
+  React.useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+
+  // ✅ (re)initialiseer rows als businesses verandert
+  React.useEffect(() => {
     const initial: Record<string, RowState> = {};
     for (const b of businesses) {
-      const sub = b.subscriptions ?? null;
+      // support beide varianten
+      const sub = (b as any).subscription ?? null;
+
       initial[b.id] = {
         plan: normalizePlan(sub?.plan),
         status: normalizeStatus(sub?.status),
@@ -56,13 +77,13 @@ export default function AdminBusinessesClient({ businesses }: Props) {
         error: null,
       };
     }
-    return initial;
-  });
+    setRows(initial);
+  }, [businesses]);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return businesses;
-    return businesses.filter((b) => b.name.toLowerCase().includes(q));
+    return businesses.filter((b) => (b.name ?? "").toLowerCase().includes(q));
   }, [businesses, query]);
 
   function setPlan(businessId: string, plan: SubscriptionPlan) {
@@ -71,6 +92,7 @@ export default function AdminBusinessesClient({ businesses }: Props) {
       [businessId]: { ...r[businessId], plan, dirty: true, error: null },
     }));
   }
+
   function setStatus(businessId: string, status: SubscriptionStatus) {
     setRows((r) => ({
       ...r,
@@ -79,7 +101,7 @@ export default function AdminBusinessesClient({ businesses }: Props) {
   }
 
   async function saveOne(businessId: string) {
-    const row = rows[businessId];
+    const row = rowsRef.current[businessId];
     if (!row || row.saving) return;
 
     setRows((r) => ({
@@ -88,11 +110,13 @@ export default function AdminBusinessesClient({ businesses }: Props) {
     }));
 
     try {
+      const token = adminToken.trim();
+
       const res = await fetch(SAVE_URL, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          ...(ADMIN_TOKEN ? { "x-admin-token": ADMIN_TOKEN } : {}),
+          ...(token ? { "x-admin-token": token } : {}),
         },
         body: JSON.stringify({
           businessId,
@@ -123,18 +147,22 @@ export default function AdminBusinessesClient({ businesses }: Props) {
           error: e?.message ?? "Unknown error",
         },
       }));
-      toast({ title: "Fout", description: e?.message ?? "Unknown error", variant: "destructive" });
+      toast({
+        title: "Fout",
+        description: e?.message ?? "Unknown error",
+        variant: "destructive",
+      });
     }
   }
 
   async function saveAll() {
-    const dirtyIds = Object.entries(rows)
+    const snapshot = rowsRef.current;
+    const dirtyIds = Object.entries(snapshot)
       .filter(([, v]) => v.dirty && !v.saving)
       .map(([id]) => id);
 
     for (const id of dirtyIds) {
-      // sequential is prima voor admin
-      // voorkomt race conditions
+      // sequential is prima
       // eslint-disable-next-line no-await-in-loop
       await saveOne(id);
     }
@@ -144,6 +172,36 @@ export default function AdminBusinessesClient({ businesses }: Props) {
 
   return (
     <div className="p-6 space-y-4">
+      {/* ✅ admin token input */}
+      <div className="flex flex-col gap-2 rounded-md border p-3">
+        <div className="text-sm font-medium">Admin token</div>
+        <div className="flex gap-2">
+          <input
+            className="w-full rounded-md border px-3 py-2"
+            placeholder="Plak je x-admin-token hier (wordt in session opgeslagen)"
+            value={adminToken}
+            onChange={(e) => {
+              const v = e.target.value;
+              setAdminToken(v);
+              sessionStorage.setItem("admin_token", v);
+            }}
+          />
+          <button
+            className="rounded-md border px-3 py-2"
+            onClick={() => {
+              setAdminToken("");
+              sessionStorage.removeItem("admin_token");
+              toast({ title: "Token verwijderd" });
+            }}
+          >
+            Clear
+          </button>
+        </div>
+        <div className="text-xs opacity-70">
+          Dit token komt bewust niet uit env/NEXT_PUBLIC om leaks te voorkomen.
+        </div>
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <input
           className="w-full max-w-md rounded-md border px-3 py-2"
@@ -223,6 +281,7 @@ export default function AdminBusinessesClient({ businesses }: Props) {
                 </tr>
               );
             })}
+
             {filtered.length === 0 ? (
               <tr>
                 <td className="p-6 opacity-70" colSpan={4}>

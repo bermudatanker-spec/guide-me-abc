@@ -1,69 +1,46 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireGodmode } from "@/lib/admin/admin-guard";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import "@/lib/admin/admin-guard";
-
 type Plan = "free" | "starter" | "growth" | "pro";
 type Status = "active" | "inactive";
 
-function isPlan(v: any): v is Plan {
-  return v === "free" || v === "starter" || v === "growth" || v === "pro";
-}
-function isStatus(v: any): v is Status {
-  return v === "active" || v === "inactive";
-}
-
-const SUPABASE_URL =
-  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
+  const guard = requireGodmode(req);
+  if (!guard.ok) return guard.res;
 
-    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        {
-          error:
-            "Missing SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) or SUPABASE_SERVICE_ROLE_KEY",
-        },
-        { status: 500 }
-      );
+  try {
+    const body = await req.json().catch(() => ({}));
+    const businessId = String(body.businessId ?? "");
+    const plan = String(body.plan ?? "free") as Plan;
+    const status = String(body.status ?? "inactive") as Status;
+
+    if (!businessId) {
+      return NextResponse.json({ ok: false, error: "Missing businessId" }, { status: 400 });
     }
 
-    const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const sb = supabaseAdmin();
 
-    const items = Array.isArray(body?.items) ? body.items : [body];
+    // ✅ vereist: unique index op subscriptions(business_id)
+    const { error } = await sb
+      .from("subscriptions")
+      .upsert(
+        { business_id: businessId, plan, status },
+        { onConflict: "business_id" }
+      );
 
-    for (const item of items) {
-      const businessId = item?.businessId;
-      const plan = item?.plan;
-      const status = item?.status;
-
-      if (!businessId) throw new Error("Missing businessId");
-      if (!isPlan(plan)) throw new Error(`Invalid plan: ${plan}`);
-      if (!isStatus(status)) throw new Error(`Invalid status: ${status}`);
-
-      const { error } = await sb
-        .from("subscriptions")
-        .upsert(
-          { business_id: businessId, plan, status },
-          { onConflict: "business_id" }
-        );
-
-      if (error) throw error;
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message ?? "Unknown error" },
-      { status: 400 }
+      { ok: false, error: e?.message ?? "Server error" },
+      { status: 500 }
     );
   }
 }
