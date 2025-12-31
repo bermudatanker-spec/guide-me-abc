@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import "@/lib/admin/admin-guard";
+
 type Plan = "free" | "starter" | "growth" | "pro";
 type Status = "active" | "inactive";
 
