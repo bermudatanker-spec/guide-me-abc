@@ -3,7 +3,7 @@
 
 import "server-only";
 import type { Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Plan } from "@/lib/plans";
 
 type Ok<T = {}> = { ok: true } & T;
@@ -20,7 +20,7 @@ function fail(error: unknown): Fail {
 }
 
 async function requireUserAndBusinessId(): Promise<{ userId: string; businessId: string }> {
-  const sb = await supabaseServer();
+  const sb = await createSupabaseServerClient();
   const { data, error } = await sb.auth.getUser();
   if (error) throw new Error(error.message);
   if (!data?.user) throw new Error("Niet ingelogd.");

@@ -1,7 +1,7 @@
 // app/[lang]/godmode/content/page.tsx
 import type { Metadata } from "next";
 import { isLocale, type Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -34,7 +34,7 @@ export default async function GodmodeContentPage({ params }: Props) {
   const lang = isLocale(raw) ? raw : "en";
   const isNl = lang === "nl";
 
-  const s = await supabaseServer();
+  const s = await createSupabaseServerClient();
   const { data, error } = await s
     .from("categories")
     .select("id, name, slug")

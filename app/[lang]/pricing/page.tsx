@@ -1,6 +1,6 @@
 import type { Locale } from "@/i18n/config";
 import PricingClient from "./PricingClient";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type PageProps = {
   params: Promise<{ lang: Locale }>;
@@ -9,7 +9,7 @@ type PageProps = {
 export default async function PricingPage({ params }: PageProps) {
   const { lang } = await params;
 
-  const sb = await supabaseServer();
+  const sb = await createSupabaseServerClient();
   const { data, error } = await sb.auth.getUser();
   const user = data?.user ?? null;
 

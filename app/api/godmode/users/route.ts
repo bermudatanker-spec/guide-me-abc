@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ function unauthorized(msg = "Unauthorized") {
 }
 
 async function requireSuperAdmin() {
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data?.user) return { ok: false as const, res: unauthorized("Not logged in") };

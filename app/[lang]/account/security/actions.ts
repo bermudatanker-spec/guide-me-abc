@@ -2,7 +2,7 @@
 
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type ProfileRow = {
   mfa_totp_secret: string | null;
@@ -11,11 +11,10 @@ type ProfileRow = {
 
 /**
  * Helper: haal Supabase + ingelogde user op.
- * Werkt ook als supabaseServer() async is.
+ * Werkt ook als createSupabaseServerClient() async is.
  */
 async function getSupabaseAndUser() {
-  // supabaseServer kan sync of async zijn → met await werkt beide
-  const supabase = (await (supabaseServer as any)()) as any;
+    const supabase = (await (createSupabaseServerClient as any)()) as any;
 
   const { data, error } = await supabase.auth.getUser();
 

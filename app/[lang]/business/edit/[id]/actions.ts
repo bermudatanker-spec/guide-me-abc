@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isLocale, type Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
 
@@ -88,7 +88,7 @@ const island =
     : null;
 
   // 4) Auth
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
   const { data: auth, error: authError } = await supabase.auth.getUser();
 
   if (authError) return { error: authError.message };

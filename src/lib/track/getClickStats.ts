@@ -1,9 +1,9 @@
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ClickType = "whatsapp" | "route" | "call" | "website";
 
 export async function getClickStats(businessId: string, days: number) {
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
 
   const since = new Date();
   since.setDate(since.getDate() - days);

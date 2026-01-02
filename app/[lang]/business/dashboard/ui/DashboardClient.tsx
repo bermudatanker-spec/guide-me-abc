@@ -165,8 +165,8 @@ export default function DashboardClient({ lang, t }: Props) {
 
   /* 3) Acties */
   async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace(`/${resolvedLang}`);
+    // Belangrijk: server-route wist cookies/session correct (SSR + middleware safe)
+    router.push(`/${resolvedLang}/auth/logout`);
   }
 
   async function runBusy(id: string, fn: () => Promise<any>) {

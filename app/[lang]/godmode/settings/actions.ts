@@ -3,7 +3,7 @@
 import "server-only";
 
 import type { Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 type Ok<T = {}> = { ok: true } & T;
@@ -50,7 +50,7 @@ type Row = { key: string; value: unknown };
 /** ✅ READ via service role (consistent, onafhankelijk van RLS) */
 export async function godmodeLoadSettingsAction(_lang: Locale): Promise<Result<{ rows: Row[] }>> {
   try {
-    const sb = await supabaseServer();
+    const sb = await createSupabaseServerClient();
     const { data, error } = await sb.auth.getUser();
     if (error) return fail(error.message);
     if (!data?.user) return fail("Niet ingelogd.");
@@ -75,7 +75,7 @@ export async function godmodeSaveSettingsAction(
   payload: SettingsPayload
 ): Promise<Result> {
   try {
-    const sb = await supabaseServer();
+    const sb = await createSupabaseServerClient();
     const { data, error } = await sb.auth.getUser();
     if (error) return fail(error.message);
     if (!data?.user) return fail("Niet ingelogd.");

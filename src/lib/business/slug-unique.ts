@@ -1,9 +1,9 @@
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 
 export async function generateUniqueBusinessSlug(name: string) {
   const base = slugify(name) || "business";
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
 
   // probeer base, base-2, base-3 ...
   for (let i = 0; i < 50; i++) {

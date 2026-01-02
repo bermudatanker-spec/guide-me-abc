@@ -1,5 +1,5 @@
 // src/lib/platform-settings.ts
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type RawRow = {
   key: string;
@@ -11,7 +11,7 @@ type RawRow = {
  * Geeft null terug als er iets misgaat.
  */
 export async function getPlatformSettings() {
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("platform_settings")

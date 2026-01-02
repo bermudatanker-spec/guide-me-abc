@@ -1,4 +1,4 @@
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizePlan, type Plan } from "@/lib/plans/capabilities";
 
 export type MyBusiness = {
@@ -15,7 +15,7 @@ export async function getMyBusiness(): Promise<{
   userId: string;
   business: MyBusiness | null;
 }> {
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
   const { data: auth } = await supabase.auth.getUser();
 
   const user = auth.user;

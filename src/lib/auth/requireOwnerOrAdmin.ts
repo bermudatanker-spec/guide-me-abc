@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getRoleFlags } from "@/lib/auth/get-role-flags";
 
 /**
@@ -9,7 +9,7 @@ import { getRoleFlags } from "@/lib/auth/get-role-flags";
  * @param listingId business_listings.id (dus listing id)
  */
 export async function requireOwnerOrAdmin(lang: Locale, listingId: string) {
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {

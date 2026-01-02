@@ -2,7 +2,7 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
  * Kleine helper: Vercel/Next kan `context.params`
@@ -23,7 +23,7 @@ async function getIdFromContext(context: any): Promise<string> {
 export async function GET(_req: NextRequest, context: any) {
   const id = await getIdFromContext(context);
 
-  const s = await supabaseServer();
+  const s = await createSupabaseServerClient();
 
   const { data, error } = await s
     .from("business_listings")
@@ -51,7 +51,7 @@ export async function GET(_req: NextRequest, context: any) {
 export async function PATCH(req: NextRequest, context: any) {
   const id = await getIdFromContext(context);
 
-  const s = await supabaseServer();
+  const s = await createSupabaseServerClient();
 
   const { data: authData, error: authError } = await s.auth.getUser();
   if (authError) {
@@ -86,7 +86,7 @@ export async function PATCH(req: NextRequest, context: any) {
 export async function DELETE(_req: NextRequest, context: any) {
   const id = await getIdFromContext(context);
 
-  const s = await supabaseServer();
+  const s = await createSupabaseServerClient();
 
   const { data: authData, error: authError } = await s.auth.getUser();
   if (authError) {

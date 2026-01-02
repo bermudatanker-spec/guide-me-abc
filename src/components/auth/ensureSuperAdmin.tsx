@@ -1,7 +1,7 @@
 // src/lib/auth/ensureSuperAdmin.ts
 import "server-only";
 
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type Ok = { ok: true; userId: string };
 type Fail = { ok: false; error: string };
@@ -20,7 +20,7 @@ function isSuperAdmin(user: any) {
 }
 
 export async function ensureSuperAdmin(): Promise<EnsureResult> {
-  const supabase: any = await supabaseServer();
+  const supabase: any = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
 
   if (error) return { ok: false, error: error.message };

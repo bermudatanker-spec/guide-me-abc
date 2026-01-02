@@ -1,20 +1,27 @@
-import { assertNoPublicSecrets } from "@/lib/env";
 import { NextResponse } from "next/server";
 
-export function requireGodmode(req: Request) {
-  assertNoPublicSecrets();
+type GuardOk = { ok: true };
+type GuardFail = { ok: false; res: NextResponse };
 
-  const token = req.headers.get("x-admin-token");
+export function requireGodmode(req: Request): GuardOk | GuardFail {
   const expected = process.env.GODMODE_TOKEN;
 
+  // Als je geen token hebt gezet in env: altijd blokkeren (veilig)
   if (!expected) {
-    // Let op: NIET top-level throwen in routes → alleen runtime
-    return { ok: false as const, res: NextResponse.json({ ok: false, error: "Missing GODMODE_TOKEN" }, { status: 500 }) };
+    return {
+      ok: false,
+      res: NextResponse.json({ ok: false, error: "Server misconfig: GODMODE_TOKEN missing" }, { status: 500 }),
+    };
   }
+
+  const token = req.headers.get("x-admin-token")?.trim();
 
   if (!token || token !== expected) {
-    return { ok: false as const, res: NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 }) };
+    return {
+      ok: false,
+      res: NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 }),
+    };
   }
 
-  return { ok: true as const };
+  return { ok: true };
 }

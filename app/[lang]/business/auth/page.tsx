@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 
 import { isLocale, type Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import AuthClient from "./ui/AuthClient";
 
 /* ---------- Types ---------- */
@@ -67,8 +67,8 @@ export default async function BusinessAuthPage({ params }: PageProps) {
   const { lang: raw } = await params;
   const lang: Locale = isLocale(raw) ? raw : "en";
 
-  // LET OP: supabaseServer is async, dus we wachten erop
-  const supabase = await supabaseServer();
+  // LET OP: createSupabaseServerClient is async, dus we wachten erop
+  const supabase = await createSupabaseServerClient();
 
   let allowRegistrations = true;
   let forceEmailVerification = true;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ClickEventType = "whatsapp" | "route" | "call" | "website";
 
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const supabase = await supabaseServer();
+    const supabase = await createSupabaseServerClient();
 
 // user (optioneel)
 const {

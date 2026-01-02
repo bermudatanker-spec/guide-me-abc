@@ -3,18 +3,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Menu, X, Mail, MessageCircle, ChevronDown } from "lucide-react";
 
 import ResponsiveImage from "@/components/ResponsiveImage";
 import { Button } from "@/components/ui/button";
+import LogoutButton from "@/components/auth/LogoutButton";
 
 import { trackClick } from "@/lib/track/trackClick";
 import { getLangFromPath } from "@/lib/locale-path";
 
-type NavigationProps = { lang?: string };
+type NavigationProps = { lang?: string; isLoggedIn?: boolean };
 
-// Pas aan indien je andere locales hebt
 const SUPPORTED = ["en", "nl", "pap", "es"] as const;
 type L = (typeof SUPPORTED)[number];
 
@@ -22,9 +22,12 @@ function cx(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function Navigation({ lang }: NavigationProps) {
+export default function Navigation({ lang, isLoggedIn }: NavigationProps) {
   const pathname = usePathname() ?? "/";
 
+  const loggedIn = Boolean(isLoggedIn)
+
+  
   const activeLang = useMemo<L>(() => {
     const fromPath = getLangFromPath(pathname);
     const maybe = (lang ?? fromPath ?? "en").toLowerCase();
@@ -34,13 +37,33 @@ export default function Navigation({ lang }: NavigationProps) {
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
 
-  // Sluit menu bij route change
+  const href = useCallback((p: string) => `/${activeLang}${p}`, [activeLang]);
+
+  const isActive = useCallback(
+    (h: string) => {
+      if (h === href("/")) return pathname === h;
+      return pathname.startsWith(h);
+    },
+    [href, pathname]
+  );
+
+  const fire = useCallback(
+    (eventType: "whatsapp" | "route" | "call" | "website", businessId: string) => {
+      void trackClick({
+        businessId,
+        eventType,
+        path: pathname,
+        lang: activeLang,
+      });
+    },
+    [activeLang, pathname]
+  );
+
   useEffect(() => {
     setOpen(false);
     setLangOpen(false);
   }, [pathname]);
 
-  // Scroll lock + ESC sluit menu
   useEffect(() => {
     if (!open) return;
 
@@ -58,8 +81,6 @@ export default function Navigation({ lang }: NavigationProps) {
     };
   }, [open]);
 
-  const href = (p: string) => `/${activeLang}${p}`;
-
   const links = useMemo(
     () => [
       { label: "Aruba", href: href("/islands/aruba") },
@@ -73,46 +94,35 @@ export default function Navigation({ lang }: NavigationProps) {
       { label: "FAQ", href: href("/faq") },
       { label: activeLang === "nl" ? "Contact" : "Contact", href: href("/contact") },
     ],
-    [activeLang]
+    [activeLang, href]
   );
 
-  const isActive = (h: string) => {
-    // match start, maar pak root netjes
-    if (h === href("/")) return pathname === h;
-    return pathname.startsWith(h);
-  };
-
-  const fire = (eventType: "whatsapp" | "route" | "call" | "website", businessId: string) => {
-    void trackClick({
-      businessId,
-      eventType,
-      path: pathname,
-      lang: activeLang,
-    });
-  };
-
-  // Header quick links
   const whatsappHref = "https://wa.me/59996763535";
   const mailHref = "mailto:info@guide-me-abc.com";
 
-  // Language switch: vervang enkel de eerste /{lang} segment als die bestaat
-  const switchTo = (nextLang: L) => {
-    const segments = pathname.split("/").filter(Boolean);
-    if (segments.length === 0) return `/${nextLang}`;
-    if (SUPPORTED.includes(segments[0] as L)) {
-      segments[0] = nextLang;
-      return "/" + segments.join("/");
-    }
-    return `/${nextLang}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
-  };
+  const switchTo = useCallback(
+    (nextLang: L) => {
+      const segments = pathname.split("/").filter(Boolean);
+      if (segments.length === 0) return `/${nextLang}`;
+      if (SUPPORTED.includes(segments[0] as L)) {
+        segments[0] = nextLang;
+        return "/" + segments.join("/");
+      }
+      return `/${nextLang}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
+    },
+    [pathname]
+  );
+
+  const onOpenMobile = useCallback(() => setOpen(true), []);
+  const onCloseMobile = useCallback(() => setOpen(false), []);
+  const onToggleLang = useCallback(() => setLangOpen((v) => !v), []);
+  const onCloseLang = useCallback(() => setLangOpen(false), []);
 
   return (
     <>
-      {/* ===================== HEADER ===================== */}
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="container mx-auto flex h-22 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href={`/${activeLang}`} className="flex items-center gap-3">
-            {/* ✅ MATEN LATEN ZOALS JIJ ZE ZETTE */}
             <div className="relative flex h-[100px] w-[150px] items-center">
               <ResponsiveImage
                 src="/images/logo_guide_me_abc.png"
@@ -124,7 +134,6 @@ export default function Navigation({ lang }: NavigationProps) {
             </div>
           </Link>
 
-          {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-6">
             {links.map((l) => (
               <Link
@@ -141,7 +150,6 @@ export default function Navigation({ lang }: NavigationProps) {
             ))}
           </nav>
 
-          {/* Desktop right side */}
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-3 text-muted-foreground">
               <a
@@ -150,7 +158,6 @@ export default function Navigation({ lang }: NavigationProps) {
                 className="hover:opacity-90 transition-colors"
                 aria-label="WhatsApp"
               >
-                {/* ✅ WhatsApp icoon groen */}
                 <MessageCircle className="h-5 w-5 text-[#25D366]" />
               </a>
 
@@ -164,50 +171,59 @@ export default function Navigation({ lang }: NavigationProps) {
               </a>
             </div>
 
-            {/* Account */}
+          {loggedIn && (
+          <>
             <Link
-              href={href("/account")}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => fire("route", "site:account")}
+                href={href("/account")}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => fire("route", "site:account")}
             >
-              {activeLang === "nl" ? "Mijn account" : "My account"}
+                {activeLang === "nl" ? "Mijn account" : "My account"}
             </Link>
 
-            {/* Language dropdown */}
+            <LogoutButton
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                label={activeLang === "nl" ? "Uitloggen" : "Log out"}
+                onDone={() => fire("route", "site:logout")}
+            />
+            </>
+                )}
+
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setLangOpen((v) => !v)}
-                // ✅ MATEN EXACT LATEN: px-3 py-2 text-sm rounded-full
+                onClick={onToggleLang}
                 className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-semibold text-white shadow-[0_4px_18px_rgba(0,0,0,0.18)] hover:opacity-95 transition"
-                // ✅ Ocean knopkleur (zonder afhankelijk te zijn van classnaam)
                 style={{
                   background: "linear-gradient(90deg, #00BFD3 0%, #A2E6F2 100%)",
                   boxShadow: "0 3px 8px rgba(0,191,211,0.25)",
                 }}
                 aria-label="Language"
                 aria-expanded={langOpen}
+                aria-haspopup="menu"
               >
                 <span className="uppercase">{activeLang}</span>
                 <ChevronDown className="h-4 w-4" />
               </button>
 
               {langOpen && (
-                // ✅ GLASS EFFECT (niet wit) + blur zoals header vibe
-                <div className="absolute right-0 mt-2 w-40 overflow-hidden rounded-xl border border-white/25 bg-slate-900/40 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.45)]">
+                <div
+                  className="absolute right-0 mt-2 w-40 overflow-hidden rounded-xl border border-white/25 bg-slate-900/40 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.45)]"
+                  role="menu"
+                >
                   {SUPPORTED.map((l) => (
                     <Link
                       key={l}
                       href={switchTo(l)}
                       onClick={() => {
-                        setLangOpen(false);
+                        onCloseLang(); // ✅ echte call
                         fire("route", "site:lang");
                       }}
-                      // ✅ Tekst wit (wat jij vroeg)
                       className={cx(
                         "block px-4 py-3 text-sm transition text-white",
                         l === activeLang ? "bg-white/15 font-semibold text-white" : "hover:bg-white/10"
                       )}
+                      role="menuitem"
                     >
                       <span className="uppercase">{l}</span>
                     </Link>
@@ -216,7 +232,6 @@ export default function Navigation({ lang }: NavigationProps) {
               )}
             </div>
 
-            {/* For businesses CTA (koraal uit globals: button-gradient) */}
             <Link
               href={href("/for-business")}
               className="button-gradient rounded-full px-4 py-2 text-sm font-semibold"
@@ -227,30 +242,25 @@ export default function Navigation({ lang }: NavigationProps) {
             </Link>
           </div>
 
-          {/* Mobile toggle */}
           <div className="md:hidden">
-            <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Open menu">
+            <Button variant="ghost" size="icon" onClick={onOpenMobile} aria-label="Open menu">
               <Menu className="h-6 w-6" />
             </Button>
           </div>
         </div>
       </header>
 
-      {/* MOBILE MENU */}
       {open && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
+            onClick={onCloseMobile}
             aria-hidden="true"
           />
 
-          {/* ✅ Panel houdt je bestaande glass-gevoel */}
           <nav className="fixed inset-0 z-50 flex flex-col bg-background/85 backdrop-blur">
-            {/* Close button (hersteld) */}
             <button
-              onClick={() => setOpen(false)}
+              onClick={onCloseMobile}
               className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/70 shadow-[0_6px_20px_rgba(0,0,0,0.22)]"
               aria-label={activeLang === "nl" ? "Sluit menu" : "Close menu"}
             >
@@ -258,14 +268,13 @@ export default function Navigation({ lang }: NavigationProps) {
             </button>
 
             <div className="flex flex-col h-full px-6 pt-20 pb-10 overflow-y-auto">
-              {/* Primary links (terug zoals het hoorde) */}
               <div className="flex flex-col">
                 {links.map((l) => (
                   <Link
                     key={l.href}
                     href={l.href}
                     onClick={() => {
-                      setOpen(false);
+                      onCloseMobile();
                       fire("route", "site:nav");
                     }}
                     className={cx(
@@ -278,13 +287,11 @@ export default function Navigation({ lang }: NavigationProps) {
                 ))}
               </div>
 
-              {/* Actions */}
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                {/* ✅ WhatsApp knop groen */}
                 <a
                   href={whatsappHref}
                   onClick={() => {
-                    setOpen(false);
+                    onCloseMobile();
                     fire("whatsapp", "site:whatsapp");
                   }}
                   className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-glow bg-[#25D366] hover:opacity-95 transition"
@@ -297,7 +304,7 @@ export default function Navigation({ lang }: NavigationProps) {
                 <a
                   href={mailHref}
                   onClick={() => {
-                    setOpen(false);
+                    onCloseMobile();
                     fire("website", "site:email");
                   }}
                   className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold border border-border bg-background shadow-[0_6px_18px_rgba(0,0,0,0.18)] hover:bg-muted transition"
@@ -307,21 +314,34 @@ export default function Navigation({ lang }: NavigationProps) {
                   {activeLang === "nl" ? "Mail" : "Email"}
                 </a>
 
+                {loggedIn && (
+                <>
                 <Link
                   href={href("/account")}
                   onClick={() => {
-                    setOpen(false);
-                    fire("route", "site:account");
+                  onCloseMobile();
+                  fire("route", "site:account");
                   }}
                   className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold border border-border bg-background shadow-[0_6px_18px_rgba(0,0,0,0.18)] hover:bg-muted transition"
                 >
                   {activeLang === "nl" ? "Mijn account" : "My account"}
                 </Link>
 
+                <LogoutButton
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  label={activeLang === "nl" ? "Uitloggen" : "Log out"}
+                  onDone={() => {
+                  onCloseMobile();
+                  fire("route", "site:logout");
+                  }}
+                />
+                </>
+                  )}
+
                 <Link
                   href={href("/for-business")}
                   onClick={() => {
-                    setOpen(false);
+                    onCloseMobile();
                     fire("route", "site:for-business");
                   }}
                   className="button-gradient rounded-full px-4 py-2 text-sm font-semibold"
@@ -330,20 +350,18 @@ export default function Navigation({ lang }: NavigationProps) {
                 </Link>
               </div>
 
-              {/* Language quick switch */}
               <div className="mt-8">
                 <div className="text-sm font-semibold text-muted-foreground mb-3">
                   {activeLang === "nl" ? "Taal" : "Language"}
                 </div>
 
-                {/* ✅ Tekst wit op mobiel (wat jij vroeg) */}
                 <div className="flex flex-wrap gap-2">
                   {SUPPORTED.map((l) => (
                     <Link
                       key={l}
                       href={switchTo(l)}
                       onClick={() => {
-                        setOpen(false);
+                        onCloseMobile();
                         fire("route", "site:lang");
                       }}
                       className={cx(

@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -259,7 +259,7 @@ export default async function IslandCategoryPage({ params }: PageParams) {
   const islandLabel = ISLAND_LABELS[island];
   const catCopy = CATEGORY_LABELS[category][lang];
 
-  const s = await supabaseServer();
+  const s = await createSupabaseServerClient();
 
   const { data, error } = await s
     .from("business_listings")

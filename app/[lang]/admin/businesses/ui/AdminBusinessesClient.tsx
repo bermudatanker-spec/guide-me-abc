@@ -1,297 +1,239 @@
 "use client";
 
-import React from "react";
-import { useToast } from "@/components/ui/use-toast";
-import type { BusinessRow, SubscriptionPlan, SubscriptionStatus } from "../types";
+import React, { useEffect, useMemo, useState } from "react";
 
-const PLANS: SubscriptionPlan[] = ["free", "starter", "growth", "pro"];
-const STATUSES: SubscriptionStatus[] = ["inactive", "active"];
+type Plan = "free" | "starter" | "growth" | "pro";
+type Status = "active" | "inactive";
 
-const SAVE_URL = "/api/admin/businesses/subscription";
+const PLANS: Plan[] = ["free", "starter", "growth", "pro"];
+const STATUSES: Status[] = ["inactive", "active"];
 
-type RowState = {
-  plan: SubscriptionPlan;
-  status: SubscriptionStatus;
+type ApiBusiness = {
+  id: string;
+  name: string;
+  island?: string | null;
+  created_at?: string | null;
+  subscription?: { plan: Plan; status: Status } | null;
+};
+
+type Row = {
+  id: string;
+  name: string;
+  island: string;
+  created_at: string;
+  plan: Plan;
+  status: Status;
   dirty: boolean;
   saving: boolean;
   error: string | null;
 };
 
-type Props = {
-  lang: string;
-  businesses: BusinessRow[];
-};
+export default function AdminBusinessesClient({ lang }: { lang: string }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-function normalizePlan(v: unknown): SubscriptionPlan {
-  const s = String(v ?? "free").toLowerCase();
-  return (PLANS.includes(s as any) ? s : "free") as SubscriptionPlan;
-}
-function normalizeStatus(v: unknown): SubscriptionStatus {
-  const s = String(v ?? "inactive").toLowerCase();
-  return (STATUSES.includes(s as any) ? s : "inactive") as SubscriptionStatus;
-}
+  // ✅ ALTIJD array
+  const [rows, setRows] = useState<Row[]>([]);
 
-async function readJsonSafe(res: Response) {
-  try {
-    return await res.json();
-  } catch {
-    return null;
+  const dirtyCount = useMemo(() => rows.filter((r) => r.dirty && !r.saving).length, [rows]);
+
+  function normalize(b: ApiBusiness): Row {
+    return {
+      id: b.id,
+      name: b.name ?? "",
+      island: b.island ?? "",
+      created_at: b.created_at ?? "",
+      plan: b.subscription?.plan ?? "free",
+      status: b.subscription?.status ?? "inactive",
+      dirty: false,
+      saving: false,
+      error: null,
+    };
   }
-}
 
-export default function AdminBusinessesClient({ businesses }: Props) {
-  const { toast } = useToast();
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/businesses", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      });
 
-  // ✅ token hoort NIET in process.env in de client
-  const [adminToken, setAdminToken] = React.useState<string>("");
+      const json = await res.json().catch(() => ({}));
 
-  // load token uit sessionStorage (alleen browser)
-  React.useEffect(() => {
-    const t = sessionStorage.getItem("admin_token") ?? "";
-    setAdminToken(t);
+      if (!res.ok) {
+        setRows([]);
+        setError(json?.error ?? `HTTP ${res.status}`);
+        return;
+      }
+
+      const list: ApiBusiness[] = Array.isArray(json?.businesses) ? json.businesses : [];
+      setRows(list.map(normalize));
+    } catch (e: any) {
+      setRows([]);
+      setError(e?.message ?? "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [query, setQuery] = React.useState("");
-
-  // rows state
-  const [rows, setRows] = React.useState<Record<string, RowState>>({});
-
-  // ✅ zorg dat saveOne altijd de nieuwste rows ziet
-  const rowsRef = React.useRef(rows);
-  React.useEffect(() => {
-    rowsRef.current = rows;
-  }, [rows]);
-
-  // ✅ (re)initialiseer rows als businesses verandert
-  React.useEffect(() => {
-    const initial: Record<string, RowState> = {};
-    for (const b of businesses) {
-      // support beide varianten
-      const sub = (b as any).subscription ?? null;
-
-      initial[b.id] = {
-        plan: normalizePlan(sub?.plan),
-        status: normalizeStatus(sub?.status),
-        dirty: false,
-        saving: false,
-        error: null,
-      };
-    }
-    setRows(initial);
-  }, [businesses]);
-
-  const filtered = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return businesses;
-    return businesses.filter((b) => (b.name ?? "").toLowerCase().includes(q));
-  }, [businesses, query]);
-
-  function setPlan(businessId: string, plan: SubscriptionPlan) {
-    setRows((r) => ({
-      ...r,
-      [businessId]: { ...r[businessId], plan, dirty: true, error: null },
-    }));
+  function setRow(id: string, patch: Partial<Row>) {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
-  function setStatus(businessId: string, status: SubscriptionStatus) {
-    setRows((r) => ({
-      ...r,
-      [businessId]: { ...r[businessId], status, dirty: true, error: null },
-    }));
-  }
+  async function saveOne(id: string) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) return;
 
-  async function saveOne(businessId: string) {
-    const row = rowsRef.current[businessId];
-    if (!row || row.saving) return;
-
-    setRows((r) => ({
-      ...r,
-      [businessId]: { ...r[businessId], saving: true, error: null },
-    }));
+    setRow(id, { saving: true, error: null });
 
     try {
-      const token = adminToken.trim();
-
-      const res = await fetch(SAVE_URL, {
+      const res = await fetch("/api/admin/businesses/subscription", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(token ? { "x-admin-token": token } : {}),
-        },
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          businessId,
+          businessId: row.id,
           plan: row.plan,
           status: row.status,
         }),
       });
 
-      const json = await readJsonSafe(res);
+      const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = json?.error ?? `Save failed (${res.status})`;
-        throw new Error(msg);
+        setRow(id, { saving: false, error: json?.error ?? `HTTP ${res.status}` });
+        return;
       }
 
-      setRows((r) => ({
-        ...r,
-        [businessId]: { ...r[businessId], saving: false, dirty: false, error: null },
-      }));
-
-      toast({ title: "Opgeslagen", description: "Abonnement bijgewerkt." });
+      setRow(id, { saving: false, dirty: false, error: null });
     } catch (e: any) {
-      setRows((r) => ({
-        ...r,
-        [businessId]: {
-          ...r[businessId],
-          saving: false,
-          error: e?.message ?? "Unknown error",
-        },
-      }));
-      toast({
-        title: "Fout",
-        description: e?.message ?? "Unknown error",
-        variant: "destructive",
-      });
+      setRow(id, { saving: false, error: e?.message ?? "Save failed" });
     }
   }
 
   async function saveAll() {
-    const snapshot = rowsRef.current;
-    const dirtyIds = Object.entries(snapshot)
-      .filter(([, v]) => v.dirty && !v.saving)
-      .map(([id]) => id);
-
-    for (const id of dirtyIds) {
-      // sequential is prima
+    const ids = rows.filter((r) => r.dirty && !r.saving).map((r) => r.id);
+    for (const id of ids) {
+      // serial is ok (minder chaos)
       // eslint-disable-next-line no-await-in-loop
       await saveOne(id);
     }
   }
 
-  const dirtyCount = Object.values(rows).filter((r) => r.dirty).length;
+  if (loading) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-semibold">Admin · Businesses</h1>
+        <p className="text-sm opacity-70">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-4">
-      {/* ✅ admin token input */}
-      <div className="flex flex-col gap-2 rounded-md border p-3">
-        <div className="text-sm font-medium">Admin token</div>
-        <div className="flex gap-2">
-          <input
-            className="w-full rounded-md border px-3 py-2"
-            placeholder="Plak je x-admin-token hier (wordt in session opgeslagen)"
-            value={adminToken}
-            onChange={(e) => {
-              const v = e.target.value;
-              setAdminToken(v);
-              sessionStorage.setItem("admin_token", v);
-            }}
-          />
-          <button
-            className="rounded-md border px-3 py-2"
-            onClick={() => {
-              setAdminToken("");
-              sessionStorage.removeItem("admin_token");
-              toast({ title: "Token verwijderd" });
-            }}
-          >
-            Clear
-          </button>
-        </div>
-        <div className="text-xs opacity-70">
-          Dit token komt bewust niet uit env/NEXT_PUBLIC om leaks te voorkomen.
-        </div>
-      </div>
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-semibold">Admin · Businesses</h1>
+        <span className="text-xs px-2 py-1 rounded bg-black/5">{String(lang).toUpperCase()}</span>
 
-      <div className="flex items-center justify-between gap-3">
-        <input
-          className="w-full max-w-md rounded-md border px-3 py-2"
-          placeholder="Zoek op bedrijfsnaam..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
         <button
-          className="rounded-md border px-3 py-2 disabled:opacity-50"
+          className="ml-auto px-3 py-2 rounded bg-black text-white text-sm disabled:opacity-40"
+          onClick={load}
+          disabled={loading}
+        >
+          Refresh
+        </button>
+
+        <button
+          className="px-3 py-2 rounded bg-blue-600 text-white text-sm disabled:opacity-40"
           onClick={saveAll}
           disabled={dirtyCount === 0}
+          title="Alles opslaan"
         >
           Alles opslaan ({dirtyCount})
         </button>
       </div>
 
-      <div className="w-full overflow-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/30">
-            <tr className="text-left">
-              <th className="p-3">Bedrijf</th>
-              <th className="p-3">Plan</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Acties</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((b) => {
-              const row = rows[b.id];
-              return (
-                <tr key={b.id} className="border-t">
-                  <td className="p-3">
-                    <div className="font-medium">{b.name}</div>
-                    <div className="text-xs opacity-70">{b.island ?? ""}</div>
-                    {row?.error ? (
-                      <div className="text-xs text-red-600 mt-1">{row.error}</div>
-                    ) : null}
-                  </td>
+      {error && (
+        <div className="p-3 rounded border border-red-300 bg-red-50 text-red-800 text-sm">
+          <b>Fout</b>
+          <div>{error}</div>
+          {String(error).toLowerCase().includes("unauthorized") && (
+            <div className="mt-1 opacity-80">
+              Tip: als je 401 krijgt, ben je niet ingelogd als superadmin of cookies komen niet mee.
+            </div>
+          )}
+        </div>
+      )}
 
-                  <td className="p-3">
-                    <select
-                      className="rounded-md border px-2 py-1"
-                      value={row?.plan ?? "free"}
-                      onChange={(e) => setPlan(b.id, e.target.value as SubscriptionPlan)}
-                    >
-                      {PLANS.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+      {rows.length === 0 ? (
+        <div className="text-sm opacity-70">Geen resultaten.</div>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((r) => (
+            <div key={r.id} className="p-3 rounded border flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium truncate">{r.name}</div>
+                <div className="text-xs opacity-70">
+                  {r.island || "-"} · {r.id}
+                </div>
+                {r.error && <div className="text-xs text-red-700 mt-1">{r.error}</div>}
+              </div>
 
-                  <td className="p-3">
-                    <select
-                      className="rounded-md border px-2 py-1"
-                      value={row?.status ?? "inactive"}
-                      onChange={(e) => setStatus(b.id, e.target.value as SubscriptionStatus)}
-                    >
-                      {STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={r.plan}
+                onChange={(e) =>
+                  setRow(r.id, { plan: e.target.value as Plan, dirty: true, error: null })
+                }
+              >
+                {PLANS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
 
-                  <td className="p-3">
-                    <button
-                      className="rounded-md border px-3 py-2 disabled:opacity-50"
-                      onClick={() => saveOne(b.id)}
-                      disabled={!row || row.saving || !row.dirty}
-                    >
-                      {row?.saving ? "Opslaan..." : "Opslaan"}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={r.status}
+                onChange={(e) =>
+                  setRow(r.id, { status: e.target.value as Status, dirty: true, error: null })
+                }
+              >
+                {STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
 
-            {filtered.length === 0 ? (
-              <tr>
-                <td className="p-6 opacity-70" colSpan={4}>
-                  Geen resultaten
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+              <button
+                className="px-3 py-2 rounded bg-green-600 text-white text-sm disabled:opacity-40"
+                onClick={() => saveOne(r.id)}
+                disabled={!r.dirty || r.saving}
+              >
+                {r.saving ? "Opslaan…" : "Opslaan"}
+              </button>
+
+              <button
+                className="px-3 py-2 rounded bg-black/5 text-sm"
+                onClick={() => setRow(r.id, { dirty: false, error: null })}
+                disabled={r.saving}
+              >
+                Reset
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

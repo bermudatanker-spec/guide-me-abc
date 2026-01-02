@@ -41,8 +41,7 @@ const COPY: Record<
 > = {
   en: {
     title: "Your account",
-    subtitle:
-      "Manage your profile and sign out of your Guide Me ABC account.",
+    subtitle: "Manage your profile and sign out of your Guide Me ABC account.",
     nameLabel: "Full name",
     emailLabel: "Email address",
     saveBtn: "Save changes",
@@ -54,8 +53,7 @@ const COPY: Record<
   },
   nl: {
     title: "Je account",
-    subtitle:
-      "Beheer je profiel en meld je af bij je Guide Me ABC-account.",
+    subtitle: "Beheer je profiel en meld je af bij je Guide Me ABC-account.",
     nameLabel: "Volledige naam",
     emailLabel: "E-mailadres",
     saveBtn: "Wijzigingen opslaan",
@@ -67,8 +65,7 @@ const COPY: Record<
   },
   pap: {
     title: "Bo kuenta",
-    subtitle:
-      "Manehá bo perfil i sali for di bo kuenta di Guide Me ABC.",
+    subtitle: "Manehá bo perfil i sali for di bo kuenta di Guide Me ABC.",
     nameLabel: "Nòmber kompletu",
     emailLabel: "Email-adres",
     saveBtn: "Warda kambionan",
@@ -80,8 +77,7 @@ const COPY: Record<
   },
   es: {
     title: "Tu cuenta",
-    subtitle:
-      "Gestiona tu perfil y cierra la sesión de tu cuenta de Guide Me ABC.",
+    subtitle: "Gestiona tu perfil y cierra la sesión de tu cuenta de Guide Me ABC.",
     nameLabel: "Nombre completo",
     emailLabel: "Correo electrónico",
     saveBtn: "Guardar cambios",
@@ -105,7 +101,6 @@ export default function AccountClient({ lang }: Props) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
 
-  // Account laden
   useEffect(() => {
     let cancelled = false;
 
@@ -115,21 +110,14 @@ export default function AccountClient({ lang }: Props) {
       if (cancelled) return;
 
       if (error || !data.user) {
-        toast({
-          title: t.loadError,
-          variant: "destructive",
-        });
-        // naar login met redirect terug naar account
-router.replace(`/${lang}/business/auth?redirectedFrom=/${lang}/account`);
+        toast({ title: t.loadError, variant: "destructive" });
+        router.replace(`/${lang}/business/auth?redirectedFrom=/${lang}/account`);
         return;
       }
 
       const user = data.user;
-
       setEmail(user.email ?? "");
-      setFullName(
-        (user.user_metadata?.full_name as string | undefined) ?? ""
-      );
+      setFullName((user.user_metadata?.full_name as string | undefined) ?? "");
       setLoading(false);
     }
 
@@ -138,7 +126,6 @@ router.replace(`/${lang}/business/auth?redirectedFrom=/${lang}/account`);
     return () => {
       cancelled = true;
     };
-    // t verandert alleen als lang verandert, dus lang is genoeg
   }, [lang, router, supabase, toast, t.loadError]);
 
   async function handleSave(e: FormEvent<HTMLFormElement>) {
@@ -152,30 +139,23 @@ router.replace(`/${lang}/business/auth?redirectedFrom=/${lang}/account`);
     setSaving(false);
 
     if (error) {
-      toast({
-        title: t.savingError,
-        variant: "destructive",
-      });
+      toast({ title: t.savingError, variant: "destructive" });
       return;
     }
 
-    toast({
-      title: t.savingSuccess,
-    });
+    toast({ title: t.savingSuccess });
   }
 
+  // ✅ Belangrijk: ga naar server logout route (cookies/session SSR correct weg)
   async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push(`/${lang}`);
+    router.push(`/${lang}/auth/logout`);
   }
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4 py-10">
       <Card className="w-full max-w-xl shadow-card">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold">
-            {t.title}
-          </CardTitle>
+          <CardTitle className="text-2xl font-semibold">{t.title}</CardTitle>
           <CardDescription>{t.subtitle}</CardDescription>
         </CardHeader>
 
@@ -202,20 +182,11 @@ router.replace(`/${lang}/business/auth?redirectedFrom=/${lang}/account`);
 
               <div className="space-y-2">
                 <Label htmlFor="email">{t.emailLabel}</Label>
-                <Input
-                  id="email"
-                  value={email}
-                  disabled
-                  className="bg-muted"
-                />
+                <Input id="email" value={email} disabled className="bg-muted" />
               </div>
 
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleLogout}
-                >
+                <Button type="button" variant="outline" onClick={handleLogout}>
                   {t.logoutBtn}
                 </Button>
 

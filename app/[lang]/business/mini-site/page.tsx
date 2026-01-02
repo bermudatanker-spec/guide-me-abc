@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 
 import MiniSiteActions from "@/components/business/MiniSiteActions";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isLocale, type Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
 
@@ -35,7 +35,7 @@ export default async function MiniSiteSettingsPage({ params }: PageProps) {
   const { lang: rawLang } = await params;
   const lang: Locale = isLocale(rawLang) ? (rawLang as Locale) : "en";
 
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
 
   // 1) User ophalen
   const { data, error: userError } = await supabase.auth.getUser();

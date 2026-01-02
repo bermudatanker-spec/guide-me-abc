@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 
 import { isLocale, type Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { langHref } from "@/lib/lang-href";
 
 import EditBusinessForm from "./ui/EditBusinessForm";
@@ -29,7 +29,7 @@ export default async function EditBusinessPage({ params }: PageProps) {
   const { lang: rawLang, id } = await params;
 
   const lang: Locale = isLocale(rawLang) ? (rawLang as Locale) : "en";
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
 
   // 1) Auth guard
   const {

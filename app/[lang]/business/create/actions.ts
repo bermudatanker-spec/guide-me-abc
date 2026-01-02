@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { generateUniqueBusinessSlug } from "@/lib/business/slug-unique";
 import { langHref } from "@/lib/lang-href";
 import type { Locale } from "@/i18n/config";
@@ -46,7 +46,7 @@ export async function createBusinessWithListingAction(
   const openingHours = toNull(s(formData.get("opening_hours")));
   const temporarilyClosed = truthy(s(formData.get("temporarily_closed")));
 
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
   const { data: auth } = await supabase.auth.getUser();
   const user = auth.user;
 

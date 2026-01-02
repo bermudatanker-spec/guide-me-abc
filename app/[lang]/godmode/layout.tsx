@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import BackButton from "@/components/BackButton";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getRoleFlags } from "@/lib/auth/get-role-flags";
 
 export default async function GodmodeLayout({
@@ -15,7 +15,7 @@ export default async function GodmodeLayout({
 }) {
   const { lang } = await params;
 
-  const sb = await supabaseServer();
+  const sb = await createSupabaseServerClient();
   const { data } = await sb.auth.getUser();
   const user = data?.user ?? null;
 

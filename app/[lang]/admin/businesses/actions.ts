@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import type { Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 type Ok<T = {}> = { ok: true } & T;
@@ -33,7 +33,7 @@ function dashboardPath(lang: Locale) {
 }
 
 async function requireSuperAdmin() {
-  const sb = await supabaseServer();
+  const sb = await createSupabaseServerClient();
   const { data, error } = await sb.auth.getUser();
   if (error) throw new Error(error.message);
   if (!data?.user) throw new Error("Niet ingelogd.");

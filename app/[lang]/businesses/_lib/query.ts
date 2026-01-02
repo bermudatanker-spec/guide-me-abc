@@ -1,8 +1,10 @@
-import { supabaseServer } from "@/lib/supabase/server";
+// app/[lang]/businesses/_lib/query.ts
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Island, Plan } from "./constants";
 
 export type BusinessRow = {
   id: string;
+  business_id: string;
   business_name: string;
   description: string | null;
   island: Island;
@@ -10,17 +12,19 @@ export type BusinessRow = {
   logo_url: string | null;
   cover_image_url: string | null;
   subscription_plan: Plan | null;
-  status: "pending" | "active" | "inactive" | null;
+  subscription_status: "active" | "inactive" | null;
+  status: "pending" | "active" | "inactive" | null; // listing status
 };
 
 export async function fetchBusinesses(islandFilter: Island | null) {
-  const s = await supabaseServer();
+  const s = await createSupabaseServerClient();
 
   let query = s
-    .from("business_listings")
+    .from("business_listings_with_subscription") // ✅ VIEW i.p.v. business_listings
     .select(
       `
         id,
+        business_id,
         business_name,
         description,
         island,
@@ -28,10 +32,11 @@ export async function fetchBusinesses(islandFilter: Island | null) {
         logo_url,
         cover_image_url,
         subscription_plan,
+        subscription_status,
         status
       `
     )
-    .eq("status", "active");
+    .eq("status", "active"); // ✅ listings actief tonen (zoals je nu al doet)
 
   if (islandFilter) query = query.eq("island", islandFilter);
 

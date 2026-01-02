@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import type { Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { langHref } from "@/lib/lang-href";
 import { getRoleFlags } from "@/lib/auth/get-role-flags";
 
 export async function requireAdmin(lang: Locale) {
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {

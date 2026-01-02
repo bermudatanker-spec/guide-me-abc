@@ -68,7 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        if (!active) return;
+        const token = data.session?.access_token;
+
+        await fetch("/api/admin/business", {
+          headers: { Authorization: `Bearer $ {token}` },
+        });
 
         setSession(data.session ?? null);
         setUser(data.session?.user ?? null);

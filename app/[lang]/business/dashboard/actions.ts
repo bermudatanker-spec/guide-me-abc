@@ -5,7 +5,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import type { Locale } from "@/i18n/config";
 import { langHref } from "@/lib/lang-href";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /* -------------------------------------------------------
@@ -110,7 +110,7 @@ function dashboardPath(lang: Locale) {
    Auth helper
 -------------------------------------------------------- */
 async function getAuthedUser(): Promise<Result<{ user: any; supabase: any }>> {
-  const supabase: any = await supabaseServer();
+  const supabase: any = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error) return fail(error.message);
   if (!data?.user) return fail("Niet ingelogd.");
@@ -221,7 +221,7 @@ async function ensureOwnerOrAdmin(businessId: string, user: any): Promise<Result
 
   if (isSuperAdmin(user)) return ok({});
 
-  const sb: any = await supabaseServer();
+  const sb: any = await createSupabaseServerClient();
   const { data, error } = await sb
     .from("businesses")
     .select("id")

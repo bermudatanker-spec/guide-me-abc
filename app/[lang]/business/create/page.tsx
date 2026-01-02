@@ -1,6 +1,6 @@
 // app/[lang]/business/create/page.tsx
 import { isLocale, type Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import CreateClient from "./ui/CreateClient";
 
 type Params = { lang: string };
@@ -18,7 +18,7 @@ export default async function BusinessCreatePage({ params }: PageProps) {
   const { lang: rawLang } = await params;
   const lang: Locale = isLocale(rawLang) ? (rawLang as Locale) : "en";
 
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
 
   const { data: categories, error } = await supabase
     .from("categories")

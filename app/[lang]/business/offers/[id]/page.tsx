@@ -1,6 +1,6 @@
 // app/[lang]/business/offers/[id]/page.tsx
 import { notFound } from "next/navigation";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isLocale, type Locale } from "@/i18n/config";
 import { translations } from "@/i18n/translations";
 import OffersClient from "./ui/OffersClient";
@@ -17,7 +17,7 @@ export default async function BusinessOffersPage({ params }: PageProps) {
   const lang: Locale = isLocale(rawLang) ? rawLang : "en";
   const t = translations[lang];
 
-  const supabase = await supabaseServer();
+  const supabase = await createSupabaseServerClient();
 
   const { data: biz, error } = await supabase
     .from("business_listings")

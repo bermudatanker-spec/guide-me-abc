@@ -3,7 +3,7 @@
 import Stripe from "stripe";
 import { langHref } from "@/lib/lang-href";
 import type { Locale } from "@/i18n/config";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
@@ -35,7 +35,7 @@ export async function createCheckoutSessionAction(
   businessId: string
 ): Promise<Result> {
   try {
-    const sb = await supabaseServer();
+    const sb = await createSupabaseServerClient();
     const { data, error } = await sb.auth.getUser();
     if (error) return fail(error.message);
     if (!data?.user) return fail("Niet ingelogd.");

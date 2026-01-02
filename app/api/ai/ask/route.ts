@@ -1,9 +1,9 @@
 // app/api/ai/ask/route.ts
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
-  const s = await supabaseServer();
+  const s = await createSupabaseServerClient();
   const { data: { user } } = await s.auth.getUser();
 
   if (!user) {
