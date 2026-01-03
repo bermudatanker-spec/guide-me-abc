@@ -1,4 +1,5 @@
 // app/[lang]/businesses/_lib/query.ts
+import { unstable_noStore as noStore } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Island, Plan } from "./constants";
 
@@ -11,16 +12,20 @@ export type BusinessRow = {
   categories: { name: string; slug: string } | null;
   logo_url: string | null;
   cover_image_url: string | null;
+
   subscription_plan: Plan | null;
   subscription_status: "active" | "inactive" | null;
-  status: "pending" | "active" | "inactive" | null; // listing status
+
+  status: "pending" | "active" | "inactive" | null;
 };
 
 export async function fetchBusinesses(islandFilter: Island | null) {
+  noStore(); // ✅ voorkomt Next.js caching
+
   const s = await createSupabaseServerClient();
 
   let query = s
-    .from("business_listings_with_subscription") // ✅ VIEW i.p.v. business_listings
+    .from("business_listings_with_subscription")
     .select(
       `
         id,
@@ -36,7 +41,7 @@ export async function fetchBusinesses(islandFilter: Island | null) {
         status
       `
     )
-    .eq("status", "active"); // ✅ listings actief tonen (zoals je nu al doet)
+    .eq("status", "active");
 
   if (islandFilter) query = query.eq("island", islandFilter);
 

@@ -337,6 +337,16 @@ export type Database = {
      * RPC FUNCTIONS
      * ========================= */
     Functions: {
+
+            admin_set_subscription: {
+        Args: {
+          p_business_id: string
+          p_plan: "free" | "starter" | "growth" | "pro"
+          p_status: "active" | "inactive"
+        };
+        Returns: void
+      };
+
       toggle_user_role: {
         Args: {
           p_user_id: string;

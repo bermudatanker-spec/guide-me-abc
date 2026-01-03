@@ -1,69 +1,76 @@
+// src/lib/auth/requireSuperAdminServer.ts
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 
-type GuardOk = { ok: true };
-type GuardFail = { ok: false; res: NextResponse };
-
 function normalizeRole(v?: unknown) {
-  return String(v ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "_");
+  return String(v ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
 }
 
 function isAllowed(role?: unknown, roles?: unknown) {
-  const set = new Set<string>();
-  const r1 = normalizeRole(role);
-  if (r1) set.add(r1);
+  const set = new Set<string>();
+  const r1 = normalizeRole(role);
+  if (r1) set.add(r1);
 
-  if (Array.isArray(roles)) {
-    for (const r of roles) {
-      const rr = normalizeRole(r);
-      if (rr) set.add(rr);
-    }
-  }
+  if (Array.isArray(roles)) {
+    for (const r of roles) {
+      const rr = normalizeRole(r);
+      if (rr) set.add(rr);
+    }
+  }
 
-  return set.has("superadmin") || set.has("super_admin") || set.has("godmode") || set.has("god_mode");
+  return (
+    set.has("superadmin") ||
+    set.has("super_admin") ||
+    set.has("godmode") ||
+    set.has("god_mode")
+  );
 }
 
-export async function requireSuperAdminServer(): Promise<GuardOk | GuardFail> {
-  const cookieStore = await cookies(); // ✅ Next 15/16: await!
+/**
+ * ✅ App Router friendly guard:
+ * - Returns NOTHING
+ * - Either continues OR redirects (throws internally)
+ */
+export async function requireSuperAdminServer(opts?: { lang?: string }) {
+  const lang = opts?.lang ?? "en";
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        get(name) {
-          return cookieStore.get(name)?.value;
-        },
-        // in server components hoef je meestal niet te setten,
-        // maar ssr client verwacht het type:
-        set() {},
-        remove() {},
-      },
-    }
-  );
+  const cookieStore = await cookies(); // ok als jouw Next dit async maakt
 
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
-    return {
-      ok: false,
-      res: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
-  }
+  // ✅ Gebruik ANON key voor auth/session (cookies).
+  // ❌ Service role key hoort NIET in pages/components.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // ✅
+    {
+      cookies: {
+        get(name) {
+          return cookieStore.get(name)?.value;
+        },
+        set() {},
+        remove() {},
+      },
+    }
+  );
 
-  const meta = data.user.app_metadata ?? {};
-  const role = meta.role;
-  const roles = meta.roles;
+  const { data, error } = await supabase.auth.getUser();
 
-  if (!isAllowed(role, roles)) {
-    return {
-      ok: false,
-      res: NextResponse.json({ error: "Forbidden", role, roles }, { status: 403 }),
-    };
-  }
+  // Niet ingelogd → naar login
+  if (error || !data?.user) {
+    redirect(`/${lang}/login`);
+  }
 
-  return { ok: true };
+  const meta = data.user.app_metadata ?? {};
+  const role = (meta as any).role;
+  const roles = (meta as any).roles;
+
+  // Niet toegestaan → terug naar home
+  if (!isAllowed(role, roles)) {
+    redirect(`/${lang}`);
+  }
+
+  // ✅ toegestaan → gewoon doorrenderen
 }

@@ -16,6 +16,10 @@ const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 let _client: SupabaseClient<Database> | null = null;
 
+export function createSupabaseBrowserClient() {
+  return supabaseBrowser();
+}
+
 export function supabaseBrowser(): SupabaseClient<Database> {
   if (_client) return _client;
 
