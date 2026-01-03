@@ -1,6 +1,7 @@
 // middleware.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getRoleFlags } from "@/lib/auth/roles";
 
 /* ───────── i18n ───────── */
 
@@ -187,9 +188,9 @@ export async function middleware(req: NextRequest) {
 
   const user = userResult.data.user ?? null;
 
-  const roles = getRolesFromUser(user);
-  const isSuper = isSuperAdminUser(roles);
-  const isAdmin = isAdminUser(roles);
+  const { isAdmin, isSuperAdmin } = getRoleFlags(user);
+  const isSuper = isSuperAdmin;
+  const isAdminRole = isAdmin; 
 
   // 8) maintenance flag
   let maintenanceOn = false;
