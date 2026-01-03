@@ -1,34 +1,32 @@
 // src/lib/supabase/server.ts
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function createSupabaseServerClient() {
-  const cookieStore = await cookies();
+export async function createSupabaseServerClient(): Promise<SupabaseClient> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          // In Route Handlers is cookies() mutable
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch {
-            // In sommige server contexts is set niet toegestaan; dan gewoon negeren
-          }
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set({ name, value: "", ...options, maxAge: 0 });
-          } catch {
-            // ignore
-          }
-        },
-      },
-    }
-  );
+  // ✅ Next 15/16: cookies() is async
+  const cookieStore = await cookies();
+
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      // Supabase SSR verwacht getAll/setAll
+      getAll() {
+        // ✅ in Next is dit aanwezig op cookieStore als je await gebruikt
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        // In Server Components mag setten soms niet → gewoon negeren
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch {
+          // noop
+        }
+      },
+    },
+  });
 }

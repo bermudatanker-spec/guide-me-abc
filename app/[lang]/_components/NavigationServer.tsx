@@ -1,16 +1,12 @@
 // src/app/[lang]/_components/NavigationServer.tsx
 import Navigation from "@/components/Navigation";
-import type { Locale } from "@/i18n/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-type Props = {
-  lang: Locale;
-};
-
-export default async function NavigationServer({ lang }: Props) {
+export default async function NavigationServer({ lang }: { lang: string }) {
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  const isLoggedIn = !!data.user;
+  const { data, error } = await supabase.auth.getUser();
 
-  return <Navigation lang={lang} isLoggedIn={isLoggedIn} />;
+  if (error) console.warn("[NavigationServer] getUser error:", error.message);
+
+  return <Navigation lang={lang} isLoggedIn={!!data?.user} />;
 }

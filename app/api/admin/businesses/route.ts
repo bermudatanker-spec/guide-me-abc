@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSuperAdminApi } from "@/lib/auth/requireSuperAdminApi";
+import { requireAdminApi } from "@/lib/auth/requireAdminApi";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type Plan = "free" | "starter" | "growth" | "pro";
@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const guard = await requireSuperAdminApi();
+  // ✅ admin + super_admin
+  const guard = await requireAdminApi();
   if (!guard.ok) return guard.res;
 
   const supabase = await createSupabaseServerClient();
@@ -29,7 +30,6 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // ✅ HIER zat je issue: rows expliciet definiëren
   const rows = (data ?? []) as any[];
 
   // ✅ DEDUPE: 1 business = 1 record (active wint)

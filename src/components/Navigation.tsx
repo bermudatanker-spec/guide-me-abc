@@ -25,7 +25,7 @@ function cx(...classes: Array<string | false | undefined | null>) {
 export default function Navigation({ lang, isLoggedIn }: NavigationProps) {
   const pathname = usePathname() ?? "/";
 
-  const loggedIn = Boolean(isLoggedIn)
+  const loggedIn = Boolean (isLoggedIn);
 
   
   const activeLang = useMemo<L>(() => {

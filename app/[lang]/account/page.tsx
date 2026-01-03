@@ -59,8 +59,8 @@ export default async function AccountEntry({ params }: PageProps) {
   }
 
   // 3) redirect naar juiste dashboard
-  if (role === "godmode") redirect(`/${lang}/admin/businesses`);
-  if (role === "admin") redirect(`/${lang}/admin/businesses`);
+  if (role === "godmode") redirect(`/${lang}/godmode`);
+  if (role === "admin") redirect(`/${lang}/admin`);
 
   // client
   redirect(`/${lang}/business/dashboard`);
